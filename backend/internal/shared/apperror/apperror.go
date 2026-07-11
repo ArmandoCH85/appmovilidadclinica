@@ -9,6 +9,7 @@ package apperror
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 )
 
@@ -95,16 +96,31 @@ type errorBody struct {
 	} `json:"error"`
 }
 
+// genericInternalMessage es el único texto que un InternalError (o cualquier
+// error no tipado) puede exponer al cliente. El detalle real se loguea en
+// slog, nunca en el cuerpo de la respuesta.
+const genericInternalMessage = "error interno del servidor"
+
 // WriteJSONError despacha err a su estado HTTP correspondiente y escribe el
 // cuerpo JSON. Si err no es un appError conocido se asume 500 Internal Server
 // Error, que es el fallback seguro para no dejar sin responder al cliente.
 //
 // Es el único punto donde los handlers traducen dominio→HTTP, evitando que
-// cada handler repita w.WriteHeader + json.NewEncoder.
+// cada handler repita w.WriteHeader + json.NewEncoder. También es el único
+// punto que decide qué mensaje es seguro exponer: InternalError y cualquier
+// error no tipado se logean server-side y responden con un mensaje genérico
+// fijo — nunca err.Error(), que podría contener detalles de driver/DB/host.
 func WriteJSONError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
-	if ae, ok := err.(appError); ok {
+	message := genericInternalMessage
+
+	if ie, ok := err.(InternalError); ok {
+		slog.Error("error interno", "error", ie.Err)
+	} else if ae, ok := err.(appError); ok {
 		status = ae.HTTPStatus()
+		message = ae.Error()
+	} else {
+		slog.Error("error no tipado en WriteJSONError", "error", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -112,7 +128,7 @@ func WriteJSONError(w http.ResponseWriter, err error) {
 
 	body := errorBody{}
 	body.Error.Code = status
-	body.Error.Message = err.Error()
+	body.Error.Message = message
 
 	_ = json.NewEncoder(w).Encode(body) // Si falla la serialización ya enviamos el status.
 }

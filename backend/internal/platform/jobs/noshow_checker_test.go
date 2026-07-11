@@ -21,6 +21,10 @@ import "testing"
 //     liberados + 2 eventos de bitacora (NO_SHOW, SEGMENTS_RELEASED).
 //   - Reserva CONFIRMED dentro de tolerancia -> sin accion.
 //   - Reserva BOARDED -> no seleccionada por el WHERE (solo CONFIRMED).
+//   - Reserva que el conductor transiciona (BOARDED) ENTRE el SELECT del
+//     batch y el UPDATE de markNoShowTx -> el guard "AND status='CONFIRMED'"
+//     hace RowsAffected=0, la tx aborta sin tocar segmentos/eventos, y la
+//     reserva queda con el estado que puso el conductor (no NO_SHOW).
 func TestRunNoShowChecker_DeferredToIntegration(t *testing.T) {
 	t.Skip("diferido a tests de integracion: RunNoShowChecker requiere *sql.DB real (sin sqlmock por ponytail)")
 }

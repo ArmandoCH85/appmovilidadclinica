@@ -96,9 +96,12 @@ func RunNoShowChecker(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// markNoShowTx ejecuta la liberacion + marca NO_SHOW para una reserva dentro
+// markNoShowTx ejecuta la marca NO_SHOW + liberacion para una reserva dentro
 // de una transaccion Go. Repasa el cuerpo de sp_mark_reservation_no_show sin
 // la validacion del conductor (el job automatico no tiene conductor actor).
+// El UPDATE a reservations lleva guard "AND status = 'CONFIRMED'" y aborta
+// (sin error) si RowsAffected es 0: evita pisar una transicion que el
+// conductor ya hizo manualmente entre el SELECT del batch y este UPDATE.
 func markNoShowTx(ctx context.Context, db *sql.DB, e expiredReservation) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -112,7 +115,39 @@ func markNoShowTx(ctx context.Context, db *sql.DB, e expiredReservation) error {
 		}
 	}()
 
-	// 1. Liberar segmentos de asiento reservados.
+	// 1. Marcar la reserva como NO_SHOW, con guard de status='CONFIRMED'.
+	//
+	// Este UPDATE actua como lock optimista: el SELECT que armo `expired`
+	// corrio antes de abrir esta tx, asi que entre ese SELECT y este UPDATE
+	// el conductor pudo haber marcado la reserva manualmente (BOARDED u otro
+	// estado) por su propio camino. El guard "AND status = 'CONFIRMED'" hace
+	// que el UPDATE afecte 0 filas si eso paso, y RowsAffected lo detecta:
+	// abortamos ANTES de tocar segmentos/eventos, para no pisar la
+	// transicion que el conductor ya hizo.
+	res, err := tx.ExecContext(ctx, `
+		UPDATE reservations
+		   SET status = 'NO_SHOW',
+		       no_show_at = NOW(),
+		       no_show_by_user_id = ?,
+		       no_show_trip_stop_time_id = ?
+		 WHERE id = ? AND status = 'CONFIRMED'
+	`, e.DriverID, e.OriginTripStopTime, e.ID)
+	if err != nil {
+		return fmt.Errorf("actualizando reserva a NO_SHOW: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("verificando filas afectadas de NO_SHOW: %w", err)
+	}
+	if affected == 0 {
+		// La reserva ya no esta CONFIRMED (el conductor la transiciono por su
+		// cuenta entre el SELECT del batch y este UPDATE). No es un error del
+		// job: simplemente no hay nada que hacer con esta reserva.
+		slog.Info("noshow: reserva ya transicionada, se omite", "reservation_id", e.ID)
+		return nil
+	}
+
+	// 2. Liberar segmentos de asiento reservados.
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE trip_seat_segments
 		   SET state = 'AVAILABLE',
@@ -124,7 +159,7 @@ func markNoShowTx(ctx context.Context, db *sql.DB, e expiredReservation) error {
 		return fmt.Errorf("liberando trip_seat_segments: %w", err)
 	}
 
-	// 2. Marcar segmentos de la reserva como RELEASED en el historial.
+	// 3. Marcar segmentos de la reserva como RELEASED en el historial.
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE reservation_segments
 		   SET allocation_status = 'RELEASED',
@@ -133,18 +168,6 @@ func markNoShowTx(ctx context.Context, db *sql.DB, e expiredReservation) error {
 		   AND allocation_status = 'RESERVED'
 	`, e.ID); err != nil {
 		return fmt.Errorf("liberando reservation_segments: %w", err)
-	}
-
-	// 3. Marcar la reserva como NO_SHOW con auditoria del conductor del viaje.
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE reservations
-		   SET status = 'NO_SHOW',
-		       no_show_at = NOW(),
-		       no_show_by_user_id = ?,
-		       no_show_trip_stop_time_id = ?
-		 WHERE id = ?
-	`, e.DriverID, e.OriginTripStopTime, e.ID); err != nil {
-		return fmt.Errorf("actualizando reserva a NO_SHOW: %w", err)
 	}
 
 	// 4. Evento NO_SHOW para la bitacora.
