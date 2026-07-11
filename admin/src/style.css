@@ -1,0 +1,53 @@
+/* Tokens base + accesibilidad. Componentes de PrimeVue traen su propio tema
+   (Aura); esto cubre el documento y los pocos elementos nativos que quedan
+   fuera del tema (foco, scrollbar del body, tipografia base). */
+:root {
+  --color-bg: #ffffff;
+  --color-text: #1b1b1f;
+  --color-focus-ring: #1d4ed8;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #16181d;
+    --color-text: #e7e7ea;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+/* Foco visible con contraste >=3:1, nunca solo color. Se aplica a cualquier
+   elemento enfocable que no traiga ya su propio estilo de foco del tema. */
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
