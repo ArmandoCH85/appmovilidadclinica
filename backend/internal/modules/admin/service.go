@@ -2,6 +2,9 @@ package admin
 
 import (
 	"context"
+	"fmt"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/authctx"
@@ -126,18 +129,33 @@ func (s *adminService) ListUsers(ctx context.Context, pg types.PaginationParams)
 	return s.repo.ListUsers(ctx, pg)
 }
 
-// CreateUser crea un usuario.
+// CreateUser crea un usuario. Recibe la password en texto plano (TLS) y la
+// hashea con bcrypt antes de persistir; nunca se guarda ni se loguea en claro.
 func (s *adminService) CreateUser(ctx context.Context, p UserCreateParams) (User, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return User{}, err
 	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return User{}, fmt.Errorf("hasheando password: %w", err)
+	}
+	p.Password = string(hash)
 	return s.repo.CreateUser(ctx, p)
 }
 
-// UpdateUser actualiza un usuario.
+// UpdateUser actualiza un usuario. Si p.Password viene vacia no se toca el
+// hash existente; si viene, se hashea con bcrypt antes de persistir (mismo
+// chokepoint que CreateUser).
 func (s *adminService) UpdateUser(ctx context.Context, id int64, p UserUpdateParams) error {
 	if err := requireAdmin(ctx); err != nil {
 		return err
+	}
+	if p.Password != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("hasheando password: %w", err)
+		}
+		p.Password = string(hash)
 	}
 	return s.repo.UpdateUser(ctx, id, p)
 }

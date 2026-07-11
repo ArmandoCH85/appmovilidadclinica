@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/types"
@@ -20,10 +21,18 @@ type mockAdminRepo struct {
 	// cuando el guard de rol falla.
 	createStopCalls       int
 	updateTripStatusCalls int
+	createUserCalls       int
+	updateUserCalls       int
 
 	createStopResult    Stop
 	createStopErr       error
 	updateTripStatusErr error
+
+	// receivedUserCreate/receivedUserUpdate capturan lo que el servicio
+	// efectivamente le pasa al repositorio, para afirmar que el password ya
+	// llega hasheado (nunca en texto plano) en este punto.
+	receivedUserCreate UserCreateParams
+	receivedUserUpdate UserUpdateParams
 }
 
 func (m *mockAdminRepo) ListStops(_ context.Context, _ types.PaginationParams) ([]Stop, int, error) {
@@ -39,10 +48,14 @@ func (m *mockAdminRepo) UpdateStop(_ context.Context, _ int64, _ StopUpdateParam
 func (m *mockAdminRepo) ListUsers(_ context.Context, _ types.PaginationParams) ([]User, int, error) {
 	return nil, 0, nil
 }
-func (m *mockAdminRepo) CreateUser(_ context.Context, _ UserCreateParams) (User, error) {
-	return User{}, nil
+func (m *mockAdminRepo) CreateUser(_ context.Context, p UserCreateParams) (User, error) {
+	m.createUserCalls++
+	m.receivedUserCreate = p
+	return User{ID: 1, EmployeeCode: p.EmployeeCode, DocumentNumber: p.DocumentNumber}, nil
 }
-func (m *mockAdminRepo) UpdateUser(_ context.Context, _ int64, _ UserUpdateParams) error {
+func (m *mockAdminRepo) UpdateUser(_ context.Context, _ int64, p UserUpdateParams) error {
+	m.updateUserCalls++
+	m.receivedUserUpdate = p
 	return nil
 }
 func (m *mockAdminRepo) ListVehicles(_ context.Context, _ types.PaginationParams) ([]Vehicle, int, error) {
@@ -167,6 +180,71 @@ func TestUpdateTripStatus_NonAdminRole_ReturnsForbidden(t *testing.T) {
 	var fe apperror.ForbiddenError
 	require.True(t, errors.As(err, &fe), "rol no ADMIN debe mapear a ForbiddenError")
 	assert.Equal(t, 0, repo.updateTripStatusCalls)
+}
+
+func TestCreateUser_HashesPasswordBeforePersisting(t *testing.T) {
+	repo := &mockAdminRepo{}
+	svc := NewService(repo)
+
+	plain := "Clave123"
+	_, err := svc.CreateUser(ctxWithRole(t, RoleADMIN), UserCreateParams{
+		EmployeeCode: "EMP001", DocumentNumber: "12345678", Password: plain,
+		FullName: "Ana Torres", Role: "WORKER", Active: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, repo.createUserCalls)
+
+	got := repo.receivedUserCreate.Password
+	assert.NotEqual(t, plain, got, "el repositorio no debe recibir la password en texto plano")
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(got), []byte(plain)),
+		"el hash recibido por el repositorio debe verificar contra la password original")
+}
+
+func TestUpdateUser_PasswordProvidedOrOmitted(t *testing.T) {
+	tests := []struct {
+		name     string
+		password string
+	}{
+		{name: "password provista se hashea", password: "NuevaClave1"},
+		{name: "password vacia no se toca", password: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockAdminRepo{}
+			svc := NewService(repo)
+
+			err := svc.UpdateUser(ctxWithRole(t, RoleADMIN), 7, UserUpdateParams{
+				EmployeeCode: "EMP002", DocumentNumber: "87654321", Password: tt.password,
+				FullName: "Luis Rios", Role: "DRIVER", Active: true,
+			})
+			require.NoError(t, err)
+			require.Equal(t, 1, repo.updateUserCalls)
+
+			got := repo.receivedUserUpdate.Password
+			if tt.password == "" {
+				assert.Empty(t, got, "sin password nueva, el repositorio no debe recibir hash")
+				return
+			}
+			assert.NotEqual(t, tt.password, got, "el repositorio no debe recibir la password en texto plano")
+			assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(got), []byte(tt.password)),
+				"el hash recibido por el repositorio debe verificar contra la password original")
+		})
+	}
+}
+
+func TestCreateUser_NonAdminRole_ReturnsForbidden(t *testing.T) {
+	repo := &mockAdminRepo{}
+	svc := NewService(repo)
+
+	_, err := svc.CreateUser(ctxWithRole(t, "WORKER"), UserCreateParams{
+		EmployeeCode: "EMP003", DocumentNumber: "11111111", Password: "Clave123",
+		FullName: "X", Role: "WORKER", Active: true,
+	})
+	require.Error(t, err)
+	var fe apperror.ForbiddenError
+	require.True(t, errors.As(err, &fe), "rol no ADMIN debe mapear a ForbiddenError")
+	assert.Equal(t, 0, repo.createUserCalls, "el repositorio no debe invocarse cuando el guard de rol falla")
 }
 
 var _ AdminRepository = (*mockAdminRepo)(nil)

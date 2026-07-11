@@ -148,9 +148,8 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// CreateUser maneja POST /admin/users. Recibe password_hash ya hasheado con
-// bcrypt desde el cliente administrador (la app web de admin hashea antes de
-// enviar; el backend MVP confia en ese flujo).
+// CreateUser maneja POST /admin/users. Recibe password en texto plano (TLS);
+// el servicio la hashea con bcrypt antes de persistir.
 func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req UserCreateParams
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

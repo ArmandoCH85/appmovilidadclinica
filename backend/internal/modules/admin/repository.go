@@ -66,12 +66,13 @@ type User struct {
 	Active          bool    `json:"active"`
 }
 
-// UserCreateParams crea un usuario. PasswordHash debe llegar ya hasheado con
-// bcrypt desde el handler/servicio (la capa de BD no conoce bcrypt).
+// UserCreateParams crea un usuario. Password llega en texto plano (TLS); el
+// servicio la hashea con bcrypt antes de invocar al repositorio, que ya
+// recibe el hash listo para persistir.
 type UserCreateParams struct {
 	EmployeeCode    string  `json:"employee_code" validate:"required,max=30"`
 	DocumentNumber  string  `json:"document_number" validate:"required,max=20"`
-	PasswordHash    string  `json:"password_hash" validate:"required"`
+	Password        string  `json:"password" validate:"required"`
 	FullName        string  `json:"full_name" validate:"required,max=150"`
 	Role            string  `json:"role" validate:"required,oneof=ADMIN DRIVER WORKER"`
 	Department      *string `json:"department,omitempty" validate:"max=100"`
@@ -80,12 +81,13 @@ type UserCreateParams struct {
 	Active          bool    `json:"active"`
 }
 
-// UserUpdateParams actualiza un usuario. PasswordHash es opcional: si llega
-// vacio no se modifica el hash existente.
+// UserUpdateParams actualiza un usuario. Password es opcional en texto plano:
+// si llega vacia no se modifica el hash existente; si llega, el servicio la
+// hashea antes de pasarla al repositorio.
 type UserUpdateParams struct {
 	EmployeeCode    string  `json:"employee_code" validate:"required,max=30"`
 	DocumentNumber  string  `json:"document_number" validate:"required,max=20"`
-	PasswordHash    string  `json:"password_hash,omitempty"`
+	Password        string  `json:"password,omitempty"`
 	FullName        string  `json:"full_name" validate:"required,max=150"`
 	Role            string  `json:"role" validate:"required,oneof=ADMIN DRIVER WORKER"`
 	Department      *string `json:"department,omitempty" validate:"max=100"`
@@ -486,12 +488,14 @@ func (r *adminRepository) ListUsers(ctx context.Context, pg types.PaginationPara
 }
 
 // CreateUser inserta un usuario y devuelve la fila creada (sin password_hash).
+// p.Password ya llega hasheada con bcrypt: el servicio la hashea antes de
+// invocar este metodo (el repositorio no conoce bcrypt).
 func (r *adminRepository) CreateUser(ctx context.Context, p UserCreateParams) (User, error) {
 	res, err := r.db.ExecContext(ctx, `
         INSERT INTO users (employee_code, document_number, password_hash, full_name,
                role, department, phone, preferred_stop_id, active)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.EmployeeCode, p.DocumentNumber, p.PasswordHash, p.FullName, p.Role,
+		p.EmployeeCode, p.DocumentNumber, p.Password, p.FullName, p.Role,
 		p.Department, p.Phone, p.PreferredStopID, p.Active)
 	if err != nil {
 		return User{}, fmt.Errorf("creando usuario: %w", err)
@@ -507,11 +511,12 @@ func (r *adminRepository) CreateUser(ctx context.Context, p UserCreateParams) (U
 	}, nil
 }
 
-// UpdateUser actualiza un usuario. Si PasswordHash viene vacio no se modifica.
+// UpdateUser actualiza un usuario. Si p.Password viene vacio no se modifica
+// el hash existente; si viene, ya llega hasheada con bcrypt por el servicio.
 func (r *adminRepository) UpdateUser(ctx context.Context, id int64, p UserUpdateParams) error {
 	var res sql.Result
 	var err error
-	if p.PasswordHash == "" {
+	if p.Password == "" {
 		res, err = r.db.ExecContext(ctx, `
             UPDATE users
                SET employee_code = ?, document_number = ?, full_name = ?, role = ?,
@@ -525,7 +530,7 @@ func (r *adminRepository) UpdateUser(ctx context.Context, id int64, p UserUpdate
                SET employee_code = ?, document_number = ?, password_hash = ?, full_name = ?,
                    role = ?, department = ?, phone = ?, preferred_stop_id = ?, active = ?
              WHERE id = ?`,
-			p.EmployeeCode, p.DocumentNumber, p.PasswordHash, p.FullName, p.Role,
+			p.EmployeeCode, p.DocumentNumber, p.Password, p.FullName, p.Role,
 			p.Department, p.Phone, p.PreferredStopID, id)
 	}
 	if err != nil {
