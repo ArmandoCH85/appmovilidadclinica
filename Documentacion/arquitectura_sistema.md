@@ -95,7 +95,7 @@ appmovilidadclinica/
 
 ```
 ┌─────────────────────────────────────────────┐
-│  HTTP Router (net/http o chi)               │
+│  HTTP Router (chi v5)                        │
 │  Middleware: Auth (JWT), CORS, Logging      │
 ├─────────────────────────────────────────────┤
 │  Handlers (thin) — parsea request, valida   │
@@ -122,8 +122,7 @@ appmovilidadclinica/
 
 1. **Una reserva por viaje por trabajador** — Las SPs no validan `(trip_id, worker_id)` único. Go debe verificar antes de llamar `sp_confirm_reservation`.
 2. **QR Token flow** — El SP devuelve el UUID crudo una sola vez al confirmar. Go lo pasa al cliente (mobile). El cliente lo muestra como QR. El conductor escanea, Go hashea SHA-256 y compara con `qr_token_hash`.
-3. **Cache de disponibilidad** — `sync.Map` o LRU para结果的 de `sp_search_trips` con TTL corto. Invalidez al confirmar/cancelar reserva.
-4. **Auth & roles** — JWT con claims `role` (ADMIN/DRIVER/WORKER) y `user_id`. Middleware valida por ruta.
+3. **Auth & roles** — JWT con claims `role` (ADMIN/DRIVER/WORKER) y `user_id`. Middleware valida por ruta.
 
 ---
 
@@ -279,9 +278,9 @@ server {
 
 ## 12. Seguridad
 
-- **Auth:** JWT con expiración 24h, refresh token rotativo
+- **Auth:** JWT stateless con expiración 24h, sin refresh token
 - **Password:** `password_hash` en `users` (bcrypt o argon2)
 - **QR Token:** SHA-256 hash en DB, token crudo solo se devuelve una vez al confirmar
 - **SQL Injection:** Go usa `database/sql` con prepared statements para todas las SPs
 - **CORS:** Configurado en Nginx, no en Go (menor overhead)
-- **Rate limiting:** Middleware Go por IP (token bucket, in-memory)
+- **Rate limiting:** Middleware Go por IP (contador in-memory sync.Map)

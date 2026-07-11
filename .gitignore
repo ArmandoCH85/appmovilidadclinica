@@ -28,3 +28,6 @@ npm-debug.log*
 .opencode/package.json
 .opencode/package-lock.json
 .opencode/bun.lock
+
+# Agent tooling
+.atl/
