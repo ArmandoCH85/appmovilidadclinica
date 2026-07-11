@@ -8,6 +8,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -47,8 +48,9 @@ func LoadConfig() Config {
 // horaria operativa America/Lima y un charset utf8mb4 consistente.
 func NewPool(cfg Config) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?multiStatements=true&parseTime=true&loc=America/Lima&charset=utf8mb4&collation=utf8mb4_unicode_ci&timeout=5s&readTimeout=10s&writeTimeout=10s",
+		"%s:%s@tcp(%s:%s)/%s?multiStatements=true&parseTime=true&loc=%s&charset=utf8mb4&collation=utf8mb4_unicode_ci&timeout=5s&readTimeout=10s&writeTimeout=10s",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name,
+		url.QueryEscape("America/Lima"),
 	)
 
 	db, err := sql.Open("mysql", dsn)
