@@ -31,3 +31,8 @@ npm-debug.log*
 
 # Agent tooling
 .atl/
+.agents/
+.claude/
+
+# Go build output
+backend/backend.exe
