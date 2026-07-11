@@ -34,5 +34,8 @@ npm-debug.log*
 .agents/
 .claude/
 
+# Postman local collection
+*.postman_collection.json
+
 # Go build output
 backend/backend.exe
