@@ -363,7 +363,7 @@ export const calendarExceptionsConfig: CrudResourceConfig = {
   labelSingular: 'excepción',
   labelPlural: 'Excepciones de calendario',
   columns: [
-    { key: 'calendar_id', label: 'ID de calendario' },
+    { key: 'calendar_name', label: 'Calendario' },
     { key: 'exception_date', label: 'Fecha' },
     { key: 'operation', label: 'Operación' },
     { key: 'reason', label: 'Motivo' },

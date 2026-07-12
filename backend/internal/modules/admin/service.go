@@ -465,6 +465,9 @@ func (s *adminService) UpdateCalendarException(ctx context.Context, id int64, p 
 	if err := requireAdmin(ctx); err != nil {
 		return err
 	}
+	if _, err := s.repo.GetCalendarException(ctx, id); err != nil {
+		return err
+	}
 	if err := s.validateCalendarExceptionDate(ctx, p.CalendarID, p.ExceptionDate); err != nil {
 		return err
 	}

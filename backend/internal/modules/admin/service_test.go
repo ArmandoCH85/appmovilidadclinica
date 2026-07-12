@@ -33,6 +33,13 @@ type mockAdminRepo struct {
 	// llega hasheado (nunca en texto plano) en este punto.
 	receivedUserCreate UserCreateParams
 	receivedUserUpdate UserUpdateParams
+
+	// Stubs configurables para tests de calendar-exceptions.
+	getCalendarResult         Calendar
+	getCalendarErr            error
+	getCalendarExceptionErr   error
+	createCalendarExceptionCalls int
+	updateCalendarExceptionCalls int
 }
 
 func (m *mockAdminRepo) ListStops(_ context.Context, _ types.PaginationParams) ([]Stop, int, error) {
@@ -95,7 +102,7 @@ func (m *mockAdminRepo) UpdateTemplate(_ context.Context, _ int64, _ TemplateUpd
 	return nil
 }
 func (m *mockAdminRepo) GetCalendar(_ context.Context, _ int64) (Calendar, error) {
-	return Calendar{}, nil
+	return m.getCalendarResult, m.getCalendarErr
 }
 
 func (m *mockAdminRepo) ListCalendars(_ context.Context, _ types.PaginationParams) ([]Calendar, int, error) {
@@ -162,10 +169,15 @@ func (m *mockAdminRepo) UpdateVehicleSeat(_ context.Context, _ int64, _ VehicleS
 func (m *mockAdminRepo) ListCalendarExceptions(_ context.Context, _ int64, _ types.PaginationParams) ([]CalendarException, int, error) {
 	return nil, 0, nil
 }
+func (m *mockAdminRepo) GetCalendarException(_ context.Context, id int64) (CalendarException, error) {
+	return CalendarException{}, m.getCalendarExceptionErr
+}
 func (m *mockAdminRepo) CreateCalendarException(_ context.Context, _ CalendarExceptionCreateParams) (CalendarException, error) {
+	m.createCalendarExceptionCalls++
 	return CalendarException{}, nil
 }
 func (m *mockAdminRepo) UpdateCalendarException(_ context.Context, _ int64, _ CalendarExceptionUpdateParams) error {
+	m.updateCalendarExceptionCalls++
 	return nil
 }
 func (m *mockAdminRepo) ListTrips(_ context.Context, _, _ string, _ int64, _ types.PaginationParams) ([]TripInstance, int, error) {
@@ -303,6 +315,97 @@ func TestCreateUser_NonAdminRole_ReturnsForbidden(t *testing.T) {
 	var fe apperror.ForbiddenError
 	require.True(t, errors.As(err, &fe), "rol no ADMIN debe mapear a ForbiddenError")
 	assert.Equal(t, 0, repo.createUserCalls, "el repositorio no debe invocarse cuando el guard de rol falla")
+}
+
+// ----------------------------------------------------------------------------
+// Excepciones de calendario — validaciones de rango y existencia
+// ----------------------------------------------------------------------------
+
+func TestCreateCalendarException_OutOfRange_ReturnsValidationError(t *testing.T) {
+	repo := &mockAdminRepo{
+		getCalendarResult: Calendar{ValidFrom: "2024-01-01", ValidUntil: "2024-12-31"},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.CreateCalendarException(ctxWithRole(t, RoleADMIN), CalendarExceptionCreateParams{
+		CalendarID:    1,
+		ExceptionDate: "2030-06-15",
+		Operation:     "ADD",
+	})
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "fecha fuera del rango debe mapear a ValidationError (422)")
+	assert.Equal(t, "exception_date", ve.Field)
+	assert.Equal(t, 0, repo.createCalendarExceptionCalls,
+		"no debe invocar al repositorio si la validacion de rango falla")
+}
+
+func TestCreateCalendarException_InvalidDateFormat_ReturnsValidationError(t *testing.T) {
+	repo := &mockAdminRepo{
+		getCalendarResult: Calendar{ValidFrom: "2024-01-01", ValidUntil: "2024-12-31"},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.CreateCalendarException(ctxWithRole(t, RoleADMIN), CalendarExceptionCreateParams{
+		CalendarID:    1,
+		ExceptionDate: "15-06-2024",
+		Operation:     "ADD",
+	})
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "fecha con formato invalido debe mapear a ValidationError (422)")
+	assert.Equal(t, "exception_date", ve.Field)
+}
+
+func TestCreateCalendarException_CalendarNotFound_ReturnsNotFound(t *testing.T) {
+	repo := &mockAdminRepo{
+		getCalendarErr: apperror.NotFoundError{Entity: "calendario", ID: 99},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.CreateCalendarException(ctxWithRole(t, RoleADMIN), CalendarExceptionCreateParams{
+		CalendarID:    99,
+		ExceptionDate: "2024-06-15",
+		Operation:     "ADD",
+	})
+	require.Error(t, err)
+	var nfe apperror.NotFoundError
+	require.True(t, errors.As(err, &nfe), "calendario inexistente debe mapear a NotFoundError (404)")
+	assert.Equal(t, "calendario", nfe.Entity)
+	assert.Equal(t, 0, repo.createCalendarExceptionCalls)
+}
+
+func TestCreateCalendarException_DateInRange_InvokesRepo(t *testing.T) {
+	repo := &mockAdminRepo{
+		getCalendarResult: Calendar{ValidFrom: "2024-01-01", ValidUntil: "2024-12-31"},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.CreateCalendarException(ctxWithRole(t, RoleADMIN), CalendarExceptionCreateParams{
+		CalendarID:    1,
+		ExceptionDate: "2024-06-15",
+		Operation:     "ADD",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, repo.createCalendarExceptionCalls)
+}
+
+func TestUpdateCalendarException_NotFound_Returns404(t *testing.T) {
+	repo := &mockAdminRepo{
+		getCalendarExceptionErr: apperror.NotFoundError{Entity: "excepcion de calendario", ID: 88},
+	}
+	svc := NewService(repo)
+
+	err := svc.UpdateCalendarException(ctxWithRole(t, RoleADMIN), 88, CalendarExceptionUpdateParams{
+		CalendarID:    1,
+		ExceptionDate: "2024-06-15",
+		Operation:     "REMOVE",
+	})
+	require.Error(t, err)
+	var nfe apperror.NotFoundError
+	require.True(t, errors.As(err, &nfe), "excepcion inexistente debe mapear a NotFoundError (404)")
+	assert.Equal(t, 0, repo.updateCalendarExceptionCalls,
+		"no debe invocar al repositorio si la excepcion no existe")
 }
 
 var _ AdminRepository = (*mockAdminRepo)(nil)

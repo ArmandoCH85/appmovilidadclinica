@@ -87,6 +87,18 @@ export interface Calendar {
   active: boolean
 }
 
+export interface CalendarException {
+  id: number
+  calendar_id: number
+  calendar_code?: string
+  calendar_name?: string
+  exception_date: string
+  operation: 'ADD' | 'REMOVE'
+  reason?: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Forma de respuesta paginada del backend (`{items, page, page_size, total}`),
 // consumida por `useCrudResource<T>` en la Fase 4.
 export interface PaginatedResponse<T> {
