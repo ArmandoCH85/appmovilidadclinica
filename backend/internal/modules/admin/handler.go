@@ -860,7 +860,14 @@ func (h *AdminHandler) ListIncidents(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) ListGenerationRuns(w http.ResponseWriter, r *http.Request) {
 	pg := parsePagination(r)
-	runs, total, err := h.svc.ListGenerationRuns(r.Context(), pg)
+	status := r.URL.Query().Get("status")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
+	triggeredBy, _ := strconv.ParseInt(r.URL.Query().Get("triggered_by_user_id"), 10, 64)
+	if triggeredBy < 0 {
+		triggeredBy = 0
+	}
+	runs, total, err := h.svc.ListGenerationRuns(r.Context(), status, dateFrom, dateTo, triggeredBy, pg)
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return
@@ -871,6 +878,22 @@ func (h *AdminHandler) ListGenerationRuns(w http.ResponseWriter, r *http.Request
 		"page_size": pg.PageSize,
 		"total":     total,
 	})
+}
+
+// GetGenerationRun devuelve el detalle de una corrida + los trip_instances
+// que produjo (drill-down). Response shape:
+//   { "run": {...}, "trips": [{...}, ...] }
+func (h *AdminHandler) GetGenerationRun(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	run, trips, err := h.svc.GetGenerationRun(r.Context(), id)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"run": run, "trips": orEmpty(trips, tripInstanceSlice)})
 }
 
 // ----------------------------------------------------------------------------
@@ -1041,6 +1064,7 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/trips", h.ListTrips)
 		r.Get("/incidents", h.ListIncidents)
 		r.Get("/generation-runs", h.ListGenerationRuns)
+		r.Get("/generation-runs/{id}", h.GetGenerationRun)
 
 		// Operaciones de viajes
 		r.Post("/trips/{id}/status", h.UpdateTripStatus)

@@ -84,7 +84,8 @@ type AdminService interface {
 	// Listados de solo lectura
 	ListTrips(ctx context.Context, date, status string, routeID int64, pg types.PaginationParams) ([]TripInstance, int, error)
 	ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error)
-	ListGenerationRuns(ctx context.Context, pg types.PaginationParams) ([]GenerationRun, int, error)
+	ListGenerationRuns(ctx context.Context, status, dateFrom, dateTo string, triggeredByUserID int64, pg types.PaginationParams) ([]GenerationRun, int, error)
+	GetGenerationRun(ctx context.Context, id int64) (GenerationRun, []TripInstance, error)
 
 	// Operaciones de viajes
 	UpdateTripStatus(ctx context.Context, tripID int64, status string) error
@@ -292,6 +293,9 @@ func (s *adminService) CreateTemplate(ctx context.Context, p TemplateCreateParam
 	if err := requireAdmin(ctx); err != nil {
 		return Template{}, err
 	}
+	if err := validateTemplate(p); err != nil {
+		return Template{}, err
+	}
 	return s.repo.CreateTemplate(ctx, p)
 }
 
@@ -300,7 +304,26 @@ func (s *adminService) UpdateTemplate(ctx context.Context, id int64, p TemplateU
 	if err := requireAdmin(ctx); err != nil {
 		return err
 	}
+	if err := validateTemplate(p); err != nil {
+		return err
+	}
 	return s.repo.UpdateTemplate(ctx, id, p)
+}
+
+// validateTemplate verifica el formato HH:MM:SS (o HH:MM) de departure_time.
+// Los demas campos ya estan cubiertos por los tags validate del struct.
+func validateTemplate(p TemplateCreateParams) error {
+	if p.DepartureTime == "" {
+		return apperror.ValidationError{Field: "departure_time", Reason: "es requerido"}
+	}
+	timeStr := p.DepartureTime
+	if len(timeStr) == 5 {
+		timeStr += ":00"
+	}
+	if _, err := time.Parse("15:04:05", timeStr); err != nil {
+		return apperror.ValidationError{Field: "departure_time", Reason: "formato invalido, use HH:MM:SS o HH:MM"}
+	}
+	return nil
 }
 
 // ----------------------------------------------------------------------------
@@ -597,11 +620,25 @@ func (s *adminService) ListIncidents(ctx context.Context, status string, pg type
 	return s.repo.ListIncidents(ctx, status, pg)
 }
 
-func (s *adminService) ListGenerationRuns(ctx context.Context, pg types.PaginationParams) ([]GenerationRun, int, error) {
+// ListGenerationRuns lista corridas con filtros opcionales. La tabla es
+// append-only (logs de auditoria del motor): no hay Create/Update/Delete
+// en el service. Los filtros aceptados coinciden 1:1 con columnas reales
+// de trip_generation_runs (status, window_start, window_end,
+// triggered_by_user_id).
+func (s *adminService) ListGenerationRuns(ctx context.Context, status, dateFrom, dateTo string, triggeredByUserID int64, pg types.PaginationParams) ([]GenerationRun, int, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
-	return s.repo.ListGenerationRuns(ctx, pg)
+	return s.repo.ListGenerationRuns(ctx, status, dateFrom, dateTo, triggeredByUserID, pg)
+}
+
+// GetGenerationRun devuelve el detalle de una corrida + los trip_instances
+// que produjo. Usado por la UI para drill-down desde la tabla principal.
+func (s *adminService) GetGenerationRun(ctx context.Context, id int64) (GenerationRun, []TripInstance, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return GenerationRun{}, nil, err
+	}
+	return s.repo.GetGenerationRun(ctx, id)
 }
 
 // ----------------------------------------------------------------------------

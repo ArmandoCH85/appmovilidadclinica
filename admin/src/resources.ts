@@ -458,7 +458,6 @@ export const crudResources: Array<{ routePath: string; navLabel: string; group: 
   { routePath: '/travel-profiles', navLabel: 'Perfiles de tiempo', group: 'Calendarios y tiempos', icon: 'clock', config: travelProfilesConfig },
   { routePath: '/segment-times', navLabel: 'Tiempos de segmento', group: 'Calendarios y tiempos', icon: 'stopwatch', config: segmentTimesConfig },
   { routePath: '/templates', navLabel: 'Plantillas de viaje', group: 'Planificación', icon: 'file', config: templatesConfig },
-  { routePath: '/generation-runs', navLabel: 'Corridas de generación', group: 'Planificación', icon: 'sync', config: generationRunsConfig, readOnly: true },
   { routePath: '/trips', navLabel: 'Viajes', group: 'Operación diaria', icon: 'send', config: tripsConfig, readOnly: true },
   { routePath: '/incidents', navLabel: 'Incidencias', group: 'Operación diaria', icon: 'exclamation-triangle', config: incidentsConfig, readOnly: true },
 ]

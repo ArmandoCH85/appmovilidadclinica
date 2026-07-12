@@ -488,8 +488,17 @@ type GenerationRun struct {
 	FailedCount       int        `json:"failed_count"`
 	ErrorSummary      *string    `json:"error_summary,omitempty"`
 	TriggeredByUserID *int64     `json:"triggered_by_user_id,omitempty"`
-	StartedAt         time.Time  `json:"started_at"`
-	FinishedAt        *time.Time `json:"finished_at,omitempty"`
+	// Datos del usuario que disparo la corrida (enriquecido via LEFT JOIN).
+	// Solo para lectura; null cuando fue el job automatico (triggered_by_user_id IS NULL).
+	TriggeredByFullName *string `json:"triggered_by_full_name,omitempty"`
+	// Cantidad de trip_instances que genero esta corrida (FK reversa
+	// trip_instances.generation_run_id). 0 si todavia no termino o si fallo.
+	TripCount int `json:"trip_count"`
+	// Duracion en segundos, derivada de finished_at - started_at.
+	// Null mientras la corrida esta RUNNING.
+	DurationSeconds *int `json:"duration_seconds,omitempty"`
+	StartedAt       time.Time  `json:"started_at"`
+	FinishedAt      *time.Time `json:"finished_at,omitempty"`
 }
 
 // ----------------------------------------------------------------------------
@@ -564,7 +573,8 @@ type AdminRepository interface {
 	// Listados de solo lectura
 	ListTrips(ctx context.Context, date, status string, routeID int64, pg types.PaginationParams) ([]TripInstance, int, error)
 	ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error)
-	ListGenerationRuns(ctx context.Context, pg types.PaginationParams) ([]GenerationRun, int, error)
+	ListGenerationRuns(ctx context.Context, status, dateFrom, dateTo string, triggeredByUserID int64, pg types.PaginationParams) ([]GenerationRun, int, error)
+	GetGenerationRun(ctx context.Context, id int64) (GenerationRun, []TripInstance, error)
 
 	// Operaciones de viajes
 	UpdateTripStatus(ctx context.Context, tripID int64, status string) error
@@ -1744,15 +1754,53 @@ func (r *adminRepository) ListIncidents(ctx context.Context, status string, pg t
 	return incs, total, nil
 }
 
-func (r *adminRepository) ListGenerationRuns(ctx context.Context, pg types.PaginationParams) ([]GenerationRun, int, error) {
+// ListGenerationRuns devuelve corridas con filtros opcionales (status,
+// ventana de fechas del run, usuario que la disparo). Enriquece cada fila
+// con el nombre del usuario (LEFT JOIN a users) y el conteo de trip_instances
+// producidas (subquery correlacionada a trip_instances.generation_run_id).
+// trip_generation_runs es append-only (auditoria del motor): la UI la trata
+// como read-only, no hay Create/Update/Delete.
+func (r *adminRepository) ListGenerationRuns(ctx context.Context, status, dateFrom, dateTo string, triggeredByUserID int64, pg types.PaginationParams) ([]GenerationRun, int, error) {
 	pg.Normalize()
-	const q = `SELECT id, window_start, window_end, status, generated_count,
-                 skipped_count, failed_count, error_summary, triggered_by_user_id,
-                 started_at, finished_at
-            FROM trip_generation_runs
-           ORDER BY id
-           LIMIT ? OFFSET ?`
-	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
+	var conds []string
+	var fargs []any
+	if status != "" {
+		conds = append(conds, "r.status = ?")
+		fargs = append(fargs, status)
+	}
+	if dateFrom != "" {
+		conds = append(conds, "r.window_start >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "r.window_end <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	if triggeredByUserID > 0 {
+		conds = append(conds, "r.triggered_by_user_id = ?")
+		fargs = append(fargs, triggeredByUserID)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+
+	q := `SELECT r.id,
+               DATE_FORMAT(r.window_start, '%Y-%m-%d') AS window_start,
+               DATE_FORMAT(r.window_end, '%Y-%m-%d') AS window_end,
+               r.status, r.generated_count, r.skipped_count, r.failed_count,
+               r.error_summary, r.triggered_by_user_id, u.full_name,
+               TIMESTAMPDIFF(SECOND, r.started_at, r.finished_at) AS duration_seconds,
+               (SELECT COUNT(*) FROM trip_instances t WHERE t.generation_run_id = r.id) AS trip_count,
+               r.started_at, r.finished_at
+          FROM trip_generation_runs r
+          LEFT JOIN users u ON u.id = r.triggered_by_user_id` +
+		where + `
+         ORDER BY r.id DESC
+         LIMIT ? OFFSET ?`
+	qargs := append([]any{}, fargs...)
+	qargs = append(qargs, pg.Limit(), pg.Offset())
+	rows, err := r.db.QueryContext(ctx, q, qargs...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("listando corridas de generacion: %w", err)
 	}
@@ -1764,10 +1812,14 @@ func (r *adminRepository) ListGenerationRuns(ctx context.Context, pg types.Pagin
 		var winStart, winEnd sql.NullString
 		var errSummary sql.NullString
 		var triggeredBy sql.NullInt64
+		var triggeredByName sql.NullString
+		var durationSec sql.NullInt64
 		var finishedAt sql.NullTime
 		if err := rows.Scan(&gr.ID, &winStart, &winEnd, &gr.Status,
 			&gr.GeneratedCount, &gr.SkippedCount, &gr.FailedCount,
-			&errSummary, &triggeredBy, &gr.StartedAt, &finishedAt); err != nil {
+			&errSummary, &triggeredBy, &triggeredByName,
+			&durationSec, &gr.TripCount,
+			&gr.StartedAt, &finishedAt); err != nil {
 			return nil, 0, fmt.Errorf("escaneando corrida de generacion: %w", err)
 		}
 		if winStart.Valid {
@@ -1778,17 +1830,125 @@ func (r *adminRepository) ListGenerationRuns(ctx context.Context, pg types.Pagin
 		}
 		gr.ErrorSummary = nullableStr(errSummary)
 		gr.TriggeredByUserID = nullableInt(triggeredBy)
+		gr.TriggeredByFullName = nullableStr(triggeredByName)
+		if durationSec.Valid {
+			d := int(durationSec.Int64)
+			gr.DurationSeconds = &d
+		}
 		gr.FinishedAt = nullableTime(finishedAt)
 		runs = append(runs, gr)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, 0, err
 	}
-	total, err := r.count(ctx, "trip_generation_runs", "")
+	total, err := r.count(ctx, "trip_generation_runs", where, fargs...)
 	if err != nil {
 		return nil, 0, err
 	}
 	return runs, total, nil
+}
+
+// GetGenerationRun devuelve el detalle de una corrida + los trip_instances
+// que produjo (mini-listado embebido). Usado por la UI para drill-down desde
+// la tabla principal; los trip_instances vienen acotados a los primeros N
+// ordenados por fecha para no devolver listas enormes.
+func (r *adminRepository) GetGenerationRun(ctx context.Context, id int64) (GenerationRun, []TripInstance, error) {
+	const q = `
+        SELECT r.id,
+               DATE_FORMAT(r.window_start, '%Y-%m-%d') AS window_start,
+               DATE_FORMAT(r.window_end, '%Y-%m-%d') AS window_end,
+               r.status, r.generated_count, r.skipped_count, r.failed_count,
+               r.error_summary, r.triggered_by_user_id, u.full_name,
+               TIMESTAMPDIFF(SECOND, r.started_at, r.finished_at) AS duration_seconds,
+               (SELECT COUNT(*) FROM trip_instances t WHERE t.generation_run_id = r.id) AS trip_count,
+               r.started_at, r.finished_at
+          FROM trip_generation_runs r
+          LEFT JOIN users u ON u.id = r.triggered_by_user_id
+         WHERE r.id = ?`
+	var gr GenerationRun
+	var winStart, winEnd sql.NullString
+	var errSummary sql.NullString
+	var triggeredBy sql.NullInt64
+	var triggeredByName sql.NullString
+	var durationSec sql.NullInt64
+	var finishedAt sql.NullTime
+	err := r.db.QueryRowContext(ctx, q, id).Scan(&gr.ID, &winStart, &winEnd, &gr.Status,
+		&gr.GeneratedCount, &gr.SkippedCount, &gr.FailedCount,
+		&errSummary, &triggeredBy, &triggeredByName,
+		&durationSec, &gr.TripCount,
+		&gr.StartedAt, &finishedAt)
+	if err != nil {
+		return GenerationRun{}, nil, dberr.NotFound(err, "corrida de generacion", id)
+	}
+	if winStart.Valid {
+		gr.WindowStart = winStart.String
+	}
+	if winEnd.Valid {
+		gr.WindowEnd = winEnd.String
+	}
+	gr.ErrorSummary = nullableStr(errSummary)
+	gr.TriggeredByUserID = nullableInt(triggeredBy)
+	gr.TriggeredByFullName = nullableStr(triggeredByName)
+	if durationSec.Valid {
+		d := int(durationSec.Int64)
+		gr.DurationSeconds = &d
+	}
+	gr.FinishedAt = nullableTime(finishedAt)
+
+	trips, err := r.ListTripsByGenerationRun(ctx, id, 200)
+	if err != nil {
+		return GenerationRun{}, nil, err
+	}
+	return gr, trips, nil
+}
+
+// ListTripsByGenerationRun devuelve los trip_instances que genero una corrida,
+// acotado a `limit` (ordenados por service_date ASC) para que el drill-down
+// no cargue listas enormes si el rango es amplio.
+func (r *adminRepository) ListTripsByGenerationRun(ctx context.Context, runID int64, limit int) ([]TripInstance, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	const q = `
+        SELECT id, trip_code, source, trip_template_id, generation_run_id, route_id,
+               DATE_FORMAT(service_date, '%Y-%m-%d') AS service_date,
+               scheduled_start_at, scheduled_end_at, booking_opens_at, booking_closes_at,
+               vehicle_id, driver_id, seat_capacity_snapshot, no_show_tolerance_minutes,
+               status, actual_start_at, actual_end_at, cancellation_reason
+          FROM trip_instances
+         WHERE generation_run_id = ?
+         ORDER BY service_date, scheduled_start_at
+         LIMIT ?`
+	rows, err := r.db.QueryContext(ctx, q, runID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("listando viajes de la corrida: %w", err)
+	}
+	defer rows.Close()
+
+	var trips []TripInstance
+	for rows.Next() {
+		var t TripInstance
+		var srcDate sql.NullString
+		var tmplID, runIDsql sql.NullInt64
+		var actualStart, actualEnd sql.NullTime
+		var cancelReason sql.NullString
+		if err := rows.Scan(&t.ID, &t.TripCode, &t.Source, &tmplID, &runIDsql, &t.RouteID,
+			&srcDate, &t.ScheduledStartAt, &t.ScheduledEndAt, &t.BookingOpensAt, &t.BookingClosesAt,
+			&t.VehicleID, &t.DriverID, &t.SeatCapacitySnapshot, &t.NoShowToleranceMinutes,
+			&t.Status, &actualStart, &actualEnd, &cancelReason); err != nil {
+			return nil, fmt.Errorf("escaneando viaje de corrida: %w", err)
+		}
+		if srcDate.Valid {
+			t.ServiceDate = srcDate.String
+		}
+		t.TripTemplateID = nullableInt(tmplID)
+		t.GenerationRunID = nullableInt(runIDsql)
+		t.ActualStartAt = nullableTime(actualStart)
+		t.ActualEndAt = nullableTime(actualEnd)
+		t.CancellationReason = nullableStr(cancelReason)
+		trips = append(trips, t)
+	}
+	return trips, rows.Err()
 }
 
 // ----------------------------------------------------------------------------

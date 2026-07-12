@@ -133,6 +133,42 @@ export interface PaginatedResponse<T> {
   total: number
 }
 
+// trip_generation_runs — auditoria del motor. Append-only: la UI no la
+// crea/edita; solo lista y hace drill-down a los trip_instances que produjo.
+export interface GenerationRun {
+  id: number
+  window_start: string
+  window_end: string
+  status: 'RUNNING' | 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED'
+  generated_count: number
+  skipped_count: number
+  failed_count: number
+  error_summary?: string | null
+  triggered_by_user_id?: number | null
+  triggered_by_full_name?: string | null
+  trip_count: number
+  duration_seconds?: number | null
+  started_at: string
+  finished_at?: string | null
+}
+
+// trip_instances — vista minima para el drill-down de GenerationRunsView.
+// No se carga como recurso CRUD independiente (read-only en /trips, ver
+// resources.ts `tripsConfig readOnly: true`); el backend devuelve los campos
+// necesarios directamente desde GetGenerationRun.
+export interface TripInstanceSummary {
+  id: number
+  trip_code: string
+  source: 'GENERATED' | 'MANUAL'
+  route_id: number
+  service_date: string
+  scheduled_start_at: string
+  scheduled_end_at: string
+  vehicle_id: number
+  driver_id: number
+  status: string
+}
+
 // ----------------------------------------------------------------------------
 // Reportes (Fase 6) — en espejo de Conflict/MatrixEntry/SeatAvail de
 // `backend/internal/modules/admin/repository.go` (columnas SELECT exactas,

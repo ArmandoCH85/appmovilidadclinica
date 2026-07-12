@@ -194,8 +194,11 @@ func (m *mockAdminRepo) ListTrips(_ context.Context, _, _ string, _ int64, _ typ
 func (m *mockAdminRepo) ListIncidents(_ context.Context, _ string, _ types.PaginationParams) ([]TripIncident, int, error) {
 	return nil, 0, nil
 }
-func (m *mockAdminRepo) ListGenerationRuns(_ context.Context, _ types.PaginationParams) ([]GenerationRun, int, error) {
+func (m *mockAdminRepo) ListGenerationRuns(_ context.Context, _, _, _ string, _ int64, _ types.PaginationParams) ([]GenerationRun, int, error) {
 	return nil, 0, nil
+}
+func (m *mockAdminRepo) GetGenerationRun(_ context.Context, _ int64) (GenerationRun, []TripInstance, error) {
+	return GenerationRun{}, nil, nil
 }
 
 // ctxWithRole construye un context que simula un JWT valido con el rol dado,
