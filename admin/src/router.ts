@@ -8,6 +8,7 @@ import VehicleSeatsView from './components/VehicleSeatsView.vue'
 import UsersView from './components/UsersView.vue'
 import RoutesView from './components/RoutesView.vue'
 import RouteSegmentsView from './components/RouteSegmentsView.vue'
+import SegmentTimesView from './components/SegmentTimesView.vue'
 import RouteStopsView from './components/RouteStopsView.vue'
 import CalendarExceptionsView from './components/CalendarExceptionsView.vue'
 import CalendarsView from './components/CalendarsView.vue'
@@ -36,6 +37,7 @@ const REDESIGNED_PATHS = new Set([
   '/calendar-exceptions',
   '/travel-profiles',
   '/templates',
+  '/segment-times',
 ])
 const resourceChildren: RouteRecordRaw[] = crudResources
   .filter(({ routePath }) => !REDESIGNED_PATHS.has(routePath))
@@ -63,6 +65,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'users', name: 'users', component: UsersView },
       { path: 'routes', name: 'routes', component: RoutesView },
       { path: 'route-segments', name: 'route-segments', component: RouteSegmentsView },
+      { path: 'segment-times', name: 'segment-times', component: SegmentTimesView },
       ...resourceChildren,
       { path: 'route-stops', name: 'route-stops', component: RouteStopsView },
       { path: 'calendars', name: 'calendars', component: CalendarsView },
