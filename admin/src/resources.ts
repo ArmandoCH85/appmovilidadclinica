@@ -475,5 +475,4 @@ export const crudResources: Array<{ routePath: string; navLabel: string; group: 
   { routePath: '/generation-runs', navLabel: 'Corridas de generación', group: 'Planificación', icon: 'sync', config: generationRunsConfig, readOnly: true },
   { routePath: '/trips', navLabel: 'Viajes', group: 'Operación diaria', icon: 'send', config: tripsConfig, readOnly: true },
   { routePath: '/incidents', navLabel: 'Incidencias', group: 'Operación diaria', icon: 'exclamation-triangle', config: incidentsConfig, readOnly: true },
-  { routePath: '/reports', navLabel: 'Reportes', group: 'Operación diaria', icon: 'chart-bar', config: reportsConfig, readOnly: true },
 ]
