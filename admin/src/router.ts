@@ -39,6 +39,7 @@ const REDESIGNED_PATHS = new Set([
   '/calendar-exceptions',
   '/generation-runs',
   '/incidents',
+  '/reports',
   '/segment-times',
   '/templates',
   '/trips',
