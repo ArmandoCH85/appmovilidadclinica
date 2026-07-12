@@ -9,7 +9,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { useAuth } from '../auth/useAuth'
 import { ApiError } from '../api/client'
-import { APP_TITLE, LOGIN_LABELS } from '../messages'
+import { APP_TITLE, LABELS, LOGIN_LABELS } from '../messages'
 
 const router = useRouter()
 const route = useRoute()
@@ -26,8 +26,8 @@ const documentInputEl = ref<HTMLInputElement | null>(null)
 const passwordInputEl = ref<HTMLInputElement | null>(null)
 
 function validate(): boolean {
-  documentNumberError.value = documentNumber.value.trim() ? '' : LOGIN_LABELS.requiredField
-  passwordError.value = password.value ? '' : LOGIN_LABELS.requiredField
+  documentNumberError.value = documentNumber.value.trim() ? '' : LABELS.requiredField
+  passwordError.value = password.value ? '' : LABELS.requiredField
   return !documentNumberError.value && !passwordError.value
 }
 

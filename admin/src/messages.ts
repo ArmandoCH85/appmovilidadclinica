@@ -17,6 +17,7 @@ export const LABELS = {
   deactivate: 'Desactivar',
   confirm: 'Confirmar',
   empty: 'No hay registros para mostrar.',
+  requiredField: 'Este campo es obligatorio.',
 } as const
 
 const ERROR_BY_STATUS: Record<number, string> = {
@@ -42,7 +43,6 @@ export const LOGIN_LABELS = {
   documentNumber: 'Número de documento',
   password: 'Contraseña',
   submit: 'Iniciar sesión',
-  requiredField: 'Este campo es obligatorio.',
   unexpectedError: ERROR_FALLBACK_DEFAULT,
 } as const
 
