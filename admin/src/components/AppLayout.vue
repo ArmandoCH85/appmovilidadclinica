@@ -129,7 +129,13 @@ function onConfirmSessionExpired() {
       </nav>
 
       <main id="app-content" class="app-content" tabindex="-1">
-        <RouterView />
+        <!-- :key fuerza remount al cambiar de recurso: las rutas CRUD
+             comparten el mismo componente (CrudView) y Vue Router reutiliza
+             la instancia entre hermanas — sin esto, onMounted no revuelve a
+             disparar list() y useCrudResource() sigue apuntando al basePath
+             del primer recurso visitado (bug: tabla vacía/resource viejo al
+             navegar por el sidebar, solo se arreglaba con F5). -->
+        <RouterView :key="route.fullPath" />
       </main>
     </div>
 
