@@ -31,6 +31,10 @@ func (m *mockTripsRepo) GetTripDetail(_ context.Context, _ int64) (TripDetail, [
 	return m.detail, m.stops, m.detailErr
 }
 
+func (m *mockTripsRepo) ListStops(_ context.Context) ([]Stop, error) {
+	return nil, nil
+}
+
 func TestSearch_ReturnsResults(t *testing.T) {
 	expected := []TripSearchResult{
 		{TripID: 1, TripCode: "T-001", RouteName: "Sede-Lima", AvailableSeats: 5},

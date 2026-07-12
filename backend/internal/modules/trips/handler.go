@@ -121,4 +121,26 @@ func (h *TripsHandler) RegisterRoutes(r chi.Router) {
 	r.Get("/trips", h.Search)
 	r.Get("/trips/{id}", h.GetDetail)
 	r.Get("/trips/{id}/seats", h.ListSeats)
+	// GET /stops — catalogo de paradas para cualquier JWT valido.
+	// Vive en este handler porque el router lo registra como ruta
+	// hermana de /trips (mismo prefijo /api), no como sub-recurso
+	// de trips. La autorizacion por JWT la aplica el router; este
+	// handler no exige rol especifico. Ver `desarrollo_pasajero.md`
+	// §5.2 para el contrato exacto.
+	r.Get("/stops", h.ListStops)
+}
+
+// ListStops maneja GET /stops. Devuelve un array JSON (nunca null)
+// con el catalogo completo de paradas activas. Sin paginar.
+func (h *TripsHandler) ListStops(w http.ResponseWriter, r *http.Request) {
+	stops, err := h.svc.ListStops(r.Context())
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	if stops == nil {
+		stops = []Stop{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(stops)
 }

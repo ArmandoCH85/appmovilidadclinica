@@ -79,11 +79,29 @@ type TripStopDetail struct {
 	StopType             string     `json:"stop_type"`
 }
 
+// Stop refleja una fila de transport_stops para el endpoint publico
+// `GET /api/stops`. Solo expone los campos que la app de pasajero necesita
+// para los selectores de origen/destino en la pantalla de busqueda; el
+// detalle completo (reference_text, lat/lon, active) queda reservado al
+// CRUD de `/admin/stops`. Duplicar este tipo evita acoplar el modulo trips
+// al modulo admin.
+type Stop struct {
+	ID       int64  `json:"id"`
+	Code     string `json:"code"`
+	Name     string `json:"name"`
+	StopType string `json:"stop_type"`
+}
+
 // TripsRepository abstrae las consultas de viajes.
 type TripsRepository interface {
 	SearchTrips(ctx context.Context, serviceDate, direction string, originStopID, destStopID int64) ([]TripSearchResult, error)
 	ListTripSeats(ctx context.Context, tripID, originStopTimeID, destStopTimeID int64) ([]SeatResult, error)
 	GetTripDetail(ctx context.Context, tripID int64) (TripDetail, []TripStopDetail, error)
+	// ListStops devuelve el catalogo completo de paradas para cualquier
+	// caller autenticado. Sin paginar — el catalogo es chico (ver
+	// `desarrollo_pasajero.md` §5.2). A diferencia de `/admin/stops`,
+	// no exige rol ADMIN.
+	ListStops(ctx context.Context) ([]Stop, error)
 }
 
 // tripsRepository es la implementacion concreta con database/sql.
@@ -233,6 +251,37 @@ func (r *tripsRepository) GetTripDetail(ctx context.Context, tripID int64) (Trip
 		stops = append(stops, s)
 	}
 	return d, stops, rows.Err()
+}
+
+// ListStops devuelve todas las paradas del catalogo. Sin paginar: el
+// catalogo es chico (decenas de paraderos + sedes), y la app de pasajero
+// necesita el set completo para los selectores de origen/destino. Devuelve
+// slice vacio (nunca nil) si no hay filas, para que el JSON sea `[]` y
+// no `null` — comportamiento consistente con el resto de los listados del
+// API.
+func (r *tripsRepository) ListStops(ctx context.Context) ([]Stop, error) {
+	const q = `
+        SELECT id, code, name, stop_type
+          FROM transport_stops
+         ORDER BY id`
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("listando paradas: %w", err)
+	}
+	defer rows.Close()
+
+	stops := make([]Stop, 0)
+	for rows.Next() {
+		var s Stop
+		if err := rows.Scan(&s.ID, &s.Code, &s.Name, &s.StopType); err != nil {
+			return nil, fmt.Errorf("escaneando parada: %w", err)
+		}
+		stops = append(stops, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return stops, nil
 }
 
 // compile-time guard: el repositorio concreto implementa la interfaz.
