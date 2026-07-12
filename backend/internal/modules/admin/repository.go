@@ -37,7 +37,7 @@ type StopCreateParams struct {
 	Code          string   `json:"code" validate:"required,max=30"`
 	Name          string   `json:"name" validate:"required,max=150"`
 	StopType      string   `json:"stop_type" validate:"required,oneof=SEDE PARADERO"`
-	ReferenceText *string  `json:"reference_text,omitempty" validate:"max=255"`
+	ReferenceText *string  `json:"reference_text,omitempty" validate:"omitempty,max=255"`
 	Latitude      *float64 `json:"latitude,omitempty"`
 	Longitude     *float64 `json:"longitude,omitempty"`
 	Active        bool     `json:"active"`
@@ -48,7 +48,7 @@ type StopUpdateParams struct {
 	Code          string   `json:"code" validate:"required,max=30"`
 	Name          string   `json:"name" validate:"required,max=150"`
 	StopType      string   `json:"stop_type" validate:"required,oneof=SEDE PARADERO"`
-	ReferenceText *string  `json:"reference_text,omitempty" validate:"max=255"`
+	ReferenceText *string  `json:"reference_text,omitempty" validate:"omitempty,max=255"`
 	Latitude      *float64 `json:"latitude,omitempty"`
 	Longitude     *float64 `json:"longitude,omitempty"`
 	Active        bool     `json:"active"`
@@ -76,8 +76,8 @@ type UserCreateParams struct {
 	Password        string  `json:"password" validate:"required"`
 	FullName        string  `json:"full_name" validate:"required,max=150"`
 	Role            string  `json:"role" validate:"required,oneof=ADMIN DRIVER WORKER"`
-	Department      *string `json:"department,omitempty" validate:"max=100"`
-	Phone           *string `json:"phone,omitempty" validate:"max=25"`
+	Department      *string `json:"department,omitempty" validate:"omitempty,max=100"`
+	Phone           *string `json:"phone,omitempty" validate:"omitempty,max=25"`
 	PreferredStopID *int64  `json:"preferred_stop_id,omitempty"`
 	Active          bool    `json:"active"`
 }
@@ -91,8 +91,8 @@ type UserUpdateParams struct {
 	Password        string  `json:"password,omitempty"`
 	FullName        string  `json:"full_name" validate:"required,max=150"`
 	Role            string  `json:"role" validate:"required,oneof=ADMIN DRIVER WORKER"`
-	Department      *string `json:"department,omitempty" validate:"max=100"`
-	Phone           *string `json:"phone,omitempty" validate:"max=25"`
+	Department      *string `json:"department,omitempty" validate:"omitempty,max=100"`
+	Phone           *string `json:"phone,omitempty" validate:"omitempty,max=25"`
 	PreferredStopID *int64  `json:"preferred_stop_id,omitempty"`
 	Active          bool    `json:"active"`
 }
@@ -111,7 +111,7 @@ type Vehicle struct {
 type VehicleCreateParams struct {
 	InternalCode string  `json:"internal_code" validate:"required,max=30"`
 	Plate        string  `json:"plate" validate:"required,max=15"`
-	Description  *string `json:"description,omitempty" validate:"max=120"`
+	Description  *string `json:"description,omitempty" validate:"omitempty,max=120"`
 	SeatCapacity int     `json:"seat_capacity" validate:"required,gt=0"`
 	Active       bool    `json:"active"`
 }
@@ -120,7 +120,7 @@ type VehicleCreateParams struct {
 type VehicleUpdateParams struct {
 	InternalCode string  `json:"internal_code" validate:"required,max=30"`
 	Plate        string  `json:"plate" validate:"required,max=15"`
-	Description  *string `json:"description,omitempty" validate:"max=120"`
+	Description  *string `json:"description,omitempty" validate:"omitempty,max=120"`
 	SeatCapacity int     `json:"seat_capacity" validate:"required,gt=0"`
 	Active       bool    `json:"active"`
 }
@@ -340,7 +340,7 @@ type RouteSegmentTravelTimeCreateParams struct {
 	RouteSegmentID int64   `json:"route_segment_id" validate:"required,gt=0"`
 	ProfileID      int64   `json:"profile_id" validate:"required,gt=0"`
 	TravelMinutes  int     `json:"travel_minutes" validate:"required,gt=0"`
-	Notes          *string `json:"notes,omitempty" validate:"max=255"`
+	Notes          *string `json:"notes,omitempty" validate:"omitempty,max=255"`
 }
 
 // RouteSegmentTravelTimeUpdateParams actualiza un tiempo de tramo.
@@ -410,7 +410,7 @@ type VehicleSeatCreateParams struct {
 	SeatNumber  int     `json:"seat_number" validate:"required,gt=0"`
 	SeatLabel   string  `json:"seat_label" validate:"required,max=10"`
 	Status      string  `json:"status" validate:"required,oneof=ACTIVE BLOCKED RETIRED"`
-	BlockReason *string `json:"block_reason,omitempty" validate:"max=255"`
+	BlockReason *string `json:"block_reason,omitempty" validate:"omitempty,max=255"`
 }
 
 type VehicleSeatUpdateParams = VehicleSeatCreateParams
@@ -427,7 +427,7 @@ type CalendarExceptionCreateParams struct {
 	CalendarID    int64   `json:"calendar_id" validate:"required,gt=0"`
 	ExceptionDate string  `json:"exception_date" validate:"required"`
 	Operation     string  `json:"operation" validate:"required,oneof=ADD REMOVE"`
-	Reason        *string `json:"reason,omitempty" validate:"max=255"`
+	Reason        *string `json:"reason,omitempty" validate:"omitempty,max=255"`
 }
 
 type CalendarExceptionUpdateParams = CalendarExceptionCreateParams
