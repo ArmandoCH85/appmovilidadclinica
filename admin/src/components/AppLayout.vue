@@ -9,23 +9,27 @@ import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import { useAuth } from '../auth/useAuth'
 import { APP_TITLE, SESSION_LABELS } from '../messages'
-import { crudResources } from '../resources'
+import { crudResources, NAV_GROUP_ORDER, type NavGroup } from '../resources'
 
 const router = useRouter()
 const route = useRoute()
 const { user, secondsLeft, sessionExpired, logout, dismissSessionExpired } = useAuth()
 
-// Fase 5: nav de los 7 recursos, data-driven desde `crudResources` +
-// `route-stops` (caso especial, ver RouteStopsView.vue). `aria-current`
-// marca la ruta activa — nunca solo color (a11y, ver design.md non-functional).
-const navItems = [
-  ...crudResources.map(({ routePath, navLabel }) => ({ to: routePath, label: navLabel })),
-  { to: '/route-stops', label: 'Paradas de ruta' },
-  // Fase 6: no son recursos CRUD genericos, se agregan aparte del array
-  // data-driven (mismo criterio que route-stops arriba).
-  { to: '/operations', label: 'Operaciones' },
-  { to: '/reports', label: 'Reportes' },
+// Nav agrupado por dominio logico (no por orden de implementacion, ver
+// memoria "admin nav agrupado por dominio"). `route-stops`/`operations`/
+// `reports` no son recursos CRUD genericos (ver comentarios en router.ts),
+// se suman aca con el grupo que les corresponde por dominio.
+const navItems: Array<{ to: string; label: string; group: NavGroup }> = [
+  ...crudResources.map(({ routePath, navLabel, group }) => ({ to: routePath, label: navLabel, group })),
+  { to: '/route-stops', label: 'Paradas de ruta', group: 'Rutas' },
+  { to: '/operations', label: 'Operaciones', group: 'Operación diaria' },
+  { to: '/reports', label: 'Reportes', group: 'Reportes' },
 ]
+
+const navGroups = NAV_GROUP_ORDER.map((group) => ({
+  group,
+  items: navItems.filter((item) => item.group === group),
+})).filter((g) => g.items.length > 0)
 
 const showExpiryBanner = computed(() => secondsLeft.value > 0 && secondsLeft.value <= 120)
 const bannerMinutes = computed(() => Math.max(1, Math.ceil(secondsLeft.value / 60)))
@@ -64,14 +68,17 @@ function onConfirmSessionExpired() {
 
     <div class="app-body">
       <nav class="app-nav" aria-label="Recursos administrables">
-        <ul>
-          <li v-for="item in navItems" :key="item.to">
-            <!-- RouterLink ya setea aria-current="page" en la ruta activa
-                 (default ariaCurrentValue) — se estiliza via ese atributo,
-                 sin logica manual duplicada. -->
-            <RouterLink :to="item.to">{{ item.label }}</RouterLink>
-          </li>
-        </ul>
+        <div v-for="section in navGroups" :key="section.group" class="app-nav-section">
+          <p class="app-nav-heading">{{ section.group }}</p>
+          <ul>
+            <li v-for="item in section.items" :key="item.to">
+              <!-- RouterLink ya setea aria-current="page" en la ruta activa
+                   (default ariaCurrentValue) — se estiliza via ese atributo,
+                   sin logica manual duplicada. -->
+              <RouterLink :to="item.to">{{ item.label }}</RouterLink>
+            </li>
+          </ul>
+        </div>
       </nav>
 
       <main id="app-content" class="app-content" tabindex="-1">
@@ -143,6 +150,18 @@ function onConfirmSessionExpired() {
   border-right: 1px solid rgba(0, 0, 0, 0.15);
   padding: 1rem 0.5rem;
   flex-shrink: 0;
+}
+.app-nav-section + .app-nav-section {
+  margin-top: 1rem;
+}
+.app-nav-heading {
+  margin: 0 0 0.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
 }
 .app-nav ul {
   list-style: none;

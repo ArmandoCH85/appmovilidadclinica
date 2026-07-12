@@ -453,19 +453,33 @@ export const generationRunsConfig: CrudResourceConfig = {
   fields: [],
 }
 
-export const crudResources: Array<{ routePath: string; navLabel: string; config: CrudResourceConfig; readOnly?: boolean }> = [
-  { routePath: '/stops', navLabel: 'Paradas', config: stopsConfig },
-  { routePath: '/users', navLabel: 'Usuarios', config: usersConfig },
-  { routePath: '/vehicles', navLabel: 'Vehículos', config: vehiclesConfig },
-  { routePath: '/routes', navLabel: 'Rutas', config: routesConfig },
-  { routePath: '/templates', navLabel: 'Plantillas de viaje', config: templatesConfig },
-  { routePath: '/calendars', navLabel: 'Calendarios de servicio', config: calendarsConfig },
-  { routePath: '/route-segments', navLabel: 'Segmentos de ruta', config: routeSegmentsConfig },
-  { routePath: '/travel-profiles', navLabel: 'Perfiles de tiempo', config: travelProfilesConfig },
-  { routePath: '/segment-times', navLabel: 'Tiempos de segmento', config: segmentTimesConfig },
-  { routePath: '/vehicle-seats', navLabel: 'Asientos', config: vehicleSeatsConfig },
-  { routePath: '/calendar-exceptions', navLabel: 'Excepciones', config: calendarExceptionsConfig },
-  { routePath: '/trips', navLabel: 'Viajes', config: tripsConfig, readOnly: true },
-  { routePath: '/incidents', navLabel: 'Incidencias', config: incidentsConfig, readOnly: true },
-  { routePath: '/generation-runs', navLabel: 'Corridas', config: generationRunsConfig, readOnly: true },
+/** Orden de grupos en el nav (AppLayout.vue). Agrupacion por dominio logico,
+ * no por orden de implementacion — ver decision en memoria "admin nav
+ * agrupado por dominio". */
+export const NAV_GROUP_ORDER = [
+  'Catálogos maestros',
+  'Rutas',
+  'Calendarios y tiempos',
+  'Planificación',
+  'Operación diaria',
+  'Reportes',
+] as const
+
+export type NavGroup = (typeof NAV_GROUP_ORDER)[number]
+
+export const crudResources: Array<{ routePath: string; navLabel: string; group: NavGroup; config: CrudResourceConfig; readOnly?: boolean }> = [
+  { routePath: '/stops', navLabel: 'Paradas', group: 'Catálogos maestros', config: stopsConfig },
+  { routePath: '/vehicles', navLabel: 'Vehículos', group: 'Catálogos maestros', config: vehiclesConfig },
+  { routePath: '/vehicle-seats', navLabel: 'Asientos', group: 'Catálogos maestros', config: vehicleSeatsConfig },
+  { routePath: '/users', navLabel: 'Usuarios', group: 'Catálogos maestros', config: usersConfig },
+  { routePath: '/routes', navLabel: 'Rutas', group: 'Rutas', config: routesConfig },
+  { routePath: '/route-segments', navLabel: 'Segmentos de ruta', group: 'Rutas', config: routeSegmentsConfig },
+  { routePath: '/calendars', navLabel: 'Calendarios de servicio', group: 'Calendarios y tiempos', config: calendarsConfig },
+  { routePath: '/calendar-exceptions', navLabel: 'Excepciones de calendario', group: 'Calendarios y tiempos', config: calendarExceptionsConfig },
+  { routePath: '/travel-profiles', navLabel: 'Perfiles de tiempo', group: 'Calendarios y tiempos', config: travelProfilesConfig },
+  { routePath: '/segment-times', navLabel: 'Tiempos de segmento', group: 'Calendarios y tiempos', config: segmentTimesConfig },
+  { routePath: '/templates', navLabel: 'Plantillas de viaje', group: 'Planificación', config: templatesConfig },
+  { routePath: '/generation-runs', navLabel: 'Corridas de generación', group: 'Planificación', config: generationRunsConfig, readOnly: true },
+  { routePath: '/trips', navLabel: 'Viajes', group: 'Operación diaria', config: tripsConfig, readOnly: true },
+  { routePath: '/incidents', navLabel: 'Incidencias', group: 'Operación diaria', config: incidentsConfig, readOnly: true },
 ]
