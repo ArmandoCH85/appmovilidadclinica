@@ -3,6 +3,7 @@ import AppLayout from './components/AppLayout.vue'
 import LoginView from './components/LoginView.vue'
 import CrudView from './components/CrudView.vue'
 import StopsView from './components/StopsView.vue'
+import VehiclesView from './components/VehiclesView.vue'
 import RouteStopsView from './components/RouteStopsView.vue'
 import OperationsView from './components/OperationsView.vue'
 import ReportsView from './components/ReportsView.vue'
@@ -10,13 +11,14 @@ import { useAuth } from './auth/useAuth'
 import { crudResources } from './resources'
 
 // Fase 5: las rutas CRUD "planas" salen de `crudResources` (resources.ts)
-// — data-driven, un solo bloque en vez de N literales (ponytail). `stops`
-// se excluye ahora: tiene su propio componente rediseñado (StopsView,
-// prototipo de diseño visual — ver memoria "admin-design-stops-pattern").
-// `route-stops` es otro caso especial (sin GET plano en el backend, ver
-// RouteStopsView.vue) — se registra aparte con su propio componente.
+// — data-driven, un solo bloque en vez de N literales (ponytail). `stops` y
+// `vehicles` se excluyen: tienen su propio componente rediseñado (rollout
+// sección por sección del patron visual — ver memoria
+// "admin/crud-visual-redesign-pattern"). `route-stops` es otro caso especial
+// (sin GET plano en el backend, ver RouteStopsView.vue) — se registra aparte.
+const REDESIGNED_PATHS = new Set(['/stops', '/vehicles'])
 const resourceChildren: RouteRecordRaw[] = crudResources
-  .filter(({ routePath }) => routePath !== '/stops')
+  .filter(({ routePath }) => !REDESIGNED_PATHS.has(routePath))
   .map(({ routePath, config, readOnly }) => ({
     path: routePath.slice(1),
     name: routePath.slice(1),
@@ -36,6 +38,7 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: '/stops' },
       { path: 'stops', name: 'stops', component: StopsView },
+      { path: 'vehicles', name: 'vehicles', component: VehiclesView },
       ...resourceChildren,
       { path: 'route-stops', name: 'route-stops', component: RouteStopsView },
       // Fase 6: operaciones de viaje + reportes — no son recursos CRUD
