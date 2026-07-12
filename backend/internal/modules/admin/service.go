@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -454,6 +455,9 @@ func (s *adminService) CreateCalendarException(ctx context.Context, p CalendarEx
 	if err := requireAdmin(ctx); err != nil {
 		return CalendarException{}, err
 	}
+	if err := s.validateCalendarExceptionDate(ctx, p.CalendarID, p.ExceptionDate); err != nil {
+		return CalendarException{}, err
+	}
 	return s.repo.CreateCalendarException(ctx, p)
 }
 
@@ -461,7 +465,35 @@ func (s *adminService) UpdateCalendarException(ctx context.Context, id int64, p 
 	if err := requireAdmin(ctx); err != nil {
 		return err
 	}
+	if err := s.validateCalendarExceptionDate(ctx, p.CalendarID, p.ExceptionDate); err != nil {
+		return err
+	}
 	return s.repo.UpdateCalendarException(ctx, id, p)
+}
+
+// validateCalendarExceptionDate verifica que la fecha de excepcion caiga
+// dentro del rango de vigencia del calendario padre.
+func (s *adminService) validateCalendarExceptionDate(ctx context.Context, calendarID int64, exceptionDate string) error {
+	cal, err := s.repo.GetCalendar(ctx, calendarID)
+	if err != nil {
+		return err
+	}
+	excDate, err := time.Parse("2006-01-02", exceptionDate)
+	if err != nil {
+		return apperror.ValidationError{Field: "exception_date", Reason: "formato invalido, use YYYY-MM-DD"}
+	}
+	validFrom, err := time.Parse("2006-01-02", cal.ValidFrom)
+	if err != nil {
+		return apperror.InternalError{Err: fmt.Errorf("valid_from del calendario no es fecha: %w", err)}
+	}
+	validUntil, err := time.Parse("2006-01-02", cal.ValidUntil)
+	if err != nil {
+		return apperror.InternalError{Err: fmt.Errorf("valid_until del calendario no es fecha: %w", err)}
+	}
+	if excDate.Before(validFrom) || excDate.After(validUntil) {
+		return apperror.ValidationError{Field: "exception_date", Reason: "debe estar dentro del rango del calendario"}
+	}
+	return nil
 }
 
 // ----------------------------------------------------------------------------

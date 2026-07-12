@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/dberr"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/types"
 )
@@ -416,11 +417,15 @@ type VehicleSeatCreateParams struct {
 type VehicleSeatUpdateParams = VehicleSeatCreateParams
 
 type CalendarException struct {
-	ID            int64   `json:"id"`
-	CalendarID    int64   `json:"calendar_id"`
-	ExceptionDate string  `json:"exception_date"`
-	Operation     string  `json:"operation"`
-	Reason        *string `json:"reason,omitempty"`
+	ID            int64     `json:"id"`
+	CalendarID    int64     `json:"calendar_id"`
+	CalendarCode  string    `json:"calendar_code,omitempty"`
+	CalendarName  string    `json:"calendar_name,omitempty"`
+	ExceptionDate string    `json:"exception_date"`
+	Operation     string    `json:"operation"`
+	Reason        *string   `json:"reason,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type CalendarExceptionCreateParams struct {
@@ -519,6 +524,7 @@ type AdminRepository interface {
 
 	// Calendarios de servicio
 	ListCalendars(ctx context.Context, pg types.PaginationParams) ([]Calendar, int, error)
+	GetCalendar(ctx context.Context, id int64) (Calendar, error)
 	CreateCalendar(ctx context.Context, p CalendarCreateParams) (Calendar, error)
 	UpdateCalendar(ctx context.Context, id int64, p CalendarUpdateParams) error
 
@@ -544,6 +550,7 @@ type AdminRepository interface {
 
 	// Excepciones de calendario
 	ListCalendarExceptions(ctx context.Context, calendarID int64, pg types.PaginationParams) ([]CalendarException, int, error)
+	GetCalendarException(ctx context.Context, id int64) (CalendarException, error)
 	CreateCalendarException(ctx context.Context, p CalendarExceptionCreateParams) (CalendarException, error)
 	UpdateCalendarException(ctx context.Context, id int64, p CalendarExceptionUpdateParams) error
 
@@ -1106,6 +1113,32 @@ func (r *adminRepository) ListCalendars(ctx context.Context, pg types.Pagination
 	return cals, total, nil
 }
 
+// GetCalendar devuelve un calendario por ID.
+func (r *adminRepository) GetCalendar(ctx context.Context, id int64) (Calendar, error) {
+	const q = `
+        SELECT id, code, name, valid_from, valid_until,
+               monday, tuesday, wednesday, thursday, friday, saturday, sunday, active
+          FROM service_calendars
+         WHERE id = ?`
+	var c Calendar
+	var validFrom, validUntil sql.NullString
+	if err := r.db.QueryRowContext(ctx, q, id).Scan(&c.ID, &c.Code, &c.Name, &validFrom, &validUntil,
+		&c.Monday, &c.Tuesday, &c.Wednesday, &c.Thursday, &c.Friday,
+		&c.Saturday, &c.Sunday, &c.Active); err != nil {
+		if err == sql.ErrNoRows {
+			return Calendar{}, apperror.NotFoundError{Entity: "calendario", ID: id}
+		}
+		return Calendar{}, fmt.Errorf("obteniendo calendario: %w", err)
+	}
+	if validFrom.Valid {
+		c.ValidFrom = validFrom.String
+	}
+	if validUntil.Valid {
+		c.ValidUntil = validUntil.String
+	}
+	return c, nil
+}
+
 // CreateCalendar inserta un calendario de servicio.
 func (r *adminRepository) CreateCalendar(ctx context.Context, p CalendarCreateParams) (Calendar, error) {
 	res, err := r.db.ExecContext(ctx, `
@@ -1470,16 +1503,19 @@ func (r *adminRepository) UpdateVehicleSeat(ctx context.Context, id int64, p Veh
 
 func (r *adminRepository) ListCalendarExceptions(ctx context.Context, calendarID int64, pg types.PaginationParams) ([]CalendarException, int, error) {
 	pg.Normalize()
-	q := `SELECT id, calendar_id, exception_date, operation, reason
-           FROM service_calendar_exceptions`
+	q := `SELECT e.id, e.calendar_id, c.code, c.name,
+               e.exception_date, e.operation, e.reason,
+               e.created_at, e.updated_at
+          FROM service_calendar_exceptions e
+          JOIN service_calendars c ON c.id = e.calendar_id`
 	var where string
 	var fargs []any
 	if calendarID > 0 {
-		where = "calendar_id = ?"
+		where = "e.calendar_id = ?"
 		q += " WHERE " + where
 		fargs = append(fargs, calendarID)
 	}
-	q += " ORDER BY id LIMIT ? OFFSET ?"
+	q += " ORDER BY e.exception_date, e.id LIMIT ? OFFSET ?"
 	qargs := append([]any{}, fargs...)
 	qargs = append(qargs, pg.Limit(), pg.Offset())
 	rows, err := r.db.QueryContext(ctx, q, qargs...)
@@ -1493,8 +1529,9 @@ func (r *adminRepository) ListCalendarExceptions(ctx context.Context, calendarID
 		var e CalendarException
 		var excDate sql.NullString
 		var reason sql.NullString
-		if err := rows.Scan(&e.ID, &e.CalendarID, &excDate,
-			&e.Operation, &reason); err != nil {
+		if err := rows.Scan(&e.ID, &e.CalendarID, &e.CalendarCode, &e.CalendarName,
+			&excDate, &e.Operation, &reason,
+			&e.CreatedAt, &e.UpdatedAt); err != nil {
 			return nil, 0, fmt.Errorf("escaneando excepcion de calendario: %w", err)
 		}
 		if excDate.Valid {
@@ -1519,16 +1556,13 @@ func (r *adminRepository) CreateCalendarException(ctx context.Context, p Calenda
         VALUES (?, ?, ?, ?)`,
 		p.CalendarID, p.ExceptionDate, p.Operation, p.Reason)
 	if err != nil {
-		return CalendarException{}, fmt.Errorf("creando excepcion de calendario: %w", err)
+		return CalendarException{}, dberr.TranslatePlainSQL(err, "excepcion de calendario", "calendario")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
 		return CalendarException{}, fmt.Errorf("obteniendo id de excepcion de calendario: %w", err)
 	}
-	return CalendarException{
-		ID: id, CalendarID: p.CalendarID, ExceptionDate: p.ExceptionDate,
-		Operation: p.Operation, Reason: p.Reason,
-	}, nil
+	return r.GetCalendarException(ctx, id)
 }
 
 func (r *adminRepository) UpdateCalendarException(ctx context.Context, id int64, p CalendarExceptionUpdateParams) error {
@@ -1538,9 +1572,33 @@ func (r *adminRepository) UpdateCalendarException(ctx context.Context, id int64,
          WHERE id = ?`,
 		p.CalendarID, p.ExceptionDate, p.Operation, p.Reason, id)
 	if err != nil {
-		return fmt.Errorf("actualizando excepcion de calendario: %w", err)
+		return dberr.TranslatePlainSQL(err, "excepcion de calendario", "calendario")
 	}
 	return ensureAffected(res, "excepcion de calendario", id)
+}
+
+func (r *adminRepository) GetCalendarException(ctx context.Context, id int64) (CalendarException, error) {
+	const q = `
+        SELECT e.id, e.calendar_id, c.code, c.name,
+               e.exception_date, e.operation, e.reason,
+               e.created_at, e.updated_at
+          FROM service_calendar_exceptions e
+          JOIN service_calendars c ON c.id = e.calendar_id
+         WHERE e.id = ?`
+	var e CalendarException
+	var excDate sql.NullString
+	var reason sql.NullString
+	err := r.db.QueryRowContext(ctx, q, id).Scan(&e.ID, &e.CalendarID, &e.CalendarCode, &e.CalendarName,
+		&excDate, &e.Operation, &reason,
+		&e.CreatedAt, &e.UpdatedAt)
+	if err != nil {
+		return CalendarException{}, dberr.NotFound(err, "excepcion de calendario", id)
+	}
+	if excDate.Valid {
+		e.ExceptionDate = excDate.String
+	}
+	e.Reason = nullableStr(reason)
+	return e, nil
 }
 
 // ----------------------------------------------------------------------------

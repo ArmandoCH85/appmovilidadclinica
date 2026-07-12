@@ -6,6 +6,7 @@ package dberr
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 	"github.com/go-sql-driver/mysql"
@@ -59,4 +60,41 @@ func NotFound(err error, entity string, id any) error {
 		return apperror.NotFoundError{Entity: entity, ID: id}
 	}
 	return err
+}
+
+// errFKConstraint es ER_NO_REFERENCED_ROW_2 (FK insert/update viola porque el
+// registro padre no existe). Aparece cuando un INSERT/UPDATE de CRUD admin
+// referencia un id que no esta en la tabla padre. Lo traducimos a
+// NotFoundError con la entidad padre para que el handler responda 404 con un
+// mensaje util ("calendario 99 no encontrado") en vez del 500 generico que
+// mostraria el SQLSTATE crudo.
+const errFKConstraint = 1452
+
+// TranslatePlainSQL mapea errores que provienen de INSERT/UPDATE/DELETE de SQL
+// plano (no SPs). A diferencia de TranslateSP, no conoce mensajes puntuales de
+// cada tabla, asi que los errores 1062 (UNIQUE) sin contexto se devuelven
+// como ConflictError generico, y los 1452 (FK) como NotFoundError usando el
+// `fkEntity` recibido (la tabla padre a la que apuntaba la FK). Otros errores
+// se devuelven tal cual para que WriteJSONError los trate como 500.
+//
+// Uso tipico en repositorio CRUD admin:
+//
+//	res, err := r.db.ExecContext(ctx, insertSQL, args...)
+//	if err != nil {
+//	    return dberr.TranslatePlainSQL(err, "excepcion de calendario", "calendario")
+//	}
+func TranslatePlainSQL(err error, entity, fkEntity string) error {
+	if err == nil {
+		return nil
+	}
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) {
+		switch mysqlErr.Number {
+		case errDuplicateEntry:
+			return apperror.ConflictError{Msg: "ya existe un registro con esos datos"}
+		case errFKConstraint:
+			return apperror.NotFoundError{Entity: fkEntity}
+		}
+	}
+	return fmt.Errorf("%s: %w", entity, err)
 }

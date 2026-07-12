@@ -94,6 +94,10 @@ func (m *mockAdminRepo) CreateTemplate(_ context.Context, _ TemplateCreateParams
 func (m *mockAdminRepo) UpdateTemplate(_ context.Context, _ int64, _ TemplateUpdateParams) error {
 	return nil
 }
+func (m *mockAdminRepo) GetCalendar(_ context.Context, _ int64) (Calendar, error) {
+	return Calendar{}, nil
+}
+
 func (m *mockAdminRepo) ListCalendars(_ context.Context, _ types.PaginationParams) ([]Calendar, int, error) {
 	return nil, 0, nil
 }
