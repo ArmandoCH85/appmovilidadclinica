@@ -103,6 +103,27 @@ export interface CalendarException {
   updated_at: string
 }
 
+export interface TravelTimeProfile {
+  id: number
+  code: string
+  name: string
+  valid_from?: string | null
+  valid_until?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  is_all_day: boolean
+  monday: boolean
+  tuesday: boolean
+  wednesday: boolean
+  thursday: boolean
+  friday: boolean
+  saturday: boolean
+  sunday: boolean
+  priority: number
+  is_default: boolean
+  active: boolean
+}
+
 // Forma de respuesta paginada del backend (`{items, page, page_size, total}`),
 // consumida por `useCrudResource<T>` en la Fase 4.
 export interface PaginatedResponse<T> {

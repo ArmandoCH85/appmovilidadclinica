@@ -404,6 +404,9 @@ func (s *adminService) CreateTravelTimeProfile(ctx context.Context, p TravelTime
 	if err := requireAdmin(ctx); err != nil {
 		return TravelTimeProfile{}, err
 	}
+	if err := validateTravelTimeProfile(p); err != nil {
+		return TravelTimeProfile{}, err
+	}
 	return s.repo.CreateTravelTimeProfile(ctx, p)
 }
 
@@ -412,7 +415,56 @@ func (s *adminService) UpdateTravelTimeProfile(ctx context.Context, id int64, p 
 	if err := requireAdmin(ctx); err != nil {
 		return err
 	}
+	if err := validateTravelTimeProfile(p); err != nil {
+		return err
+	}
 	return s.repo.UpdateTravelTimeProfile(ctx, id, p)
+}
+
+// validateTravelTimeProfile verifica la consistencia de fechas y horarios de
+// un perfil. No delega todo al validador de structs porque las reglas cruzadas
+// (valid_from <= valid_until, inicio < fin) no se expresan via tags.
+func validateTravelTimeProfile(p TravelTimeProfileCreateParams) error {
+	if p.ValidFrom != nil && p.ValidUntil != nil {
+		from, err := time.Parse("2006-01-02", *p.ValidFrom)
+		if err != nil {
+			return apperror.ValidationError{Field: "valid_from", Reason: "formato invalido, use YYYY-MM-DD"}
+		}
+		until, err := time.Parse("2006-01-02", *p.ValidUntil)
+		if err != nil {
+			return apperror.ValidationError{Field: "valid_until", Reason: "formato invalido, use YYYY-MM-DD"}
+		}
+		if from.After(until) {
+			return apperror.ValidationError{Field: "valid_until", Reason: "debe ser igual o posterior a valid_from"}
+		}
+	}
+
+	if p.IsAllDay {
+		if p.StartTime != nil || p.EndTime != nil {
+			return apperror.ValidationError{Field: "is_all_day", Reason: "si aplica todo el dia no debe enviar horario de inicio/fin"}
+		}
+		return nil
+	}
+
+	if p.StartTime == nil {
+		return apperror.ValidationError{Field: "start_time", Reason: "requerido cuando no es todo el dia"}
+	}
+	if p.EndTime == nil {
+		return apperror.ValidationError{Field: "end_time", Reason: "requerido cuando no es todo el dia"}
+	}
+
+	start, err := time.Parse("15:04:05", *p.StartTime)
+	if err != nil {
+		return apperror.ValidationError{Field: "start_time", Reason: "formato invalido, use HH:MM:SS"}
+	}
+	end, err := time.Parse("15:04:05", *p.EndTime)
+	if err != nil {
+		return apperror.ValidationError{Field: "end_time", Reason: "formato invalido, use HH:MM:SS"}
+	}
+	if !end.After(start) {
+		return apperror.ValidationError{Field: "end_time", Reason: "debe ser posterior a start_time"}
+	}
+	return nil
 }
 
 // ----------------------------------------------------------------------------
