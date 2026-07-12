@@ -70,6 +70,21 @@ type AdminService interface {
 	CreateRouteSegmentTravelTime(ctx context.Context, p RouteSegmentTravelTimeCreateParams) (RouteSegmentTravelTime, error)
 	UpdateRouteSegmentTravelTime(ctx context.Context, id int64, p RouteSegmentTravelTimeUpdateParams) error
 
+	// Asientos de vehiculo
+	ListVehicleSeats(ctx context.Context, vehicleID int64, pg types.PaginationParams) ([]VehicleSeat, int, error)
+	CreateVehicleSeat(ctx context.Context, p VehicleSeatCreateParams) (VehicleSeat, error)
+	UpdateVehicleSeat(ctx context.Context, id int64, p VehicleSeatUpdateParams) error
+
+	// Excepciones de calendario
+	ListCalendarExceptions(ctx context.Context, calendarID int64, pg types.PaginationParams) ([]CalendarException, int, error)
+	CreateCalendarException(ctx context.Context, p CalendarExceptionCreateParams) (CalendarException, error)
+	UpdateCalendarException(ctx context.Context, id int64, p CalendarExceptionUpdateParams) error
+
+	// Listados de solo lectura
+	ListTrips(ctx context.Context, date, status string, routeID int64, pg types.PaginationParams) ([]TripInstance, int, error)
+	ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error)
+	ListGenerationRuns(ctx context.Context, pg types.PaginationParams) ([]GenerationRun, int, error)
+
 	// Operaciones de viajes
 	UpdateTripStatus(ctx context.Context, tripID int64, status string) error
 	TriggerManualGeneration(ctx context.Context, templateID int64, serviceDate string) error
@@ -397,6 +412,81 @@ func (s *adminService) UpdateRouteSegmentTravelTime(ctx context.Context, id int6
 		return err
 	}
 	return s.repo.UpdateRouteSegmentTravelTime(ctx, id, p)
+}
+
+// ----------------------------------------------------------------------------
+// Asientos de vehiculo
+// ----------------------------------------------------------------------------
+
+func (s *adminService) ListVehicleSeats(ctx context.Context, vehicleID int64, pg types.PaginationParams) ([]VehicleSeat, int, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListVehicleSeats(ctx, vehicleID, pg)
+}
+
+func (s *adminService) CreateVehicleSeat(ctx context.Context, p VehicleSeatCreateParams) (VehicleSeat, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return VehicleSeat{}, err
+	}
+	return s.repo.CreateVehicleSeat(ctx, p)
+}
+
+func (s *adminService) UpdateVehicleSeat(ctx context.Context, id int64, p VehicleSeatUpdateParams) error {
+	if err := requireAdmin(ctx); err != nil {
+		return err
+	}
+	return s.repo.UpdateVehicleSeat(ctx, id, p)
+}
+
+// ----------------------------------------------------------------------------
+// Excepciones de calendario
+// ----------------------------------------------------------------------------
+
+func (s *adminService) ListCalendarExceptions(ctx context.Context, calendarID int64, pg types.PaginationParams) ([]CalendarException, int, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListCalendarExceptions(ctx, calendarID, pg)
+}
+
+func (s *adminService) CreateCalendarException(ctx context.Context, p CalendarExceptionCreateParams) (CalendarException, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return CalendarException{}, err
+	}
+	return s.repo.CreateCalendarException(ctx, p)
+}
+
+func (s *adminService) UpdateCalendarException(ctx context.Context, id int64, p CalendarExceptionUpdateParams) error {
+	if err := requireAdmin(ctx); err != nil {
+		return err
+	}
+	return s.repo.UpdateCalendarException(ctx, id, p)
+}
+
+// ----------------------------------------------------------------------------
+// Listados de solo lectura
+// ----------------------------------------------------------------------------
+
+func (s *adminService) ListTrips(ctx context.Context, date, status string, routeID int64, pg types.PaginationParams) ([]TripInstance, int, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListTrips(ctx, date, status, routeID, pg)
+}
+
+func (s *adminService) ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListIncidents(ctx, status, pg)
+}
+
+func (s *adminService) ListGenerationRuns(ctx context.Context, pg types.PaginationParams) ([]GenerationRun, int, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListGenerationRuns(ctx, pg)
 }
 
 // ----------------------------------------------------------------------------

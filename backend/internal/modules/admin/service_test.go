@@ -146,6 +146,33 @@ func (m *mockAdminRepo) GetRouteTimeMatrix(_ context.Context) ([]MatrixEntry, er
 func (m *mockAdminRepo) GetTripSeatAvailability(_ context.Context, _ int64) ([]SeatAvail, error) {
 	return nil, nil
 }
+func (m *mockAdminRepo) ListVehicleSeats(_ context.Context, _ int64, _ types.PaginationParams) ([]VehicleSeat, int, error) {
+	return nil, 0, nil
+}
+func (m *mockAdminRepo) CreateVehicleSeat(_ context.Context, _ VehicleSeatCreateParams) (VehicleSeat, error) {
+	return VehicleSeat{}, nil
+}
+func (m *mockAdminRepo) UpdateVehicleSeat(_ context.Context, _ int64, _ VehicleSeatUpdateParams) error {
+	return nil
+}
+func (m *mockAdminRepo) ListCalendarExceptions(_ context.Context, _ int64, _ types.PaginationParams) ([]CalendarException, int, error) {
+	return nil, 0, nil
+}
+func (m *mockAdminRepo) CreateCalendarException(_ context.Context, _ CalendarExceptionCreateParams) (CalendarException, error) {
+	return CalendarException{}, nil
+}
+func (m *mockAdminRepo) UpdateCalendarException(_ context.Context, _ int64, _ CalendarExceptionUpdateParams) error {
+	return nil
+}
+func (m *mockAdminRepo) ListTrips(_ context.Context, _, _ string, _ int64, _ types.PaginationParams) ([]TripInstance, int, error) {
+	return nil, 0, nil
+}
+func (m *mockAdminRepo) ListIncidents(_ context.Context, _ string, _ types.PaginationParams) ([]TripIncident, int, error) {
+	return nil, 0, nil
+}
+func (m *mockAdminRepo) ListGenerationRuns(_ context.Context, _ types.PaginationParams) ([]GenerationRun, int, error) {
+	return nil, 0, nil
+}
 
 // ctxWithRole construye un context que simula un JWT valido con el rol dado,
 // tal como lo dejaria jwtauth.Verifier en produccion.

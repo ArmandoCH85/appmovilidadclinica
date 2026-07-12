@@ -692,6 +692,188 @@ func (h *AdminHandler) UpdateRouteSegmentTravelTime(w http.ResponseWriter, r *ht
 }
 
 // ----------------------------------------------------------------------------
+// Asientos de vehiculo (vehicle_seats)
+// ----------------------------------------------------------------------------
+
+func (h *AdminHandler) ListVehicleSeats(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
+	vehicleID, _ := strconv.ParseInt(r.URL.Query().Get("vehicle_id"), 10, 64)
+	if vehicleID < 0 {
+		vehicleID = 0
+	}
+	seats, total, err := h.svc.ListVehicleSeats(r.Context(), vehicleID, pg)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"items":     orEmpty(seats, vehicleSeatSlice),
+		"page":      pg.Page,
+		"page_size": pg.PageSize,
+		"total":     total,
+	})
+}
+
+func (h *AdminHandler) CreateVehicleSeat(w http.ResponseWriter, r *http.Request) {
+	var req VehicleSeatCreateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	seat, err := h.svc.CreateVehicleSeat(r.Context(), req)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, seat)
+}
+
+func (h *AdminHandler) UpdateVehicleSeat(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	var req VehicleSeatUpdateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	if err := h.svc.UpdateVehicleSeat(r.Context(), id, req); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ----------------------------------------------------------------------------
+// Excepciones de calendario (service_calendar_exceptions)
+// ----------------------------------------------------------------------------
+
+func (h *AdminHandler) ListCalendarExceptions(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
+	calendarID, _ := strconv.ParseInt(r.URL.Query().Get("calendar_id"), 10, 64)
+	if calendarID < 0 {
+		calendarID = 0
+	}
+	excs, total, err := h.svc.ListCalendarExceptions(r.Context(), calendarID, pg)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"items":     orEmpty(excs, calendarExceptionSlice),
+		"page":      pg.Page,
+		"page_size": pg.PageSize,
+		"total":     total,
+	})
+}
+
+func (h *AdminHandler) CreateCalendarException(w http.ResponseWriter, r *http.Request) {
+	var req CalendarExceptionCreateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	exc, err := h.svc.CreateCalendarException(r.Context(), req)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, exc)
+}
+
+func (h *AdminHandler) UpdateCalendarException(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	var req CalendarExceptionUpdateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	if err := h.svc.UpdateCalendarException(r.Context(), id, req); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ----------------------------------------------------------------------------
+// Listados de solo lectura (trips, incidents, generation-runs)
+// ----------------------------------------------------------------------------
+
+func (h *AdminHandler) ListTrips(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
+	date := r.URL.Query().Get("date")
+	status := r.URL.Query().Get("status")
+	routeID, _ := strconv.ParseInt(r.URL.Query().Get("route_id"), 10, 64)
+	if routeID < 0 {
+		routeID = 0
+	}
+	trips, total, err := h.svc.ListTrips(r.Context(), date, status, routeID, pg)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"items":     orEmpty(trips, tripInstanceSlice),
+		"page":      pg.Page,
+		"page_size": pg.PageSize,
+		"total":     total,
+	})
+}
+
+func (h *AdminHandler) ListIncidents(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
+	status := r.URL.Query().Get("status")
+	incs, total, err := h.svc.ListIncidents(r.Context(), status, pg)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"items":     orEmpty(incs, tripIncidentSlice),
+		"page":      pg.Page,
+		"page_size": pg.PageSize,
+		"total":     total,
+	})
+}
+
+func (h *AdminHandler) ListGenerationRuns(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
+	runs, total, err := h.svc.ListGenerationRuns(r.Context(), pg)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"items":     orEmpty(runs, generationRunSlice),
+		"page":      pg.Page,
+		"page_size": pg.PageSize,
+		"total":     total,
+	})
+}
+
+// ----------------------------------------------------------------------------
 // Operaciones de viajes
 // ----------------------------------------------------------------------------
 
@@ -845,6 +1027,21 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/segment-times", h.CreateRouteSegmentTravelTime)
 		r.Put("/segment-times/{id}", h.UpdateRouteSegmentTravelTime)
 
+		// Asientos de vehiculo
+		r.Get("/vehicle-seats", h.ListVehicleSeats)
+		r.Post("/vehicle-seats", h.CreateVehicleSeat)
+		r.Put("/vehicle-seats/{id}", h.UpdateVehicleSeat)
+
+		// Excepciones de calendario
+		r.Get("/calendar-exceptions", h.ListCalendarExceptions)
+		r.Post("/calendar-exceptions", h.CreateCalendarException)
+		r.Put("/calendar-exceptions/{id}", h.UpdateCalendarException)
+
+		// Listados de solo lectura
+		r.Get("/trips", h.ListTrips)
+		r.Get("/incidents", h.ListIncidents)
+		r.Get("/generation-runs", h.ListGenerationRuns)
+
 		// Operaciones de viajes
 		r.Post("/trips/{id}/status", h.UpdateTripStatus)
 		r.Post("/trips/generate", h.GenerateTrip)
@@ -877,6 +1074,11 @@ const (
 	conflictSlice
 	matrixSlice
 	seatAvailSlice
+	vehicleSeatSlice
+	calendarExceptionSlice
+	tripInstanceSlice
+	tripIncidentSlice
+	generationRunSlice
 )
 
 // orEmpty devuelve el slice recibido o un slice vacio tipado si es nil.
@@ -949,6 +1151,31 @@ func orEmpty(v any, kind sliceKind) any {
 			return s
 		}
 		return []SeatAvail{}
+	case vehicleSeatSlice:
+		if s, ok := v.([]VehicleSeat); ok && s != nil {
+			return s
+		}
+		return []VehicleSeat{}
+	case calendarExceptionSlice:
+		if s, ok := v.([]CalendarException); ok && s != nil {
+			return s
+		}
+		return []CalendarException{}
+	case tripInstanceSlice:
+		if s, ok := v.([]TripInstance); ok && s != nil {
+			return s
+		}
+		return []TripInstance{}
+	case tripIncidentSlice:
+		if s, ok := v.([]TripIncident); ok && s != nil {
+			return s
+		}
+		return []TripIncident{}
+	case generationRunSlice:
+		if s, ok := v.([]GenerationRun); ok && s != nil {
+			return s
+		}
+		return []GenerationRun{}
 	}
 	return v
 }

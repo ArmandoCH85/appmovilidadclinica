@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/dberr"
@@ -395,6 +396,90 @@ type SeatAvail struct {
 	ReleasedAt      *time.Time `json:"released_at,omitempty"`
 }
 
+type VehicleSeat struct {
+	ID          int64   `json:"id"`
+	VehicleID   int64   `json:"vehicle_id"`
+	SeatNumber  int     `json:"seat_number"`
+	SeatLabel   string  `json:"seat_label"`
+	Status      string  `json:"status"`
+	BlockReason *string `json:"block_reason,omitempty"`
+}
+
+type VehicleSeatCreateParams struct {
+	VehicleID   int64   `json:"vehicle_id" validate:"required,gt=0"`
+	SeatNumber  int     `json:"seat_number" validate:"required,gt=0"`
+	SeatLabel   string  `json:"seat_label" validate:"required,max=10"`
+	Status      string  `json:"status" validate:"required,oneof=ACTIVE BLOCKED RETIRED"`
+	BlockReason *string `json:"block_reason,omitempty" validate:"max=255"`
+}
+
+type VehicleSeatUpdateParams = VehicleSeatCreateParams
+
+type CalendarException struct {
+	ID            int64   `json:"id"`
+	CalendarID    int64   `json:"calendar_id"`
+	ExceptionDate string  `json:"exception_date"`
+	Operation     string  `json:"operation"`
+	Reason        *string `json:"reason,omitempty"`
+}
+
+type CalendarExceptionCreateParams struct {
+	CalendarID    int64   `json:"calendar_id" validate:"required,gt=0"`
+	ExceptionDate string  `json:"exception_date" validate:"required"`
+	Operation     string  `json:"operation" validate:"required,oneof=ADD REMOVE"`
+	Reason        *string `json:"reason,omitempty" validate:"max=255"`
+}
+
+type CalendarExceptionUpdateParams = CalendarExceptionCreateParams
+
+type TripInstance struct {
+	ID                     int64      `json:"id"`
+	TripCode               string     `json:"trip_code"`
+	Source                 string     `json:"source"`
+	TripTemplateID         *int64     `json:"trip_template_id,omitempty"`
+	GenerationRunID        *int64     `json:"generation_run_id,omitempty"`
+	RouteID                int64      `json:"route_id"`
+	ServiceDate            string     `json:"service_date"`
+	ScheduledStartAt       time.Time  `json:"scheduled_start_at"`
+	ScheduledEndAt         time.Time  `json:"scheduled_end_at"`
+	BookingOpensAt         time.Time  `json:"booking_opens_at"`
+	BookingClosesAt        time.Time  `json:"booking_closes_at"`
+	VehicleID              int64      `json:"vehicle_id"`
+	DriverID               int64      `json:"driver_id"`
+	SeatCapacitySnapshot   int        `json:"seat_capacity_snapshot"`
+	NoShowToleranceMinutes int        `json:"no_show_tolerance_minutes"`
+	Status                 string     `json:"status"`
+	ActualStartAt          *time.Time `json:"actual_start_at,omitempty"`
+	ActualEndAt            *time.Time `json:"actual_end_at,omitempty"`
+	CancellationReason     *string    `json:"cancellation_reason,omitempty"`
+}
+
+type TripIncident struct {
+	ID               int64      `json:"id"`
+	TripID           int64      `json:"trip_id"`
+	ReportedByUserID int64      `json:"reported_by_user_id"`
+	IncidentType     string     `json:"incident_type"`
+	Description     string     `json:"description"`
+	Status          string     `json:"status"`
+	ReportedAt      time.Time  `json:"reported_at"`
+	ResolvedAt      *time.Time `json:"resolved_at,omitempty"`
+	ResolutionNotes *string    `json:"resolution_notes,omitempty"`
+}
+
+type GenerationRun struct {
+	ID                int64      `json:"id"`
+	WindowStart       string     `json:"window_start"`
+	WindowEnd         string     `json:"window_end"`
+	Status            string     `json:"status"`
+	GeneratedCount    int        `json:"generated_count"`
+	SkippedCount      int        `json:"skipped_count"`
+	FailedCount       int        `json:"failed_count"`
+	ErrorSummary      *string    `json:"error_summary,omitempty"`
+	TriggeredByUserID *int64     `json:"triggered_by_user_id,omitempty"`
+	StartedAt         time.Time  `json:"started_at"`
+	FinishedAt        *time.Time `json:"finished_at,omitempty"`
+}
+
 // ----------------------------------------------------------------------------
 // Interfaz del repositorio
 // ----------------------------------------------------------------------------
@@ -451,6 +536,21 @@ type AdminRepository interface {
 	ListRouteSegmentTravelTimes(ctx context.Context, pg types.PaginationParams) ([]RouteSegmentTravelTime, int, error)
 	CreateRouteSegmentTravelTime(ctx context.Context, p RouteSegmentTravelTimeCreateParams) (RouteSegmentTravelTime, error)
 	UpdateRouteSegmentTravelTime(ctx context.Context, id int64, p RouteSegmentTravelTimeUpdateParams) error
+
+	// Asientos de vehiculo
+	ListVehicleSeats(ctx context.Context, vehicleID int64, pg types.PaginationParams) ([]VehicleSeat, int, error)
+	CreateVehicleSeat(ctx context.Context, p VehicleSeatCreateParams) (VehicleSeat, error)
+	UpdateVehicleSeat(ctx context.Context, id int64, p VehicleSeatUpdateParams) error
+
+	// Excepciones de calendario
+	ListCalendarExceptions(ctx context.Context, calendarID int64, pg types.PaginationParams) ([]CalendarException, int, error)
+	CreateCalendarException(ctx context.Context, p CalendarExceptionCreateParams) (CalendarException, error)
+	UpdateCalendarException(ctx context.Context, id int64, p CalendarExceptionUpdateParams) error
+
+	// Listados de solo lectura
+	ListTrips(ctx context.Context, date, status string, routeID int64, pg types.PaginationParams) ([]TripInstance, int, error)
+	ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error)
+	ListGenerationRuns(ctx context.Context, pg types.PaginationParams) ([]GenerationRun, int, error)
 
 	// Operaciones de viajes
 	UpdateTripStatus(ctx context.Context, tripID int64, status string) error
@@ -1270,6 +1370,324 @@ func (r *adminRepository) UpdateRouteSegmentTravelTime(ctx context.Context, id i
 		return fmt.Errorf("actualizando tiempo de tramo: %w", err)
 	}
 	return ensureAffected(res, "tiempo de tramo", id)
+}
+
+// ----------------------------------------------------------------------------
+// Asientos de vehiculo (vehicle_seats)
+// ----------------------------------------------------------------------------
+
+func (r *adminRepository) ListVehicleSeats(ctx context.Context, vehicleID int64, pg types.PaginationParams) ([]VehicleSeat, int, error) {
+	pg.Normalize()
+	q := `SELECT id, vehicle_id, seat_number, seat_label, status, block_reason
+           FROM vehicle_seats`
+	var where string
+	var fargs []any
+	if vehicleID > 0 {
+		where = "vehicle_id = ?"
+		q += " WHERE " + where
+		fargs = append(fargs, vehicleID)
+	}
+	q += " ORDER BY id LIMIT ? OFFSET ?"
+	qargs := append([]any{}, fargs...)
+	qargs = append(qargs, pg.Limit(), pg.Offset())
+	rows, err := r.db.QueryContext(ctx, q, qargs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listando asientos de vehiculo: %w", err)
+	}
+	defer rows.Close()
+
+	var seats []VehicleSeat
+	for rows.Next() {
+		var s VehicleSeat
+		var blockReason sql.NullString
+		if err := rows.Scan(&s.ID, &s.VehicleID, &s.SeatNumber, &s.SeatLabel,
+			&s.Status, &blockReason); err != nil {
+			return nil, 0, fmt.Errorf("escaneando asiento de vehiculo: %w", err)
+		}
+		s.BlockReason = nullableStr(blockReason)
+		seats = append(seats, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := r.count(ctx, "vehicle_seats", where, fargs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	return seats, total, nil
+}
+
+func (r *adminRepository) CreateVehicleSeat(ctx context.Context, p VehicleSeatCreateParams) (VehicleSeat, error) {
+	res, err := r.db.ExecContext(ctx, `
+        INSERT INTO vehicle_seats (vehicle_id, seat_number, seat_label, status, block_reason)
+        VALUES (?, ?, ?, ?, ?)`,
+		p.VehicleID, p.SeatNumber, p.SeatLabel, p.Status, p.BlockReason)
+	if err != nil {
+		return VehicleSeat{}, fmt.Errorf("creando asiento de vehiculo: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return VehicleSeat{}, fmt.Errorf("obteniendo id de asiento de vehiculo: %w", err)
+	}
+	return VehicleSeat{
+		ID: id, VehicleID: p.VehicleID, SeatNumber: p.SeatNumber,
+		SeatLabel: p.SeatLabel, Status: p.Status, BlockReason: p.BlockReason,
+	}, nil
+}
+
+func (r *adminRepository) UpdateVehicleSeat(ctx context.Context, id int64, p VehicleSeatUpdateParams) error {
+	res, err := r.db.ExecContext(ctx, `
+        UPDATE vehicle_seats
+           SET vehicle_id = ?, seat_number = ?, seat_label = ?, status = ?, block_reason = ?
+         WHERE id = ?`,
+		p.VehicleID, p.SeatNumber, p.SeatLabel, p.Status, p.BlockReason, id)
+	if err != nil {
+		return fmt.Errorf("actualizando asiento de vehiculo: %w", err)
+	}
+	return ensureAffected(res, "asiento de vehiculo", id)
+}
+
+// ----------------------------------------------------------------------------
+// Excepciones de calendario (service_calendar_exceptions)
+// ----------------------------------------------------------------------------
+
+func (r *adminRepository) ListCalendarExceptions(ctx context.Context, calendarID int64, pg types.PaginationParams) ([]CalendarException, int, error) {
+	pg.Normalize()
+	q := `SELECT id, calendar_id, exception_date, operation, reason
+           FROM service_calendar_exceptions`
+	var where string
+	var fargs []any
+	if calendarID > 0 {
+		where = "calendar_id = ?"
+		q += " WHERE " + where
+		fargs = append(fargs, calendarID)
+	}
+	q += " ORDER BY id LIMIT ? OFFSET ?"
+	qargs := append([]any{}, fargs...)
+	qargs = append(qargs, pg.Limit(), pg.Offset())
+	rows, err := r.db.QueryContext(ctx, q, qargs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listando excepciones de calendario: %w", err)
+	}
+	defer rows.Close()
+
+	var excs []CalendarException
+	for rows.Next() {
+		var e CalendarException
+		var excDate sql.NullString
+		var reason sql.NullString
+		if err := rows.Scan(&e.ID, &e.CalendarID, &excDate,
+			&e.Operation, &reason); err != nil {
+			return nil, 0, fmt.Errorf("escaneando excepcion de calendario: %w", err)
+		}
+		if excDate.Valid {
+			e.ExceptionDate = excDate.String
+		}
+		e.Reason = nullableStr(reason)
+		excs = append(excs, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := r.count(ctx, "service_calendar_exceptions", where, fargs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	return excs, total, nil
+}
+
+func (r *adminRepository) CreateCalendarException(ctx context.Context, p CalendarExceptionCreateParams) (CalendarException, error) {
+	res, err := r.db.ExecContext(ctx, `
+        INSERT INTO service_calendar_exceptions (calendar_id, exception_date, operation, reason)
+        VALUES (?, ?, ?, ?)`,
+		p.CalendarID, p.ExceptionDate, p.Operation, p.Reason)
+	if err != nil {
+		return CalendarException{}, fmt.Errorf("creando excepcion de calendario: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return CalendarException{}, fmt.Errorf("obteniendo id de excepcion de calendario: %w", err)
+	}
+	return CalendarException{
+		ID: id, CalendarID: p.CalendarID, ExceptionDate: p.ExceptionDate,
+		Operation: p.Operation, Reason: p.Reason,
+	}, nil
+}
+
+func (r *adminRepository) UpdateCalendarException(ctx context.Context, id int64, p CalendarExceptionUpdateParams) error {
+	res, err := r.db.ExecContext(ctx, `
+        UPDATE service_calendar_exceptions
+           SET calendar_id = ?, exception_date = ?, operation = ?, reason = ?
+         WHERE id = ?`,
+		p.CalendarID, p.ExceptionDate, p.Operation, p.Reason, id)
+	if err != nil {
+		return fmt.Errorf("actualizando excepcion de calendario: %w", err)
+	}
+	return ensureAffected(res, "excepcion de calendario", id)
+}
+
+// ----------------------------------------------------------------------------
+// Listados de solo lectura (trip_instances, trip_incidents, trip_generation_runs)
+// ----------------------------------------------------------------------------
+
+func (r *adminRepository) ListTrips(ctx context.Context, date, status string, routeID int64, pg types.PaginationParams) ([]TripInstance, int, error) {
+	pg.Normalize()
+	q := `SELECT id, trip_code, source, trip_template_id, generation_run_id, route_id,
+                 service_date, scheduled_start_at, scheduled_end_at, booking_opens_at,
+                 booking_closes_at, vehicle_id, driver_id, seat_capacity_snapshot,
+                 no_show_tolerance_minutes, status, actual_start_at, actual_end_at,
+                 cancellation_reason
+            FROM trip_instances`
+	var conds []string
+	var fargs []any
+	if date != "" {
+		conds = append(conds, "service_date = ?")
+		fargs = append(fargs, date)
+	}
+	if status != "" {
+		conds = append(conds, "status = ?")
+		fargs = append(fargs, status)
+	}
+	if routeID > 0 {
+		conds = append(conds, "route_id = ?")
+		fargs = append(fargs, routeID)
+	}
+	where := strings.Join(conds, " AND ")
+	if where != "" {
+		q += " WHERE " + where
+	}
+	q += " ORDER BY id LIMIT ? OFFSET ?"
+	qargs := append([]any{}, fargs...)
+	qargs = append(qargs, pg.Limit(), pg.Offset())
+	rows, err := r.db.QueryContext(ctx, q, qargs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listando viajes: %w", err)
+	}
+	defer rows.Close()
+
+	var trips []TripInstance
+	for rows.Next() {
+		var t TripInstance
+		var tmplID, runID sql.NullInt64
+		var svcDate sql.NullString
+		var actualStart, actualEnd sql.NullTime
+		var cancelReason sql.NullString
+		if err := rows.Scan(&t.ID, &t.TripCode, &t.Source, &tmplID, &runID,
+			&t.RouteID, &svcDate, &t.ScheduledStartAt, &t.ScheduledEndAt,
+			&t.BookingOpensAt, &t.BookingClosesAt, &t.VehicleID, &t.DriverID,
+			&t.SeatCapacitySnapshot, &t.NoShowToleranceMinutes, &t.Status,
+			&actualStart, &actualEnd, &cancelReason); err != nil {
+			return nil, 0, fmt.Errorf("escaneando viaje: %w", err)
+		}
+		t.TripTemplateID = nullableInt(tmplID)
+		t.GenerationRunID = nullableInt(runID)
+		if svcDate.Valid {
+			t.ServiceDate = svcDate.String
+		}
+		t.ActualStartAt = nullableTime(actualStart)
+		t.ActualEndAt = nullableTime(actualEnd)
+		t.CancellationReason = nullableStr(cancelReason)
+		trips = append(trips, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := r.count(ctx, "trip_instances", where, fargs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	return trips, total, nil
+}
+
+func (r *adminRepository) ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error) {
+	pg.Normalize()
+	q := `SELECT id, trip_id, reported_by_user_id, incident_type, description,
+                 status, reported_at, resolved_at, resolution_notes
+            FROM trip_incidents`
+	var where string
+	var fargs []any
+	if status != "" {
+		where = "status = ?"
+		q += " WHERE " + where
+		fargs = append(fargs, status)
+	}
+	q += " ORDER BY id LIMIT ? OFFSET ?"
+	qargs := append([]any{}, fargs...)
+	qargs = append(qargs, pg.Limit(), pg.Offset())
+	rows, err := r.db.QueryContext(ctx, q, qargs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listando incidentes: %w", err)
+	}
+	defer rows.Close()
+
+	var incs []TripIncident
+	for rows.Next() {
+		var i TripIncident
+		var resolvedAt sql.NullTime
+		var notes sql.NullString
+		if err := rows.Scan(&i.ID, &i.TripID, &i.ReportedByUserID, &i.IncidentType,
+			&i.Description, &i.Status, &i.ReportedAt, &resolvedAt, &notes); err != nil {
+			return nil, 0, fmt.Errorf("escaneando incidente: %w", err)
+		}
+		i.ResolvedAt = nullableTime(resolvedAt)
+		i.ResolutionNotes = nullableStr(notes)
+		incs = append(incs, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := r.count(ctx, "trip_incidents", where, fargs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	return incs, total, nil
+}
+
+func (r *adminRepository) ListGenerationRuns(ctx context.Context, pg types.PaginationParams) ([]GenerationRun, int, error) {
+	pg.Normalize()
+	const q = `SELECT id, window_start, window_end, status, generated_count,
+                 skipped_count, failed_count, error_summary, triggered_by_user_id,
+                 started_at, finished_at
+            FROM trip_generation_runs
+           ORDER BY id
+           LIMIT ? OFFSET ?`
+	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
+	if err != nil {
+		return nil, 0, fmt.Errorf("listando corridas de generacion: %w", err)
+	}
+	defer rows.Close()
+
+	var runs []GenerationRun
+	for rows.Next() {
+		var gr GenerationRun
+		var winStart, winEnd sql.NullString
+		var errSummary sql.NullString
+		var triggeredBy sql.NullInt64
+		var finishedAt sql.NullTime
+		if err := rows.Scan(&gr.ID, &winStart, &winEnd, &gr.Status,
+			&gr.GeneratedCount, &gr.SkippedCount, &gr.FailedCount,
+			&errSummary, &triggeredBy, &gr.StartedAt, &finishedAt); err != nil {
+			return nil, 0, fmt.Errorf("escaneando corrida de generacion: %w", err)
+		}
+		if winStart.Valid {
+			gr.WindowStart = winStart.String
+		}
+		if winEnd.Valid {
+			gr.WindowEnd = winEnd.String
+		}
+		gr.ErrorSummary = nullableStr(errSummary)
+		gr.TriggeredByUserID = nullableInt(triggeredBy)
+		gr.FinishedAt = nullableTime(finishedAt)
+		runs = append(runs, gr)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := r.count(ctx, "trip_generation_runs", "")
+	if err != nil {
+		return nil, 0, err
+	}
+	return runs, total, nil
 }
 
 // ----------------------------------------------------------------------------
