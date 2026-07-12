@@ -16,13 +16,13 @@ interface NavSection {
 }
 
 defineProps<{ sections: NavSection[] }>()
-const expanded = defineModel<string>('expanded', { required: true })
+const expanded = defineModel<string[]>('expanded', { required: true })
 const emit = defineEmits<{ navigate: [] }>()
 </script>
 
 <template>
   <nav class="app-navigation" aria-label="Navegación principal">
-    <Accordion v-model:value="expanded">
+    <Accordion v-model:value="expanded" multiple>
       <AccordionPanel v-for="section in sections" :key="section.group" :value="section.group">
         <AccordionHeader>
           <span class="nav-section-label">
@@ -66,6 +66,7 @@ const emit = defineEmits<{ navigate: [] }>()
   border: 0;
 }
 .app-navigation :deep(.p-accordionheader) {
+  box-sizing: border-box;
   width: 100%;
   min-height: 2.4rem;
   display: flex;
@@ -96,6 +97,12 @@ const emit = defineEmits<{ navigate: [] }>()
   width: 0.65rem;
   height: 0.65rem;
   flex-shrink: 0;
+  color: var(--nav-muted) !important;
+}
+.app-navigation :deep(.p-accordionheader:hover .p-accordionheader-toggle-icon),
+.app-navigation :deep(.p-accordionheader:focus-visible .p-accordionheader-toggle-icon),
+.app-navigation :deep(.p-accordionpanel[data-p-active='true'] .p-accordionheader-toggle-icon) {
+  color: var(--nav-text) !important;
 }
 .app-navigation :deep(.p-accordioncontent-content) {
   padding: 0 !important;
