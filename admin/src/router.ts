@@ -2,22 +2,27 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppLayout from './components/AppLayout.vue'
 import LoginView from './components/LoginView.vue'
 import CrudView from './components/CrudView.vue'
+import StopsView from './components/StopsView.vue'
 import RouteStopsView from './components/RouteStopsView.vue'
 import OperationsView from './components/OperationsView.vue'
 import ReportsView from './components/ReportsView.vue'
 import { useAuth } from './auth/useAuth'
 import { crudResources } from './resources'
 
-// Fase 5: las 6 rutas CRUD "planas" salen de `crudResources` (resources.ts)
-// — data-driven, un solo bloque en vez de 6 literales (ponytail). `route-stops`
-// es la 7ma pero no es generica (sin GET plano en el backend, ver
+// Fase 5: las rutas CRUD "planas" salen de `crudResources` (resources.ts)
+// — data-driven, un solo bloque en vez de N literales (ponytail). `stops`
+// se excluye ahora: tiene su propio componente rediseñado (StopsView,
+// prototipo de diseño visual — ver memoria "admin-design-stops-pattern").
+// `route-stops` es otro caso especial (sin GET plano en el backend, ver
 // RouteStopsView.vue) — se registra aparte con su propio componente.
-const resourceChildren: RouteRecordRaw[] = crudResources.map(({ routePath, config, readOnly }) => ({
-  path: routePath.slice(1),
-  name: routePath.slice(1),
-  component: CrudView,
-  props: { config, readOnly },
-}))
+const resourceChildren: RouteRecordRaw[] = crudResources
+  .filter(({ routePath }) => routePath !== '/stops')
+  .map(({ routePath, config, readOnly }) => ({
+    path: routePath.slice(1),
+    name: routePath.slice(1),
+    component: CrudView,
+    props: { config, readOnly },
+  }))
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: LoginView },
@@ -30,6 +35,7 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
       { path: '', redirect: '/stops' },
+      { path: 'stops', name: 'stops', component: StopsView },
       ...resourceChildren,
       { path: 'route-stops', name: 'route-stops', component: RouteStopsView },
       // Fase 6: operaciones de viaje + reportes — no son recursos CRUD
