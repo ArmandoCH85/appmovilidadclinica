@@ -34,14 +34,28 @@ export function useCrudResource<T extends { id: number }>(basePath: string) {
    * GET /admin/routes/{id}/stops, anidado bajo una ruta concreta. En vez de
    * inventar un endpoint que no existe, quien llama puede pasar el path de
    * listado real por llamada; create/update siguen usando `basePath` sin
-   * cambios. Default: usa `basePath` (comportamiento de siempre). */
-  async function list(listPathOverride?: string): Promise<void> {
+   * cambios. Default: usa `basePath` (comportamiento de siempre).
+   *
+   * `extraParams` (vehicle-seats): algunos listados aceptan filtros propios
+   * ademas de page/page_size (ej. GET /admin/vehicle-seats?vehicle_id=X,
+   * ver handler.go ListVehicleSeats). Opcional y aditivo — nadie mas lo usa
+   * todavia, no cambia el comportamiento de las demas vistas. */
+  async function list(
+    listPathOverride?: string,
+    extraParams?: Record<string, string | number>
+  ): Promise<void> {
     loading.value = true
     error.value = ''
     try {
+      const params = new URLSearchParams({ page: String(page.value), page_size: String(pageSize.value) })
+      if (extraParams) {
+        for (const [key, value] of Object.entries(extraParams)) {
+          if (value !== '' && value !== null && value !== undefined) params.set(key, String(value))
+        }
+      }
       const res = await request<PaginatedResponse<T>>(
         'GET',
-        `${listPathOverride ?? basePath}?page=${page.value}&page_size=${pageSize.value}`
+        `${listPathOverride ?? basePath}?${params.toString()}`
       )
       items.value = res.items
       page.value = res.page

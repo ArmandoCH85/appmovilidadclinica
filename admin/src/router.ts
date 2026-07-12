@@ -4,6 +4,7 @@ import LoginView from './components/LoginView.vue'
 import CrudView from './components/CrudView.vue'
 import StopsView from './components/StopsView.vue'
 import VehiclesView from './components/VehiclesView.vue'
+import VehicleSeatsView from './components/VehicleSeatsView.vue'
 import RouteStopsView from './components/RouteStopsView.vue'
 import OperationsView from './components/OperationsView.vue'
 import ReportsView from './components/ReportsView.vue'
@@ -11,12 +12,12 @@ import { useAuth } from './auth/useAuth'
 import { crudResources } from './resources'
 
 // Fase 5: las rutas CRUD "planas" salen de `crudResources` (resources.ts)
-// — data-driven, un solo bloque en vez de N literales (ponytail). `stops` y
-// `vehicles` se excluyen: tienen su propio componente rediseñado (rollout
-// sección por sección del patron visual — ver memoria
+// — data-driven, un solo bloque en vez de N literales (ponytail).
+// REDESIGNED_PATHS se excluyen: tienen su propio componente rediseñado
+// (rollout sección por sección del patron visual — ver memoria
 // "admin/crud-visual-redesign-pattern"). `route-stops` es otro caso especial
 // (sin GET plano en el backend, ver RouteStopsView.vue) — se registra aparte.
-const REDESIGNED_PATHS = new Set(['/stops', '/vehicles'])
+const REDESIGNED_PATHS = new Set(['/stops', '/vehicles', '/vehicle-seats'])
 const resourceChildren: RouteRecordRaw[] = crudResources
   .filter(({ routePath }) => !REDESIGNED_PATHS.has(routePath))
   .map(({ routePath, config, readOnly }) => ({
@@ -39,6 +40,7 @@ const routes: RouteRecordRaw[] = [
       { path: '', redirect: '/stops' },
       { path: 'stops', name: 'stops', component: StopsView },
       { path: 'vehicles', name: 'vehicles', component: VehiclesView },
+      { path: 'vehicle-seats', name: 'vehicle-seats', component: VehicleSeatsView },
       ...resourceChildren,
       { path: 'route-stops', name: 'route-stops', component: RouteStopsView },
       // Fase 6: operaciones de viaje + reportes — no son recursos CRUD
