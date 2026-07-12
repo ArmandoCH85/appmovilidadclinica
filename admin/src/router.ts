@@ -7,6 +7,7 @@ import VehiclesView from './components/VehiclesView.vue'
 import VehicleSeatsView from './components/VehicleSeatsView.vue'
 import UsersView from './components/UsersView.vue'
 import RoutesView from './components/RoutesView.vue'
+import RouteSegmentsView from './components/RouteSegmentsView.vue'
 import RouteStopsView from './components/RouteStopsView.vue'
 import OperationsView from './components/OperationsView.vue'
 import ReportsView from './components/ReportsView.vue'
@@ -19,7 +20,7 @@ import { crudResources } from './resources'
 // (rollout sección por sección del patron visual — ver memoria
 // "admin/crud-visual-redesign-pattern"). `route-stops` es otro caso especial
 // (sin GET plano en el backend, ver RouteStopsView.vue) — se registra aparte.
-const REDESIGNED_PATHS = new Set(['/stops', '/vehicles', '/vehicle-seats', '/users', '/routes'])
+const REDESIGNED_PATHS = new Set(['/stops', '/vehicles', '/vehicle-seats', '/users', '/routes', '/route-segments'])
 const resourceChildren: RouteRecordRaw[] = crudResources
   .filter(({ routePath }) => !REDESIGNED_PATHS.has(routePath))
   .map(({ routePath, config, readOnly }) => ({
@@ -45,6 +46,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'vehicle-seats', name: 'vehicle-seats', component: VehicleSeatsView },
       { path: 'users', name: 'users', component: UsersView },
       { path: 'routes', name: 'routes', component: RoutesView },
+      { path: 'route-segments', name: 'route-segments', component: RouteSegmentsView },
       ...resourceChildren,
       { path: 'route-stops', name: 'route-stops', component: RouteStopsView },
       // Fase 6: operaciones de viaje + reportes — no son recursos CRUD

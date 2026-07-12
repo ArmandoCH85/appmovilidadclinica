@@ -1184,6 +1184,12 @@ func (r *adminRepository) CreateRouteSegment(ctx context.Context, p RouteSegment
         VALUES (?, ?, ?, ?, ?)`,
 		p.RouteID, p.SegmentOrder, p.FromRouteStopID, p.ToRouteStopID, p.Active)
 	if err != nil {
+		// trg_route_segments_validate_insert (0001_schema.up.sql) rechaza
+		// con SIGNAL '45000' un tramo entre paradas no consecutivas o de
+		// otra ruta — sin esta traduccion cae como 500 generico.
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return RouteSegment{}, spErr
+		}
 		return RouteSegment{}, fmt.Errorf("creando tramo de ruta: %w", err)
 	}
 	id, err := res.LastInsertId()
@@ -1205,6 +1211,10 @@ func (r *adminRepository) UpdateRouteSegment(ctx context.Context, id int64, p Ro
          WHERE id = ?`,
 		p.RouteID, p.SegmentOrder, p.FromRouteStopID, p.ToRouteStopID, p.Active, id)
 	if err != nil {
+		// trg_route_segments_validate_update — misma regla que en el insert.
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return spErr
+		}
 		return fmt.Errorf("actualizando tramo de ruta: %w", err)
 	}
 	return ensureAffected(res, "tramo de ruta", id)
