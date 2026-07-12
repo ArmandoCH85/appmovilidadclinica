@@ -453,6 +453,7 @@ export const crudResources: Array<{ routePath: string; navLabel: string; group: 
   { routePath: '/users', navLabel: 'Usuarios', group: 'Catálogos maestros', icon: 'users', config: usersConfig },
   { routePath: '/routes', navLabel: 'Rutas', group: 'Rutas', icon: 'directions', config: routesConfig },
   { routePath: '/route-segments', navLabel: 'Segmentos de ruta', group: 'Rutas', icon: 'sitemap', config: routeSegmentsConfig },
+  { routePath: '/calendars', navLabel: 'Calendarios de servicio', group: 'Calendarios y tiempos', icon: 'calendar', config: calendarsConfig },
   { routePath: '/calendar-exceptions', navLabel: 'Excepciones de calendario', group: 'Calendarios y tiempos', icon: 'calendar-times', config: calendarExceptionsConfig },
   { routePath: '/travel-profiles', navLabel: 'Perfiles de tiempo', group: 'Calendarios y tiempos', icon: 'clock', config: travelProfilesConfig },
   { routePath: '/segment-times', navLabel: 'Tiempos de segmento', group: 'Calendarios y tiempos', icon: 'stopwatch', config: segmentTimesConfig },
