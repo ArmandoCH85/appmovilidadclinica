@@ -320,6 +320,9 @@ func (s *adminService) CreateCalendar(ctx context.Context, p CalendarCreateParam
 	if err := requireAdmin(ctx); err != nil {
 		return Calendar{}, err
 	}
+	if err := validateCalendarDateRange(p.ValidFrom, p.ValidUntil); err != nil {
+		return Calendar{}, err
+	}
 	return s.repo.CreateCalendar(ctx, p)
 }
 
@@ -328,7 +331,32 @@ func (s *adminService) UpdateCalendar(ctx context.Context, id int64, p CalendarU
 	if err := requireAdmin(ctx); err != nil {
 		return err
 	}
+	if _, err := s.repo.GetCalendar(ctx, id); err != nil {
+		return err
+	}
+	if err := validateCalendarDateRange(p.ValidFrom, p.ValidUntil); err != nil {
+		return err
+	}
 	return s.repo.UpdateCalendar(ctx, id, p)
+}
+
+// validateCalendarDateRange verifica formato YYYY-MM-DD y que valid_from sea
+// <= valid_until. La BD no tiene CHECK sobre el rango (es responsabilidad de
+// la app); sin esto el admin podria dejar un calendario "al reves" que
+// fn_service_operates nunca activaria.
+func validateCalendarDateRange(validFrom, validUntil string) error {
+	from, err := time.Parse("2006-01-02", validFrom)
+	if err != nil {
+		return apperror.ValidationError{Field: "valid_from", Reason: "formato invalido, use YYYY-MM-DD"}
+	}
+	until, err := time.Parse("2006-01-02", validUntil)
+	if err != nil {
+		return apperror.ValidationError{Field: "valid_until", Reason: "formato invalido, use YYYY-MM-DD"}
+	}
+	if from.After(until) {
+		return apperror.ValidationError{Field: "valid_until", Reason: "debe ser igual o posterior a valid_from"}
+	}
+	return nil
 }
 
 // ----------------------------------------------------------------------------

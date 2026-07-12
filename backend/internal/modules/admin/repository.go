@@ -223,21 +223,28 @@ type TemplateCreateParams struct {
 // TemplateUpdateParams actualiza una plantilla de viaje.
 type TemplateUpdateParams = TemplateCreateParams
 
-// Calendar refleja una fila de service_calendars.
+// Calendar refleja una fila de service_calendars. ExceptionCount y
+// TemplateCount se completan con subqueries en List/Get (son 0 en Create) para
+// que el admin vea de un vistazo cuantos registros lo referencian — caso
+// contrario desactivarlo podria romper la generacion de viajes sin aviso.
 type Calendar struct {
-	ID         int64  `json:"id"`
-	Code       string `json:"code"`
-	Name       string `json:"name"`
-	ValidFrom  string `json:"valid_from"`
-	ValidUntil string `json:"valid_until"`
-	Monday     bool   `json:"monday"`
-	Tuesday    bool   `json:"tuesday"`
-	Wednesday  bool   `json:"wednesday"`
-	Thursday   bool   `json:"thursday"`
-	Friday     bool   `json:"friday"`
-	Saturday   bool   `json:"saturday"`
-	Sunday     bool   `json:"sunday"`
-	Active     bool   `json:"active"`
+	ID             int64     `json:"id"`
+	Code           string    `json:"code"`
+	Name           string    `json:"name"`
+	ValidFrom      string    `json:"valid_from"`
+	ValidUntil     string    `json:"valid_until"`
+	Monday         bool      `json:"monday"`
+	Tuesday        bool      `json:"tuesday"`
+	Wednesday      bool      `json:"wednesday"`
+	Thursday       bool      `json:"thursday"`
+	Friday         bool      `json:"friday"`
+	Saturday       bool      `json:"saturday"`
+	Sunday         bool      `json:"sunday"`
+	Active         bool      `json:"active"`
+	ExceptionCount int       `json:"exception_count"`
+	TemplateCount  int       `json:"template_count"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // CalendarCreateParams crea un calendario de servicio.
@@ -1075,10 +1082,14 @@ func (r *adminRepository) UpdateTemplate(ctx context.Context, id int64, p Templa
 func (r *adminRepository) ListCalendars(ctx context.Context, pg types.PaginationParams) ([]Calendar, int, error) {
 	pg.Normalize()
 	const q = `
-        SELECT id, code, name, valid_from, valid_until,
-               monday, tuesday, wednesday, thursday, friday, saturday, sunday, active
-          FROM service_calendars
-         ORDER BY id
+        SELECT c.id, c.code, c.name, c.valid_from, c.valid_until,
+               c.monday, c.tuesday, c.wednesday, c.thursday, c.friday,
+               c.saturday, c.sunday, c.active,
+               (SELECT COUNT(*) FROM service_calendar_exceptions e WHERE e.calendar_id = c.id) AS exception_count,
+               (SELECT COUNT(*) FROM trip_templates t WHERE t.service_calendar_id = c.id) AS template_count,
+               c.created_at, c.updated_at
+          FROM service_calendars c
+         ORDER BY c.id
          LIMIT ? OFFSET ?`
 	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
 	if err != nil {
@@ -1092,7 +1103,9 @@ func (r *adminRepository) ListCalendars(ctx context.Context, pg types.Pagination
 		var validFrom, validUntil sql.NullString
 		if err := rows.Scan(&c.ID, &c.Code, &c.Name, &validFrom, &validUntil,
 			&c.Monday, &c.Tuesday, &c.Wednesday, &c.Thursday, &c.Friday,
-			&c.Saturday, &c.Sunday, &c.Active); err != nil {
+			&c.Saturday, &c.Sunday, &c.Active,
+			&c.ExceptionCount, &c.TemplateCount,
+			&c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, 0, fmt.Errorf("escaneando calendario: %w", err)
 		}
 		if validFrom.Valid {
@@ -1113,18 +1126,25 @@ func (r *adminRepository) ListCalendars(ctx context.Context, pg types.Pagination
 	return cals, total, nil
 }
 
-// GetCalendar devuelve un calendario por ID.
+// GetCalendar devuelve un calendario por ID con conteos de referencias.
 func (r *adminRepository) GetCalendar(ctx context.Context, id int64) (Calendar, error) {
 	const q = `
-        SELECT id, code, name, valid_from, valid_until,
-               monday, tuesday, wednesday, thursday, friday, saturday, sunday, active
-          FROM service_calendars
-         WHERE id = ?`
+        SELECT c.id, c.code, c.name, c.valid_from, c.valid_until,
+               c.monday, c.tuesday, c.wednesday, c.thursday, c.friday,
+               c.saturday, c.sunday, c.active,
+               (SELECT COUNT(*) FROM service_calendar_exceptions e WHERE e.calendar_id = c.id) AS exception_count,
+               (SELECT COUNT(*) FROM trip_templates t WHERE t.service_calendar_id = c.id) AS template_count,
+               c.created_at, c.updated_at
+          FROM service_calendars c
+         WHERE c.id = ?`
 	var c Calendar
 	var validFrom, validUntil sql.NullString
-	if err := r.db.QueryRowContext(ctx, q, id).Scan(&c.ID, &c.Code, &c.Name, &validFrom, &validUntil,
+	err := r.db.QueryRowContext(ctx, q, id).Scan(&c.ID, &c.Code, &c.Name, &validFrom, &validUntil,
 		&c.Monday, &c.Tuesday, &c.Wednesday, &c.Thursday, &c.Friday,
-		&c.Saturday, &c.Sunday, &c.Active); err != nil {
+		&c.Saturday, &c.Sunday, &c.Active,
+		&c.ExceptionCount, &c.TemplateCount,
+		&c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return Calendar{}, apperror.NotFoundError{Entity: "calendario", ID: id}
 		}
@@ -1139,7 +1159,8 @@ func (r *adminRepository) GetCalendar(ctx context.Context, id int64) (Calendar, 
 	return c, nil
 }
 
-// CreateCalendar inserta un calendario de servicio.
+// CreateCalendar inserta un calendario y devuelve el row completo
+// (releyendolo via GetCalendar) con timestamps + conteos consistentes.
 func (r *adminRepository) CreateCalendar(ctx context.Context, p CalendarCreateParams) (Calendar, error) {
 	res, err := r.db.ExecContext(ctx, `
         INSERT INTO service_calendars (code, name, valid_from, valid_until,
@@ -1149,21 +1170,17 @@ func (r *adminRepository) CreateCalendar(ctx context.Context, p CalendarCreatePa
 		p.Monday, p.Tuesday, p.Wednesday, p.Thursday, p.Friday, p.Saturday,
 		p.Sunday, p.Active)
 	if err != nil {
-		return Calendar{}, fmt.Errorf("creando calendario: %w", err)
+		return Calendar{}, dberr.TranslatePlainSQL(err, "calendario", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
 		return Calendar{}, fmt.Errorf("obteniendo id de calendario: %w", err)
 	}
-	return Calendar{
-		ID: id, Code: p.Code, Name: p.Name, ValidFrom: p.ValidFrom,
-		ValidUntil: p.ValidUntil, Monday: p.Monday, Tuesday: p.Tuesday,
-		Wednesday: p.Wednesday, Thursday: p.Thursday, Friday: p.Friday,
-		Saturday: p.Saturday, Sunday: p.Sunday, Active: p.Active,
-	}, nil
+	return r.GetCalendar(ctx, id)
 }
 
-// UpdateCalendar actualiza un calendario por id.
+// UpdateCalendar actualiza un calendario por id y traduce errores MySQL
+// (UNIQUE duplicado en code -> 409).
 func (r *adminRepository) UpdateCalendar(ctx context.Context, id int64, p CalendarUpdateParams) error {
 	res, err := r.db.ExecContext(ctx, `
         UPDATE service_calendars
@@ -1175,7 +1192,7 @@ func (r *adminRepository) UpdateCalendar(ctx context.Context, id int64, p Calend
 		p.Monday, p.Tuesday, p.Wednesday, p.Thursday, p.Friday, p.Saturday,
 		p.Sunday, p.Active, id)
 	if err != nil {
-		return fmt.Errorf("actualizando calendario: %w", err)
+		return dberr.TranslatePlainSQL(err, "calendario", "")
 	}
 	return ensureAffected(res, "calendario", id)
 }

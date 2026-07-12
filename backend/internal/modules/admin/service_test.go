@@ -40,6 +40,12 @@ type mockAdminRepo struct {
 	getCalendarExceptionErr   error
 	createCalendarExceptionCalls int
 	updateCalendarExceptionCalls int
+
+	// Stubs configurables para tests de calendars.
+	createCalendarResult Calendar
+	createCalendarErr    error
+	createCalendarCalls  int
+	updateCalendarCalls  int
 }
 
 func (m *mockAdminRepo) ListStops(_ context.Context, _ types.PaginationParams) ([]Stop, int, error) {
@@ -109,9 +115,11 @@ func (m *mockAdminRepo) ListCalendars(_ context.Context, _ types.PaginationParam
 	return nil, 0, nil
 }
 func (m *mockAdminRepo) CreateCalendar(_ context.Context, _ CalendarCreateParams) (Calendar, error) {
-	return Calendar{}, nil
+	m.createCalendarCalls++
+	return m.createCalendarResult, m.createCalendarErr
 }
 func (m *mockAdminRepo) UpdateCalendar(_ context.Context, _ int64, _ CalendarUpdateParams) error {
+	m.updateCalendarCalls++
 	return nil
 }
 func (m *mockAdminRepo) ListRouteSegments(_ context.Context, _ types.PaginationParams) ([]RouteSegment, int, error) {
@@ -406,6 +414,87 @@ func TestUpdateCalendarException_NotFound_Returns404(t *testing.T) {
 	require.True(t, errors.As(err, &nfe), "excepcion inexistente debe mapear a NotFoundError (404)")
 	assert.Equal(t, 0, repo.updateCalendarExceptionCalls,
 		"no debe invocar al repositorio si la excepcion no existe")
+}
+
+// ----------------------------------------------------------------------------
+// Calendarios de servicio — validaciones de rango y existencia
+// ----------------------------------------------------------------------------
+
+func TestCreateCalendar_DateRangeInverted_ReturnsValidationError(t *testing.T) {
+	repo := &mockAdminRepo{
+		createCalendarResult: Calendar{ID: 1, Code: "C1", Name: "Test"},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.CreateCalendar(ctxWithRole(t, RoleADMIN), CalendarCreateParams{
+		Code: "C1", Name: "Test",
+		ValidFrom: "2024-12-31", ValidUntil: "2024-01-01",
+	})
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "rango invertido debe mapear a ValidationError (422)")
+	assert.Equal(t, "valid_until", ve.Field)
+	assert.Equal(t, 0, repo.createCalendarCalls,
+		"no debe invocar al repositorio si el rango es invalido")
+}
+
+func TestCreateCalendar_InvalidDateFormat_ReturnsValidationError(t *testing.T) {
+	svc := NewService(&mockAdminRepo{})
+
+	_, err := svc.CreateCalendar(ctxWithRole(t, RoleADMIN), CalendarCreateParams{
+		Code: "C1", Name: "Test",
+		ValidFrom: "31-12-2024", ValidUntil: "2025-01-01",
+	})
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "fecha con formato invalido debe mapear a ValidationError (422)")
+	assert.Equal(t, "valid_from", ve.Field)
+}
+
+func TestCreateCalendar_ValidRange_InvokesRepo(t *testing.T) {
+	repo := &mockAdminRepo{
+		createCalendarResult: Calendar{ID: 1, Code: "C1", Name: "Test"},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.CreateCalendar(ctxWithRole(t, RoleADMIN), CalendarCreateParams{
+		Code: "C1", Name: "Test",
+		ValidFrom: "2024-01-01", ValidUntil: "2024-12-31",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, repo.createCalendarCalls)
+}
+
+func TestUpdateCalendar_NotFound_Returns404(t *testing.T) {
+	repo := &mockAdminRepo{
+		getCalendarErr: apperror.NotFoundError{Entity: "calendario", ID: 99},
+	}
+	svc := NewService(repo)
+
+	err := svc.UpdateCalendar(ctxWithRole(t, RoleADMIN), 99, CalendarUpdateParams{
+		Code: "C1", Name: "Test",
+		ValidFrom: "2024-01-01", ValidUntil: "2024-12-31",
+	})
+	require.Error(t, err)
+	var nfe apperror.NotFoundError
+	require.True(t, errors.As(err, &nfe), "calendario inexistente debe mapear a NotFoundError (404)")
+	assert.Equal(t, 0, repo.updateCalendarCalls)
+}
+
+func TestUpdateCalendar_InvertedRange_Returns422(t *testing.T) {
+	repo := &mockAdminRepo{
+		getCalendarResult: Calendar{ID: 1, Code: "C1", Name: "Test"},
+	}
+	svc := NewService(repo)
+
+	err := svc.UpdateCalendar(ctxWithRole(t, RoleADMIN), 1, CalendarUpdateParams{
+		Code: "C1", Name: "Test",
+		ValidFrom: "2024-12-31", ValidUntil: "2024-01-01",
+	})
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "rango invertido debe mapear a ValidationError (422)")
+	assert.Equal(t, 0, repo.updateCalendarCalls)
 }
 
 var _ AdminRepository = (*mockAdminRepo)(nil)
