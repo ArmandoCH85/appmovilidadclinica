@@ -66,6 +66,7 @@ const emit = defineEmits<{ navigate: [] }>()
   border: 0;
 }
 .app-navigation :deep(.p-accordionheader) {
+  box-sizing: border-box;
   width: 100%;
   min-height: 2.4rem;
   display: flex;
