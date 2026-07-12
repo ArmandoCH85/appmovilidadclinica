@@ -166,7 +166,7 @@ async function confirmGenerate(): Promise<void> {
             :options="STATUS_OPTIONS"
             optionLabel="label"
             optionValue="value"
-            placeholder="Elegí un estado"
+            placeholder="Elija un estado"
             :aria-invalid="!!statusFieldErrors.status"
             :aria-describedby="statusFieldErrors.status ? 'op-status-error' : undefined"
           />
@@ -227,7 +227,7 @@ async function confirmGenerate(): Promise<void> {
       :style="{ width: '26rem' }"
     >
       <p>
-        ¿Confirmás cambiar el estado del viaje #{{ statusForm.tripId }} a "{{
+        ¿Confirma cambiar el estado del viaje #{{ statusForm.tripId }} a "{{
           statusForm.status ? statusLabel(statusForm.status) : ''
         }}"? La acción se aplica de inmediato en producción.
       </p>
@@ -247,7 +247,7 @@ async function confirmGenerate(): Promise<void> {
     >
       <p>
         Esto genera una instancia real de viaje para la plantilla #{{ generateForm.templateId }} el
-        {{ generateForm.serviceDate }}. No hay vista previa: la acción impacta producción de inmediato. ¿Confirmás?
+        {{ generateForm.serviceDate }}. No hay vista previa: la acción impacta producción de inmediato. ¿Confirma?
       </p>
       <template #footer>
         <Button :label="LABELS.cancel" severity="secondary" text @click="cancelGenerate" />
@@ -290,7 +290,8 @@ async function confirmGenerate(): Promise<void> {
 .native-date {
   font: inherit;
   padding: 0.5rem 0.75rem;
-  border: 1px solid rgba(0, 0, 0, 0.3);
+  /* Fase 7: mismo fix de contraste que CrudView.vue (ver comentario ahí). */
+  border: 1px solid #6b7280;
   border-radius: 6px;
   background: transparent;
   color: inherit;

@@ -342,7 +342,7 @@ async function confirmDeactivate(): Promise<void> {
     </Dialog>
 
     <Dialog :visible="confirmTarget !== null" modal :closable="false" header="Confirmar" :style="{ width: '24rem' }">
-      <p>¿Desactivar este {{ props.config.labelSingular }}? Podés revertirlo editándolo luego.</p>
+      <p>¿Desactivar este {{ props.config.labelSingular }}? Podrá revertirlo editándolo luego.</p>
       <template #footer>
         <Button :label="LABELS.cancel" severity="secondary" text @click="cancelDeactivate" />
         <Button
@@ -384,7 +384,10 @@ async function confirmDeactivate(): Promise<void> {
 .native-date {
   font: inherit;
   padding: 0.5rem 0.75rem;
-  border: 1px solid rgba(0, 0, 0, 0.3);
+  /* Fase 7: rgba(0,0,0,.3) sobre fondo blanco da ~2.08:1 (falla 3:1 no-text
+     contrast). #6b7280 (mismo tono que el input nativo de LoginView) da
+     ~4.83:1 en claro y ~3.68:1 en oscuro sin necesitar override. */
+  border: 1px solid #6b7280;
   border-radius: 6px;
   background: transparent;
   color: inherit;

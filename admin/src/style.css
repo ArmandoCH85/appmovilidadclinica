@@ -13,6 +13,10 @@
   :root {
     --color-bg: #16181d;
     --color-text: #e7e7ea;
+    /* Fase 7: el azul de foco de modo claro (#1d4ed8) da ~2.65:1 contra este
+       fondo oscuro — por debajo del 3:1 exigido para indicadores de foco
+       (WCAG 2.2 SC 1.4.11). #60a5fa da ~6.98:1. */
+    --color-focus-ring: #60a5fa;
     color-scheme: dark;
   }
 }

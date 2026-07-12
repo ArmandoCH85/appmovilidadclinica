@@ -49,6 +49,7 @@ function onConfirmSessionExpired() {
 
 <template>
   <div class="app-shell">
+    <a href="#app-content" class="skip-link">Saltar al contenido</a>
     <header class="app-header">
       <span class="app-title">{{ APP_TITLE }}</span>
       <nav aria-label="Cuenta">
@@ -73,7 +74,7 @@ function onConfirmSessionExpired() {
         </ul>
       </nav>
 
-      <main class="app-content">
+      <main id="app-content" class="app-content">
         <RouterView />
       </main>
     </div>
@@ -94,6 +95,21 @@ function onConfirmSessionExpired() {
 </template>
 
 <style scoped>
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1000;
+  padding: 0.5rem 1rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 6px 6px;
+}
+.skip-link:focus {
+  left: 0;
+}
 .app-shell {
   min-height: 100vh;
   display: flex;

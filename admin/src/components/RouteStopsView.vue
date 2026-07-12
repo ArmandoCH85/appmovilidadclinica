@@ -35,6 +35,7 @@ onMounted(async () => {
 
 <template>
   <section class="route-stops-view">
+    <h1>Paradas de ruta</h1>
     <div class="route-picker">
       <label for="route-stops-route-select">Ruta</label>
       <Select
@@ -43,7 +44,7 @@ onMounted(async () => {
         :options="routes"
         optionLabel="name"
         optionValue="id"
-        placeholder="Elegí una ruta para ver sus paradas"
+        placeholder="Elija una ruta para ver sus paradas"
         :loading="loadingRoutes"
       />
     </div>
@@ -56,7 +57,7 @@ onMounted(async () => {
       :config="routeStopsConfig"
       :list-path="`/admin/routes/${selectedRouteId}/stops`"
     />
-    <p v-else>Elegí una ruta arriba para ver y administrar sus paradas.</p>
+    <p v-else>Elija una ruta arriba para ver y administrar sus paradas.</p>
   </section>
 </template>
 

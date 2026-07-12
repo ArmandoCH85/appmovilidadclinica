@@ -193,7 +193,7 @@ onMounted(() => {
           <template #body="{ data }">{{ formatCell(data.reservation_code) }}</template>
         </Column>
       </DataTable>
-      <p v-else>Ingresá un ID de viaje para ver la disponibilidad de sus asientos.</p>
+      <p v-else>Ingrese un ID de viaje para ver la disponibilidad de sus asientos.</p>
     </section>
   </section>
 </template>
