@@ -12,11 +12,11 @@ import { crudResources } from './resources'
 // — data-driven, un solo bloque en vez de 6 literales (ponytail). `route-stops`
 // es la 7ma pero no es generica (sin GET plano en el backend, ver
 // RouteStopsView.vue) — se registra aparte con su propio componente.
-const resourceChildren: RouteRecordRaw[] = crudResources.map(({ routePath, config }) => ({
+const resourceChildren: RouteRecordRaw[] = crudResources.map(({ routePath, config, readOnly }) => ({
   path: routePath.slice(1),
   name: routePath.slice(1),
   component: CrudView,
-  props: { config },
+  props: { config, readOnly },
 }))
 
 const routes: RouteRecordRaw[] = [

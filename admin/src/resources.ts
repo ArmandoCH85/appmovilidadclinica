@@ -353,11 +353,107 @@ export const segmentTimesConfig: CrudResourceConfig = {
   ],
 }
 
-/** Los recursos administrables, en el orden del route table real
- * (handler.go RegisterRoutes). Consumido por `router.ts` (rutas) y
- * `AppLayout.vue` (nav) para no repetir bloques literales — ponytail: la
- * data vive una vez, ambos consumidores mapean sobre el mismo array. */
-export const crudResources: Array<{ routePath: string; navLabel: string; config: CrudResourceConfig }> = [
+export const vehicleSeatsConfig: CrudResourceConfig = {
+  path: '/admin/vehicle-seats',
+  labelSingular: 'asiento',
+  labelPlural: 'Asientos de vehículos',
+  columns: [
+    { key: 'vehicle_id', label: 'ID de vehículo' },
+    { key: 'seat_number', label: 'Número' },
+    { key: 'seat_label', label: 'Etiqueta' },
+    { key: 'status', label: 'Estado' },
+  ],
+  fields: [
+    { key: 'vehicle_id', label: 'ID de vehículo', type: 'number', required: true },
+    { key: 'seat_number', label: 'Número', type: 'number', required: true },
+    { key: 'seat_label', label: 'Etiqueta', type: 'text', required: true, maxLength: 10 },
+    {
+      key: 'status',
+      label: 'Estado',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'ACTIVE', label: 'Activo' },
+        { value: 'BLOCKED', label: 'Bloqueado' },
+        { value: 'RETIRED', label: 'Retirado' },
+      ],
+    },
+    { key: 'block_reason', label: 'Motivo de bloqueo', type: 'textarea', maxLength: 255 },
+  ],
+}
+
+export const calendarExceptionsConfig: CrudResourceConfig = {
+  path: '/admin/calendar-exceptions',
+  labelSingular: 'excepción',
+  labelPlural: 'Excepciones de calendario',
+  columns: [
+    { key: 'calendar_id', label: 'ID de calendario' },
+    { key: 'exception_date', label: 'Fecha' },
+    { key: 'operation', label: 'Operación' },
+    { key: 'reason', label: 'Motivo' },
+  ],
+  fields: [
+    { key: 'calendar_id', label: 'ID de calendario', type: 'number', required: true },
+    { key: 'exception_date', label: 'Fecha', type: 'date', required: true },
+    {
+      key: 'operation',
+      label: 'Operación',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'ADD', label: 'Agregar' },
+        { value: 'REMOVE', label: 'Remover' },
+      ],
+    },
+    { key: 'reason', label: 'Motivo', type: 'textarea', maxLength: 255 },
+  ],
+}
+
+export const tripsConfig: CrudResourceConfig = {
+  path: '/admin/trips',
+  labelSingular: 'viaje',
+  labelPlural: 'Viajes',
+  columns: [
+    { key: 'trip_code', label: 'Código' },
+    { key: 'service_date', label: 'Fecha' },
+    { key: 'status', label: 'Estado' },
+    { key: 'vehicle_id', label: 'ID de vehículo' },
+    { key: 'driver_id', label: 'ID de conductor' },
+  ],
+  fields: [],
+}
+
+export const incidentsConfig: CrudResourceConfig = {
+  path: '/admin/incidents',
+  labelSingular: 'incidencia',
+  labelPlural: 'Incidencias',
+  columns: [
+    { key: 'id', label: 'ID' },
+    { key: 'trip_id', label: 'ID de viaje' },
+    { key: 'incident_type', label: 'Tipo' },
+    { key: 'status', label: 'Estado' },
+    { key: 'reported_at', label: 'Reportado' },
+  ],
+  fields: [],
+}
+
+export const generationRunsConfig: CrudResourceConfig = {
+  path: '/admin/generation-runs',
+  labelSingular: 'corrida',
+  labelPlural: 'Corridas de generación',
+  columns: [
+    { key: 'id', label: 'ID' },
+    { key: 'window_start', label: 'Desde' },
+    { key: 'window_end', label: 'Hasta' },
+    { key: 'status', label: 'Estado' },
+    { key: 'generated_count', label: 'Generados' },
+    { key: 'skipped_count', label: 'Omitidos' },
+    { key: 'failed_count', label: 'Fallidos' },
+  ],
+  fields: [],
+}
+
+export const crudResources: Array<{ routePath: string; navLabel: string; config: CrudResourceConfig; readOnly?: boolean }> = [
   { routePath: '/stops', navLabel: 'Paradas', config: stopsConfig },
   { routePath: '/users', navLabel: 'Usuarios', config: usersConfig },
   { routePath: '/vehicles', navLabel: 'Vehículos', config: vehiclesConfig },
@@ -367,4 +463,9 @@ export const crudResources: Array<{ routePath: string; navLabel: string; config:
   { routePath: '/route-segments', navLabel: 'Segmentos de ruta', config: routeSegmentsConfig },
   { routePath: '/travel-profiles', navLabel: 'Perfiles de tiempo', config: travelProfilesConfig },
   { routePath: '/segment-times', navLabel: 'Tiempos de segmento', config: segmentTimesConfig },
+  { routePath: '/vehicle-seats', navLabel: 'Asientos', config: vehicleSeatsConfig },
+  { routePath: '/calendar-exceptions', navLabel: 'Excepciones', config: calendarExceptionsConfig },
+  { routePath: '/trips', navLabel: 'Viajes', config: tripsConfig, readOnly: true },
+  { routePath: '/incidents', navLabel: 'Incidencias', config: incidentsConfig, readOnly: true },
+  { routePath: '/generation-runs', navLabel: 'Corridas', config: generationRunsConfig, readOnly: true },
 ]

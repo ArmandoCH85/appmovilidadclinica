@@ -21,7 +21,7 @@ import type { CrudField, CrudResourceConfig } from '../resources'
 // `listPath` (Fase 5): override del path de listado para recursos cuyo
 // GET real no coincide con `config.path` (route-stops — ver RouteStopsView.vue
 // y el comentario en api/crud.ts `list()`). Default: usa `config.path`.
-const props = defineProps<{ config: CrudResourceConfig; listPath?: string }>()
+const props = defineProps<{ config: CrudResourceConfig; listPath?: string; readOnly?: boolean }>()
 
 type Row = Record<string, any>
 type ResourceRow = Row & { id: number }
@@ -206,7 +206,7 @@ async function confirmDeactivate(): Promise<void> {
   <section class="crud-view">
     <header class="crud-header">
       <h1>{{ props.config.labelPlural }}</h1>
-      <Button :label="`Nuevo ${props.config.labelSingular}`" icon="pi pi-plus" @click="openCreate" />
+      <Button v-if="!props.readOnly" :label="`Nuevo ${props.config.labelSingular}`" icon="pi pi-plus" @click="openCreate" />
     </header>
 
     <p v-if="error" role="alert" class="crud-error">
@@ -233,7 +233,7 @@ async function confirmDeactivate(): Promise<void> {
         <template #body="{ data }">{{ formatCell(data[col.key]) }}</template>
       </Column>
 
-      <Column header="Acciones" :exportable="false">
+      <Column v-if="!props.readOnly" header="Acciones" :exportable="false">
         <template #body="{ data }">
           <Button
             icon="pi pi-pencil"
