@@ -19,6 +19,7 @@ const navItems: Array<{ to: string; label: string; group: NavGroup; icon: string
   { to: '/route-stops', label: 'Paradas de ruta', group: 'Rutas', icon: 'map' },
   { to: '/operations', label: 'Operaciones', group: 'Operación diaria', icon: 'cog' },
   { to: '/reports', label: 'Reportes', group: 'Reportes', icon: 'chart-bar' },
+  { to: '/help', label: 'Ayuda', group: 'Reportes', icon: 'question-circle' },
 ]
 
 const navGroups = NAV_GROUP_ORDER.map((group) => ({

@@ -19,6 +19,7 @@ import OperationsView from './components/OperationsView.vue'
 import ReportsView from './components/ReportsView.vue'
 import TripsView from './components/TripsView.vue'
 import TemplatesView from './components/TemplatesView.vue'
+import HelpView from './components/HelpView.vue'
 import { useAuth } from './auth/useAuth'
 import { crudResources } from './resources'
 
@@ -37,6 +38,7 @@ const REDESIGNED_PATHS = new Set([
   '/route-segments',
   '/calendars',
   '/calendar-exceptions',
+  '/travel-profiles',
   '/generation-runs',
   '/incidents',
   '/reports',
@@ -84,6 +86,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'operations', name: 'operations', component: OperationsView },
       { path: 'reports', name: 'reports', component: ReportsView },
       { path: 'trips', name: 'trips', component: TripsView },
+      { path: 'help', name: 'help', component: HelpView },
     ],
   },
 ]
