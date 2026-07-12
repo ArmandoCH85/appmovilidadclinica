@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name=".PassengerApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Passenger"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <!--
+          allowBackup=false: la sesion (JWT) y el qr_token viven en DataStore/
+          Room — un backup automatico de Android podria restaurar un JWT
+          expirado o, peor, exponer el qr_token en un backup en la nube sin
+          cifrado dedicado. Se prefiere forzar login nuevo a arriesgar eso.
+        -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Passenger">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Tema XML minimo, solo para la ventana antes de que Compose tome
+      control (splash/launch) — el theming real (colores, tipografia) vive
+      en presentation/theme/Theme.kt via Material3, no aca.
+    -->
+    <style name="Theme.Passenger" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

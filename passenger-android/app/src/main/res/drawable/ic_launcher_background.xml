@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Background solido: Emerald700 (0xFF047857) — mismo color que el primary
+  en lightColorScheme de presentation/theme/Theme.kt. Consistencia de marca
+  con el panel admin (AdminPreset en admin/src/main.ts).
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FF047857" />
+</shape>

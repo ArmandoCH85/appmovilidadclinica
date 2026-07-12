@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Fuerza HTTPS en todo dominio, sin excepciones de cleartext ni de
+  certificados custom — el backend (sitechfactura.site) ya sirve con
+  Let's Encrypt (ver DEPLOY.md), no hay motivo para relajar esto.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

@@ -1,0 +1,6 @@
+# Gradle / Android Studio local — no van al repo
+.gradle/
+local.properties
+*.iml
+captures/
+.cxx/

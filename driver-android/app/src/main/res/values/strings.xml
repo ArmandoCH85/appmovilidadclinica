@@ -1,0 +1,99 @@
+<resources>
+    <string name="app_name">Conductor App</string>
+
+    <!-- Login -->
+    <string name="login_title">Iniciar Sesión</string>
+    <string name="login_subtitle">Conductor</string>
+    <string name="login_document_label">Número de documento</string>
+    <string name="login_password_label">Contraseña</string>
+    <string name="login_button">Ingresar</string>
+    <string name="login_error_credentials">Documento o contraseña incorrectos</string>
+    <string name="login_error_role">Esta app es para conductores</string>
+    <string name="login_error_network">Sin conexión a internet</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Viajes del día</string>
+    <string name="dashboard_empty">No tienes viajes asignados para hoy</string>
+    <string name="dashboard_error">Error al cargar los viajes</string>
+    <string name="dashboard_retry">Reintentar</string>
+    <string name="dashboard_trip_passengers">%d pasajeros</string>
+    <string name="dashboard_trip_direction_ida">IDA</string>
+    <string name="dashboard_trip_direction_vuelta">VUELTA</string>
+
+    <!-- Trip Detail -->
+    <string name="trip_detail_title">Detalle del viaje</string>
+    <string name="trip_detail_passengers">Pasajeros</string>
+    <string name="trip_detail_stops">Paradas</string>
+    <string name="trip_detail_empty_passengers">No hay pasajeros en este viaje</string>
+    <string name="trip_detail_action_board">Abordar</string>
+    <string name="trip_detail_action_no_show">No presentado</string>
+    <string name="trip_detail_action_alight">Bajar</string>
+    <string name="trip_detail_mark_arrival">Marcar llegada</string>
+    <string name="trip_detail_scan_qr">Escanear QR</string>
+    <string name="trip_detail_report_incident">Reportar incidencia</string>
+    <string name="trip_detail_success_board">Pasajero abordado</string>
+    <string name="trip_detail_success_no_show">No presentado registrado</string>
+    <string name="trip_detail_success_alight">Bajada registrada</string>
+    <string name="trip_detail_success_arrival">Llegada marcada</string>
+
+    <!-- QR Scan -->
+    <string name="qr_scan_title">Escanear QR</string>
+    <string name="qr_scan_instructions">Apunta la cámara al código QR del pasajero</string>
+    <string name="qr_scan_invalid">QR inválido</string>
+    <string name="qr_scan_permission_required">Se requiere permiso de cámara</string>
+    <string name="qr_scan_permission_rationale">Necesitamos acceso a la cámara para escanear los códigos QR de los pasajeros.</string>
+    <string name="qr_scan_open_settings">Abrir configuración</string>
+
+    <!-- Incident Report -->
+    <string name="incident_title">Reportar incidencia</string>
+    <string name="incident_type_label">Tipo de incidencia</string>
+    <string name="incident_description_label">Descripción</string>
+    <string name="incident_description_hint">Describe la incidencia (máx. 1000 caracteres)</string>
+    <string name="incident_submit">Enviar reporte</string>
+    <string name="incident_success">Incidencia reportada</string>
+    <string name="incident_error">Error al reportar incidencia</string>
+    <string name="incident_type_breakdown">Avería</string>
+    <string name="incident_type_delay">Retraso</string>
+    <string name="incident_type_accident">Accidente</string>
+    <string name="incident_type_other">Otro</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Perfil</string>
+    <string name="profile_employee_code">Código: %s</string>
+    <string name="profile_department">Departamento: %s</string>
+    <string name="profile_phone">Teléfono: %s</string>
+    <string name="profile_license">Licencia: %s (%s)</string>
+    <string name="profile_license_expires">Vence: %s</string>
+    <string name="profile_today_trips">Viajes hoy: %d</string>
+    <string name="profile_logout">Cerrar sesión</string>
+    <string name="profile_logout_confirm">¿Estás seguro de que deseas cerrar sesión?</string>
+    <string name="profile_version">Versión %s</string>
+
+    <!-- Session -->
+    <string name="session_expired">Sesión expirada</string>
+    <string name="session_expiring">Tu sesión expira pronto</string>
+    <string name="session_expiring_countdown">Sesión expira en %d min</string>
+
+    <!-- Common -->
+    <string name="app_name_short">Conductor</string>
+    <string name="loading">Cargando…</string>
+    <string name="error_generic">Ha ocurrido un error</string>
+    <string name="error_network">Sin conexión a internet</string>
+    <string name="error_unauthorized">No autorizado</string>
+    <string name="error_forbidden">Acceso denegado</string>
+    <string name="error_not_found">No encontrado</string>
+    <string name="error_conflict">Conflicto</string>
+    <string name="error_validation">Error de validación</string>
+    <string name="cancel">Cancelar</string>
+    <string name="confirm">Confirmar</string>
+    <string name="back">Atrás</string>
+    <string name="save">Guardar</string>
+    <string name="delete">Eliminar</string>
+    <string name="edit">Editar</string>
+    <string name="search">Buscar</string>
+    <string name="filter">Filtrar</string>
+    <string name="refresh">Actualizar</string>
+    <string name="retry">Reintentar</string>
+    <string name="done">Listo</string>
+    <string name="close">Cerrar</string>
+</resources>
