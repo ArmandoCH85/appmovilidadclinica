@@ -74,7 +74,7 @@ function onConfirmSessionExpired() {
         </ul>
       </nav>
 
-      <main id="app-content" class="app-content">
+      <main id="app-content" class="app-content" tabindex="-1">
         <RouterView />
       </main>
     </div>
