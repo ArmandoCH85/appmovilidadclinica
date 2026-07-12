@@ -96,6 +96,12 @@ const emit = defineEmits<{ navigate: [] }>()
   width: 0.65rem;
   height: 0.65rem;
   flex-shrink: 0;
+  color: var(--nav-muted) !important;
+}
+.app-navigation :deep(.p-accordionheader:hover .p-accordionheader-toggle-icon),
+.app-navigation :deep(.p-accordionheader:focus-visible .p-accordionheader-toggle-icon),
+.app-navigation :deep(.p-accordionpanel[data-p-active='true'] .p-accordionheader-toggle-icon) {
+  color: var(--nav-text) !important;
 }
 .app-navigation :deep(.p-accordioncontent-content) {
   padding: 0 !important;
