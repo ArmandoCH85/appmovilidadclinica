@@ -65,9 +65,23 @@ func RunMigrations(db *sql.DB, migrationsDir string) error {
 // buffer acumulado: eso permite que un CREATE PROCEDURE con ";" internos
 // solo se corte en el "$$" final.
 func splitAndExec(db *sql.DB, content string) error {
+	for _, s := range splitStatements(content) {
+		if _, err := db.Exec(s); err != nil {
+			return fmt.Errorf("ejecutando sentencia: %w\nsentencia: %s", err, s)
+		}
+	}
+	return nil
+}
+
+// splitStatements trocea content en sentencias individuales siguiendo las
+// directivas DELIMITER, ya recortado el delimitador final (";" o "$$") de
+// cada sentencia: MariaDB no entiende el delimitador custom como sintaxis,
+// solo el cliente mysql CLI lo interpreta.
+func splitStatements(content string) []string {
 	lines := strings.Split(content, "\n")
 	delimiter := ";"
 	var stmt strings.Builder
+	var statements []string
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -89,19 +103,16 @@ func splitAndExec(db *sql.DB, content string) error {
 		}
 
 		s := strings.TrimSpace(stmt.String())
+		s = strings.TrimSpace(strings.TrimSuffix(s, delimiter))
 		if s != "" {
-			if _, err := db.Exec(s); err != nil {
-				return fmt.Errorf("ejecutando sentencia: %w\nsentencia: %s", err, s)
-			}
+			statements = append(statements, s)
 		}
 		stmt.Reset()
 	}
 
 	// Resto final sin separador (ficheros sin salto de linea al final).
 	if s := strings.TrimSpace(stmt.String()); s != "" {
-		if _, err := db.Exec(s); err != nil {
-			return fmt.Errorf("ejecutando sentencia final: %w\nsentencia: %s", err, s)
-		}
+		statements = append(statements, s)
 	}
-	return nil
+	return statements
 }

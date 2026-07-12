@@ -21,12 +21,17 @@ Fecha: 2026-07-11. Servidor: RackNerd VPS, Ubuntu 24.04, 1 vCPU / 1.9GB RAM.
   (ej. `chk_transport_routes_pair` con self-FK).
   La validación queda en `go-playground/validator` del backend.
 
-### `backend/migrations/0001_schema.up.sql` + `0002_cancel_sps.up.sql`
-- Comentados los bloques entre `DELIMITER $$` y `DELIMITER ;`
-  (TRIGGERS, FUNCTIONS y STORED PROCEDURES).
-  `database/sql` no procesa la directiva `DELIMITER` (es del cliente mysql CLI);
-  los bloques BEGIN...END con `;` internos no se pueden ejecutar vía `db.Exec`.
-  Las VISTAS (sección H) sí se aplican porque no usan DELIMITER custom.
+### `backend/migrations/0001_schema.up.sql` + `0002_cancel_sps.up.sql` (revertido)
+- Se habían comentado los bloques entre `DELIMITER $$` y `DELIMITER ;`
+  (TRIGGERS, FUNCTIONS y STORED PROCEDURES) asumiendo que `database/sql` no
+  podía ejecutarlos.
+- Diagnóstico corregido: `migrate.go` (`splitAndExec`) ya trocea el archivo
+  por `DELIMITER` y ejecuta cada bloque con `db.Exec` — eso sí funciona. El
+  bug real era que el statement final se enviaba con el delimitador custom
+  pegado al final (`...END$$`), sintaxis inválida para MariaDB. Fix: recortar
+  el delimitador del buffer antes del `Exec` (ver `splitStatements`).
+- Los bloques SP/TRIGGER/FUNCTION quedaron descomentados otra vez. Se aplican
+  solos al reiniciar el backend (`RunMigrations` corre en cada arranque).
 
 ### `backend/migrations/0001_schema.up.sql`
 - BOM UTF-8 removido al inicio (causaba `\ufeff` en MariaDB).
