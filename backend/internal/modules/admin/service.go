@@ -94,9 +94,9 @@ ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string
 	TriggerManualGeneration(ctx context.Context, templateID int64, serviceDate string) error
 
 	// Reportes
-	GetScheduleConflicts(ctx context.Context) ([]Conflict, error)
-	GetRouteTimeMatrix(ctx context.Context) ([]MatrixEntry, error)
-	GetTripSeatAvailability(ctx context.Context, tripID int64) ([]SeatAvail, error)
+	GetScheduleConflicts(ctx context.Context, resourceType, dateFrom, dateTo string) ([]Conflict, error)
+	GetRouteTimeMatrix(ctx context.Context, routeID int64, direction string, profileID int64) ([]MatrixEntry, error)
+	GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error)
 }
 
 // adminService es la implementacion concreta.
@@ -695,28 +695,31 @@ func (s *adminService) TriggerManualGeneration(ctx context.Context, templateID i
 // Reportes
 // ----------------------------------------------------------------------------
 
-// GetScheduleConflicts devuelve los conflictos detectados por la vista.
-func (s *adminService) GetScheduleConflicts(ctx context.Context) ([]Conflict, error) {
+// GetScheduleConflicts devuelve los conflictos de horario detectados por la
+// vista SQL, con filtros opcionales que matchean 1:1 columnas de la vista.
+func (s *adminService) GetScheduleConflicts(ctx context.Context, resourceType, dateFrom, dateTo string) ([]Conflict, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	return s.repo.GetScheduleConflicts(ctx)
+	return s.repo.GetScheduleConflicts(ctx, resourceType, dateFrom, dateTo)
 }
 
-// GetRouteTimeMatrix devuelve la matriz de tiempos de ruta.
-func (s *adminService) GetRouteTimeMatrix(ctx context.Context) ([]MatrixEntry, error) {
+// GetRouteTimeMatrix devuelve la matriz de tiempos de ruta con filtros
+// opcionales que matchean 1:1 columnas de la vista.
+func (s *adminService) GetRouteTimeMatrix(ctx context.Context, routeID int64, direction string, profileID int64) ([]MatrixEntry, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	return s.repo.GetRouteTimeMatrix(ctx)
+	return s.repo.GetRouteTimeMatrix(ctx, routeID, direction, profileID)
 }
 
 // GetTripSeatAvailability devuelve la disponibilidad de asientos de un viaje.
-func (s *adminService) GetTripSeatAvailability(ctx context.Context, tripID int64) ([]SeatAvail, error) {
+// tripID es obligatorio; state es opcional ('' = todos).
+func (s *adminService) GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	return s.repo.GetTripSeatAvailability(ctx, tripID)
+	return s.repo.GetTripSeatAvailability(ctx, tripID, state)
 }
 
 // compile-time guard.

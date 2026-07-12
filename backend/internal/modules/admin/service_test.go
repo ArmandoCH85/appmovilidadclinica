@@ -156,13 +156,13 @@ func (m *mockAdminRepo) UpdateTripStatus(_ context.Context, _ int64, _ string) e
 func (m *mockAdminRepo) TriggerManualGeneration(_ context.Context, _ int64, _ string) error {
 	return nil
 }
-func (m *mockAdminRepo) GetScheduleConflicts(_ context.Context) ([]Conflict, error) {
+func (m *mockAdminRepo) GetScheduleConflicts(_ context.Context, _, _, _ string) ([]Conflict, error) {
 	return nil, nil
 }
-func (m *mockAdminRepo) GetRouteTimeMatrix(_ context.Context) ([]MatrixEntry, error) {
+func (m *mockAdminRepo) GetRouteTimeMatrix(_ context.Context, _ int64, _ string, _ int64) ([]MatrixEntry, error) {
 	return nil, nil
 }
-func (m *mockAdminRepo) GetTripSeatAvailability(_ context.Context, _ int64) ([]SeatAvail, error) {
+func (m *mockAdminRepo) GetTripSeatAvailability(_ context.Context, _ int64, _ string) ([]SeatAvail, error) {
 	return nil, nil
 }
 func (m *mockAdminRepo) ListVehicleSeats(_ context.Context, _ int64, _ types.PaginationParams) ([]VehicleSeat, int, error) {

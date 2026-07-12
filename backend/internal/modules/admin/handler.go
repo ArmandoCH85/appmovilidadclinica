@@ -1000,8 +1000,16 @@ func (h *AdminHandler) GenerateTrip(w http.ResponseWriter, r *http.Request) {
 // ----------------------------------------------------------------------------
 
 // ConflictsReport maneja GET /admin/reports/conflicts.
+// Filtros opcionales: resource_type (VEHICLE|DRIVER), date_from, date_to
+// (formato YYYY-MM-DD, acotan por first_start_at).
 func (h *AdminHandler) ConflictsReport(w http.ResponseWriter, r *http.Request) {
-	conflicts, err := h.svc.GetScheduleConflicts(r.Context())
+	q := r.URL.Query()
+	resourceType := q.Get("resource_type")
+	if resourceType != "" && resourceType != "VEHICLE" && resourceType != "DRIVER" {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "resource_type", Reason: "debe ser VEHICLE o DRIVER"})
+		return
+	}
+	conflicts, err := h.svc.GetScheduleConflicts(r.Context(), resourceType, q.Get("date_from"), q.Get("date_to"))
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return
@@ -1010,8 +1018,23 @@ func (h *AdminHandler) ConflictsReport(w http.ResponseWriter, r *http.Request) {
 }
 
 // TimeMatrixReport maneja GET /admin/reports/time-matrix.
+// Filtros opcionales: route_id, direction (IDA|VUELTA), profile_id.
 func (h *AdminHandler) TimeMatrixReport(w http.ResponseWriter, r *http.Request) {
-	entries, err := h.svc.GetRouteTimeMatrix(r.Context())
+	q := r.URL.Query()
+	routeID, _ := strconv.ParseInt(q.Get("route_id"), 10, 64)
+	if routeID < 0 {
+		routeID = 0
+	}
+	profileID, _ := strconv.ParseInt(q.Get("profile_id"), 10, 64)
+	if profileID < 0 {
+		profileID = 0
+	}
+	direction := q.Get("direction")
+	if direction != "" && direction != "IDA" && direction != "VUELTA" {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "direction", Reason: "debe ser IDA o VUELTA"})
+		return
+	}
+	entries, err := h.svc.GetRouteTimeMatrix(r.Context(), routeID, direction, profileID)
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return
@@ -1019,14 +1042,16 @@ func (h *AdminHandler) TimeMatrixReport(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, map[string]any{"items": orEmpty(entries, matrixSlice)})
 }
 
-// SeatAvailabilityReport maneja GET /admin/reports/seat-availability?trip_id=.
+// SeatAvailabilityReport maneja GET /admin/reports/seat-availability?trip_id=&state=.
+// trip_id obligatorio; state opcional (AVAILABLE|BLOCKED|...).
 func (h *AdminHandler) SeatAvailabilityReport(w http.ResponseWriter, r *http.Request) {
 	tripID, err := strconv.ParseInt(r.URL.Query().Get("trip_id"), 10, 64)
 	if err != nil || tripID < 1 {
 		apperror.WriteJSONError(w, apperror.ValidationError{Field: "trip_id", Reason: "entero positivo requerido"})
 		return
 	}
-	avail, err := h.svc.GetTripSeatAvailability(r.Context(), tripID)
+	state := r.URL.Query().Get("state")
+	avail, err := h.svc.GetTripSeatAvailability(r.Context(), tripID, state)
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return

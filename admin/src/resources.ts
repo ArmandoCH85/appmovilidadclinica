@@ -415,6 +415,20 @@ export const incidentsConfig: CrudResourceConfig = {
   fields: [],
 }
 
+// Reportes — vista SQL-only (vw_schedule_conflicts, vw_route_time_matrix,
+// vw_trip_segment_seat_availability). No hay alta/edicion: las vistas son
+// SELECT. La config queda aca solo para que el sidebar pueda renderizar la
+// entrada (routePath/navLabel/group/icon), porque AppLayout.vue genera los
+// nav items desde crudResources. La vista real es ReportsView.vue (custom),
+// registrada en router.ts fuera de resourceChildren via REDESIGNED_PATHS.
+export const reportsConfig: CrudResourceConfig = {
+  path: '/admin/reports',
+  labelSingular: 'reporte',
+  labelPlural: 'Reportes',
+  columns: [],
+  fields: [],
+}
+
 export const generationRunsConfig: CrudResourceConfig = {
   path: '/admin/generation-runs',
   labelSingular: 'corrida',
@@ -461,4 +475,5 @@ export const crudResources: Array<{ routePath: string; navLabel: string; group: 
   { routePath: '/generation-runs', navLabel: 'Corridas de generación', group: 'Planificación', icon: 'sync', config: generationRunsConfig, readOnly: true },
   { routePath: '/trips', navLabel: 'Viajes', group: 'Operación diaria', icon: 'send', config: tripsConfig, readOnly: true },
   { routePath: '/incidents', navLabel: 'Incidencias', group: 'Operación diaria', icon: 'exclamation-triangle', config: incidentsConfig, readOnly: true },
+  { routePath: '/reports', navLabel: 'Reportes', group: 'Operación diaria', icon: 'chart-bar', config: reportsConfig, readOnly: true },
 ]

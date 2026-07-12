@@ -589,9 +589,9 @@ type AdminRepository interface {
 	TriggerManualGeneration(ctx context.Context, templateID int64, serviceDate string) error
 
 	// Reportes (vistas)
-	GetScheduleConflicts(ctx context.Context) ([]Conflict, error)
-	GetRouteTimeMatrix(ctx context.Context) ([]MatrixEntry, error)
-	GetTripSeatAvailability(ctx context.Context, tripID int64) ([]SeatAvail, error)
+	GetScheduleConflicts(ctx context.Context, resourceType, dateFrom, dateTo string) ([]Conflict, error)
+	GetRouteTimeMatrix(ctx context.Context, routeID int64, direction string, profileID int64) ([]MatrixEntry, error)
+	GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error)
 }
 
 // adminRepository es la implementacion concreta con database/sql.
@@ -2092,13 +2092,35 @@ func (r *adminRepository) TriggerManualGeneration(ctx context.Context, templateI
 // Reportes (vistas)
 // ----------------------------------------------------------------------------
 
-// GetScheduleConflicts consulta vw_schedule_conflicts.
-func (r *adminRepository) GetScheduleConflicts(ctx context.Context) ([]Conflict, error) {
-	const q = `
-        SELECT resource_type, resource_id, first_trip_id, second_trip_id,
+// GetScheduleConflicts consulta vw_schedule_conflicts con filtros
+// opcionales: resourceType (VEHICLE|DRIVER|'' para todos) y dateFrom/dateTo
+// acotando por first_start_at (la "primera" de las dos trip solapadas).
+// Esos son los filtros que la vista SQL soporta sin agregar JOINs: la vista
+// ya emite resource_type y los timestamps.
+func (r *adminRepository) GetScheduleConflicts(ctx context.Context, resourceType, dateFrom, dateTo string) ([]Conflict, error) {
+	var conds []string
+	var fargs []any
+	if resourceType != "" {
+		conds = append(conds, "resource_type = ?")
+		fargs = append(fargs, resourceType)
+	}
+	if dateFrom != "" {
+		conds = append(conds, "first_start_at >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "first_start_at <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT resource_type, resource_id, first_trip_id, second_trip_id,
                first_start_at, first_end_at, second_start_at, second_end_at
-          FROM vw_schedule_conflicts`
-	rows, err := r.db.QueryContext(ctx, q)
+          FROM vw_schedule_conflicts` + where + `
+         ORDER BY first_start_at DESC, resource_type, resource_id`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
 	if err != nil {
 		return nil, fmt.Errorf("consultando vw_schedule_conflicts: %w", err)
 	}
@@ -2117,15 +2139,35 @@ func (r *adminRepository) GetScheduleConflicts(ctx context.Context) ([]Conflict,
 	return conflicts, rows.Err()
 }
 
-// GetRouteTimeMatrix consulta vw_route_time_matrix.
-func (r *adminRepository) GetRouteTimeMatrix(ctx context.Context) ([]MatrixEntry, error) {
-	const q = `
-        SELECT route_id, route_code, route_name, direction, route_segment_id,
+// GetRouteTimeMatrix consulta vw_route_time_matrix con filtros opcionales:
+// routeID, direction (IDA|VUELTA|''), profileID. Esos filtros los soporta
+// la vista directo (cada columna existe en el SELECT). 0 significa "todos".
+func (r *adminRepository) GetRouteTimeMatrix(ctx context.Context, routeID int64, direction string, profileID int64) ([]MatrixEntry, error) {
+	var conds []string
+	var fargs []any
+	if routeID > 0 {
+		conds = append(conds, "route_id = ?")
+		fargs = append(fargs, routeID)
+	}
+	if direction != "" {
+		conds = append(conds, "direction = ?")
+		fargs = append(fargs, direction)
+	}
+	if profileID > 0 {
+		conds = append(conds, "profile_id = ?")
+		fargs = append(fargs, profileID)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT route_id, route_code, route_name, direction, route_segment_id,
                segment_order, from_stop_code, from_stop_name, to_stop_code,
                to_stop_name, profile_id, profile_code, profile_name,
                travel_minutes, priority
-          FROM vw_route_time_matrix`
-	rows, err := r.db.QueryContext(ctx, q)
+          FROM vw_route_time_matrix` + where + `
+         ORDER BY route_code, direction, segment_order, priority DESC`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
 	if err != nil {
 		return nil, fmt.Errorf("consultando vw_route_time_matrix: %w", err)
 	}
@@ -2145,16 +2187,27 @@ func (r *adminRepository) GetRouteTimeMatrix(ctx context.Context) ([]MatrixEntry
 	return entries, rows.Err()
 }
 
-// GetTripSeatAvailability consulta vw_trip_segment_seat_availability para un viaje.
-func (r *adminRepository) GetTripSeatAvailability(ctx context.Context, tripID int64) ([]SeatAvail, error) {
-	const q = `
-        SELECT trip_id, trip_code, service_date, direction, trip_seat_id,
+// GetTripSeatAvailability consulta vw_trip_segment_seat_availability para
+// un viaje (trip_id obligatorio, era el filtro original) y opcionalmente
+// filtra por state (AVAILABLE|BLOCKED|OCCUPIED_IN_REQUESTED_RANGE|...).
+// '' = todos los estados.
+func (r *adminRepository) GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error) {
+	var conds []string
+	var fargs []any
+	conds = append(conds, "trip_id = ?")
+	fargs = append(fargs, tripID)
+	if state != "" {
+		conds = append(conds, "state = ?")
+		fargs = append(fargs, state)
+	}
+	where := " WHERE " + strings.Join(conds, " AND ")
+	q := `SELECT trip_id, trip_code, service_date, direction, trip_seat_id,
                seat_number, seat_label, segment_order, available_or_occupied_from,
                available_or_occupied_until, state, reservation_id,
                reservation_code, reserved_at, released_at
-          FROM vw_trip_segment_seat_availability
-         WHERE trip_id = ?`
-	rows, err := r.db.QueryContext(ctx, q, tripID)
+          FROM vw_trip_segment_seat_availability` + where + `
+         ORDER BY seat_number, segment_order`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
 	if err != nil {
 		return nil, fmt.Errorf("consultando vw_trip_segment_seat_availability: %w", err)
 	}
