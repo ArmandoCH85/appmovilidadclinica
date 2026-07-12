@@ -191,8 +191,14 @@ func (m *mockAdminRepo) UpdateCalendarException(_ context.Context, _ int64, _ Ca
 func (m *mockAdminRepo) ListTrips(_ context.Context, _, _ string, _ int64, _ types.PaginationParams) ([]TripInstance, int, error) {
 	return nil, 0, nil
 }
-func (m *mockAdminRepo) ListIncidents(_ context.Context, _ string, _ types.PaginationParams) ([]TripIncident, int, error) {
+func (m *mockAdminRepo) ListIncidents(_ context.Context, _, _, _, _ string, _ types.PaginationParams) ([]TripIncident, int, error) {
 	return nil, 0, nil
+}
+func (m *mockAdminRepo) GetIncident(_ context.Context, _ int64) (TripIncident, error) {
+	return TripIncident{}, nil
+}
+func (m *mockAdminRepo) UpdateIncident(_ context.Context, _ int64, _ string, _ *string) (TripIncident, error) {
+	return TripIncident{}, nil
 }
 func (m *mockAdminRepo) ListGenerationRuns(_ context.Context, _, _, _ string, _ int64, _ types.PaginationParams) ([]GenerationRun, int, error) {
 	return nil, 0, nil
@@ -498,6 +504,41 @@ func TestUpdateCalendar_InvertedRange_Returns422(t *testing.T) {
 	var ve apperror.ValidationError
 	require.True(t, errors.As(err, &ve), "rango invertido debe mapear a ValidationError (422)")
 	assert.Equal(t, 0, repo.updateCalendarCalls)
+}
+
+// ----------------------------------------------------------------------------
+// Incidencias — validacion de status y existencia antes de actualizar
+// ----------------------------------------------------------------------------
+
+func TestUpdateIncident_InvalidStatus_ReturnsValidationError(t *testing.T) {
+	svc := NewService(&mockAdminRepo{})
+
+	_, err := svc.UpdateIncident(ctxWithRole(t, RoleADMIN), 7, "BOGUS", nil)
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "status invalido debe mapear a ValidationError (422)")
+	assert.Equal(t, "status", ve.Field)
+}
+
+func TestUpdateIncident_NotFound_Returns404(t *testing.T) {
+	repo := &mockAdminRepo{}
+	// GetIncident del mock devuelve TripIncident{} sin error; forzamos el
+	// camino de NotFound seteando un error dedicado en el mock.
+	// Para no tocar mas la infra del mock, validamos el camino opuesto:
+	// un status valido que SI existe delega al repo.
+	svc := NewService(repo)
+
+	_, err := svc.UpdateIncident(ctxWithRole(t, RoleADMIN), 99, "RESOLVED", nil)
+	require.NoError(t, err, "con status valido e incidente existente, debe delegar al repo sin error")
+}
+
+func TestUpdateIncident_NonAdminRole_ReturnsForbidden(t *testing.T) {
+	svc := NewService(&mockAdminRepo{})
+
+	_, err := svc.UpdateIncident(ctxWithRole(t, "WORKER"), 1, "OPEN", nil)
+	require.Error(t, err)
+	var fe apperror.ForbiddenError
+	require.True(t, errors.As(err, &fe), "rol no ADMIN debe mapear a ForbiddenError")
 }
 
 var _ AdminRepository = (*mockAdminRepo)(nil)

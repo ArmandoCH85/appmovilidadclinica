@@ -845,7 +845,10 @@ func (h *AdminHandler) ListTrips(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) ListIncidents(w http.ResponseWriter, r *http.Request) {
 	pg := parsePagination(r)
 	status := r.URL.Query().Get("status")
-	incs, total, err := h.svc.ListIncidents(r.Context(), status, pg)
+	incidentType := r.URL.Query().Get("incident_type")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
+	incs, total, err := h.svc.ListIncidents(r.Context(), status, incidentType, dateFrom, dateTo, pg)
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return
@@ -856,6 +859,46 @@ func (h *AdminHandler) ListIncidents(w http.ResponseWriter, r *http.Request) {
 		"page_size": pg.PageSize,
 		"total":     total,
 	})
+}
+
+// GetIncident maneja GET /admin/incidents/{id} — drill-down.
+func (h *AdminHandler) GetIncident(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	inc, err := h.svc.GetIncident(r.Context(), id)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, inc)
+}
+
+// UpdateIncident maneja PATCH /admin/incidents/{id}. Body esperado:
+//
+//	{ "status": "OPEN|IN_REVIEW|RESOLVED", "resolution_notes": "..." }
+//
+// resolution_notes es opcional (puede ser null para reabrir sin notas).
+func (h *AdminHandler) UpdateIncident(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	var req struct {
+		Status          string  `json:"status"`
+		ResolutionNotes *string `json:"resolution_notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	inc, err := h.svc.UpdateIncident(r.Context(), id, req.Status, req.ResolutionNotes)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, inc)
 }
 
 func (h *AdminHandler) ListGenerationRuns(w http.ResponseWriter, r *http.Request) {
@@ -1063,6 +1106,8 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 		// Listados de solo lectura
 		r.Get("/trips", h.ListTrips)
 		r.Get("/incidents", h.ListIncidents)
+		r.Get("/incidents/{id}", h.GetIncident)
+		r.Patch("/incidents/{id}", h.UpdateIncident)
 		r.Get("/generation-runs", h.ListGenerationRuns)
 		r.Get("/generation-runs/{id}", h.GetGenerationRun)
 

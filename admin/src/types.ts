@@ -169,6 +169,52 @@ export interface TripInstanceSummary {
   status: string
 }
 
+// trip_incidents — la crea el driver (endpoint /api/driver/trips/{id}/incidents),
+// el admin solo lista y resuelve (PATCH /admin/incidents/{id}). El backend
+// enriquece con trip_code, route, reporter; no todo viaje puede tener una
+// ruta (FK trip_instances.route_id NOT NULL), por eso los *_trip_* vienen
+// siempre poblados.
+export interface TripIncident {
+  id: number
+  trip_id: number
+  trip_code: string
+  trip_service_date: string
+  trip_route_code: string
+  trip_route_name: string
+  reported_by_user_id: number
+  reported_by_full_name: string
+  reported_by_employee_code: string
+  incident_type: 'BREAKDOWN' | 'DELAY' | 'ACCIDENT' | 'OTHER'
+  description: string
+  status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED'
+  reported_at: string
+  resolved_at?: string | null
+  resolution_notes?: string | null
+}
+
+/** trip_instances completo tal como lo devuelve ListTrips (handler.go). */
+export interface TripInstance {
+  id: number
+  trip_code: string
+  source: 'GENERATED' | 'MANUAL'
+  trip_template_id?: number | null
+  generation_run_id?: number | null
+  route_id: number
+  service_date: string
+  scheduled_start_at: string
+  scheduled_end_at: string
+  booking_opens_at: string
+  booking_closes_at: string
+  vehicle_id: number
+  driver_id: number
+  seat_capacity_snapshot: number
+  no_show_tolerance_minutes: number
+  status: 'DRAFT' | 'PUBLISHED' | 'BOARDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+  actual_start_at?: string | null
+  actual_end_at?: string | null
+  cancellation_reason?: string | null
+}
+
 // ----------------------------------------------------------------------------
 // Reportes (Fase 6) — en espejo de Conflict/MatrixEntry/SeatAvail de
 // `backend/internal/modules/admin/repository.go` (columnas SELECT exactas,

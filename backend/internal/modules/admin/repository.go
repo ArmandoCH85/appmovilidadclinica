@@ -467,15 +467,21 @@ type TripInstance struct {
 }
 
 type TripIncident struct {
-	ID               int64      `json:"id"`
-	TripID           int64      `json:"trip_id"`
-	ReportedByUserID int64      `json:"reported_by_user_id"`
-	IncidentType     string     `json:"incident_type"`
-	Description     string     `json:"description"`
-	Status          string     `json:"status"`
-	ReportedAt      time.Time  `json:"reported_at"`
-	ResolvedAt      *time.Time `json:"resolved_at,omitempty"`
-	ResolutionNotes *string    `json:"resolution_notes,omitempty"`
+	ID                       int64      `json:"id"`
+	TripID                   int64      `json:"trip_id"`
+	TripCode                 string     `json:"trip_code,omitempty"`
+	TripServiceDate          string     `json:"trip_service_date,omitempty"`
+	TripRouteCode            string     `json:"trip_route_code,omitempty"`
+	TripRouteName            string     `json:"trip_route_name,omitempty"`
+	ReportedByUserID         int64      `json:"reported_by_user_id"`
+	ReportedByFullName       string     `json:"reported_by_full_name,omitempty"`
+	ReportedByEmployeeCode   string     `json:"reported_by_employee_code,omitempty"`
+	IncidentType             string     `json:"incident_type"`
+	Description              string     `json:"description"`
+	Status                   string     `json:"status"`
+	ReportedAt               time.Time  `json:"reported_at"`
+	ResolvedAt               *time.Time `json:"resolved_at,omitempty"`
+	ResolutionNotes          *string    `json:"resolution_notes,omitempty"`
 }
 
 type GenerationRun struct {
@@ -572,7 +578,9 @@ type AdminRepository interface {
 
 	// Listados de solo lectura
 	ListTrips(ctx context.Context, date, status string, routeID int64, pg types.PaginationParams) ([]TripInstance, int, error)
-	ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error)
+	ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string, pg types.PaginationParams) ([]TripIncident, int, error)
+	GetIncident(ctx context.Context, id int64) (TripIncident, error)
+	UpdateIncident(ctx context.Context, id int64, status string, resolutionNotes *string) (TripIncident, error)
 	ListGenerationRuns(ctx context.Context, status, dateFrom, dateTo string, triggeredByUserID int64, pg types.PaginationParams) ([]GenerationRun, int, error)
 	GetGenerationRun(ctx context.Context, id int64) (GenerationRun, []TripInstance, error)
 
@@ -1710,19 +1718,50 @@ func (r *adminRepository) ListTrips(ctx context.Context, date, status string, ro
 	return trips, total, nil
 }
 
-func (r *adminRepository) ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error) {
+// ListIncidents devuelve incidencias con filtros opcionales (status,
+// incident_type, ventana de reported_at). Enriquece cada fila con
+// datos del viaje asociado (trip_instances + transport_routes) y del
+// usuario que reporto (users). La creacion la hace el driver via
+// /api/driver/trips/{id}/incidents (no expuesta aca); el admin solo
+// lista y resuelve (UpdateIncident).
+func (r *adminRepository) ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string, pg types.PaginationParams) ([]TripIncident, int, error) {
 	pg.Normalize()
-	q := `SELECT id, trip_id, reported_by_user_id, incident_type, description,
-                 status, reported_at, resolved_at, resolution_notes
-            FROM trip_incidents`
-	var where string
+	var conds []string
 	var fargs []any
 	if status != "" {
-		where = "status = ?"
-		q += " WHERE " + where
+		conds = append(conds, "i.status = ?")
 		fargs = append(fargs, status)
 	}
-	q += " ORDER BY id LIMIT ? OFFSET ?"
+	if incidentType != "" {
+		conds = append(conds, "i.incident_type = ?")
+		fargs = append(fargs, incidentType)
+	}
+	if dateFrom != "" {
+		conds = append(conds, "i.reported_at >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "i.reported_at <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+
+	q := `SELECT i.id, i.trip_id, t.trip_code,
+               DATE_FORMAT(t.service_date, '%Y-%m-%d') AS trip_service_date,
+               tr.code AS trip_route_code, tr.name AS trip_route_name,
+               i.reported_by_user_id, u.full_name, u.employee_code,
+               i.incident_type, i.description, i.status,
+               i.reported_at, i.resolved_at, i.resolution_notes
+          FROM trip_incidents i
+          JOIN trip_instances t ON t.id = i.trip_id
+          JOIN transport_routes tr ON tr.id = t.route_id
+          JOIN users u ON u.id = i.reported_by_user_id` +
+		where + `
+         ORDER BY i.id DESC
+         LIMIT ? OFFSET ?`
 	qargs := append([]any{}, fargs...)
 	qargs = append(qargs, pg.Limit(), pg.Offset())
 	rows, err := r.db.QueryContext(ctx, q, qargs...)
@@ -1736,8 +1775,11 @@ func (r *adminRepository) ListIncidents(ctx context.Context, status string, pg t
 		var i TripIncident
 		var resolvedAt sql.NullTime
 		var notes sql.NullString
-		if err := rows.Scan(&i.ID, &i.TripID, &i.ReportedByUserID, &i.IncidentType,
-			&i.Description, &i.Status, &i.ReportedAt, &resolvedAt, &notes); err != nil {
+		if err := rows.Scan(&i.ID, &i.TripID, &i.TripCode,
+			&i.TripServiceDate, &i.TripRouteCode, &i.TripRouteName,
+			&i.ReportedByUserID, &i.ReportedByFullName, &i.ReportedByEmployeeCode,
+			&i.IncidentType, &i.Description, &i.Status,
+			&i.ReportedAt, &resolvedAt, &notes); err != nil {
 			return nil, 0, fmt.Errorf("escaneando incidente: %w", err)
 		}
 		i.ResolvedAt = nullableTime(resolvedAt)
@@ -1752,6 +1794,68 @@ func (r *adminRepository) ListIncidents(ctx context.Context, status string, pg t
 		return nil, 0, err
 	}
 	return incs, total, nil
+}
+
+// GetIncident devuelve una incidencia con todos sus campos enriquecidos
+// (mismos JOINs que ListIncidents). 404 si no existe.
+func (r *adminRepository) GetIncident(ctx context.Context, id int64) (TripIncident, error) {
+	const q = `
+        SELECT i.id, i.trip_id, t.trip_code,
+               DATE_FORMAT(t.service_date, '%Y-%m-%d') AS trip_service_date,
+               tr.code AS trip_route_code, tr.name AS trip_route_name,
+               i.reported_by_user_id, u.full_name, u.employee_code,
+               i.incident_type, i.description, i.status,
+               i.reported_at, i.resolved_at, i.resolution_notes
+          FROM trip_incidents i
+          JOIN trip_instances t ON t.id = i.trip_id
+          JOIN transport_routes tr ON tr.id = t.route_id
+          JOIN users u ON u.id = i.reported_by_user_id
+         WHERE i.id = ?`
+	var i TripIncident
+	var resolvedAt sql.NullTime
+	var notes sql.NullString
+	err := r.db.QueryRowContext(ctx, q, id).Scan(&i.ID, &i.TripID, &i.TripCode,
+		&i.TripServiceDate, &i.TripRouteCode, &i.TripRouteName,
+		&i.ReportedByUserID, &i.ReportedByFullName, &i.ReportedByEmployeeCode,
+		&i.IncidentType, &i.Description, &i.Status,
+		&i.ReportedAt, &resolvedAt, &notes)
+	if err != nil {
+		return TripIncident{}, dberr.NotFound(err, "incidencia", id)
+	}
+	i.ResolvedAt = nullableTime(resolvedAt)
+	i.ResolutionNotes = nullableStr(notes)
+	return i, nil
+}
+
+// UpdateIncident cambia status + resolution_notes de una incidencia.
+// Cuando status pasa a RESOLVED, fija resolved_at=NOW() si venia NULL.
+// Devuelve la fila refrescada para que la UI vea el cambio.
+func (r *adminRepository) UpdateIncident(ctx context.Context, id int64, status string, resolutionNotes *string) (TripIncident, error) {
+	// Si pasan a RESOLVED y resolved_at era NULL, lo fijamos. Si pasan
+	// a un estado no-RESOLVED y venia con resolved_at, lo limpiamos
+	// (re-abrir la incidencia).
+	if status == "RESOLVED" {
+		_, err := r.db.ExecContext(ctx, `
+            UPDATE trip_incidents
+               SET status = ?, resolution_notes = ?,
+                   resolved_at = COALESCE(resolved_at, CURRENT_TIMESTAMP)
+             WHERE id = ?`,
+			status, resolutionNotes, id)
+		if err != nil {
+			return TripIncident{}, fmt.Errorf("actualizando estado de incidencia: %w", err)
+		}
+	} else {
+		_, err := r.db.ExecContext(ctx, `
+            UPDATE trip_incidents
+               SET status = ?, resolution_notes = ?,
+                   resolved_at = NULL
+             WHERE id = ?`,
+			status, resolutionNotes, id)
+		if err != nil {
+			return TripIncident{}, fmt.Errorf("actualizando estado de incidencia: %w", err)
+		}
+	}
+	return r.GetIncident(ctx, id)
 }
 
 // ListGenerationRuns devuelve corridas con filtros opcionales (status,

@@ -14,8 +14,10 @@ import CalendarExceptionsView from './components/CalendarExceptionsView.vue'
 import CalendarsView from './components/CalendarsView.vue'
 import TravelProfilesView from './components/TravelProfilesView.vue'
 import GenerationRunsView from './components/GenerationRunsView.vue'
+import IncidentsView from './components/IncidentsView.vue'
 import OperationsView from './components/OperationsView.vue'
 import ReportsView from './components/ReportsView.vue'
+import TripsView from './components/TripsView.vue'
 import TemplatesView from './components/TemplatesView.vue'
 import { useAuth } from './auth/useAuth'
 import { crudResources } from './resources'
@@ -35,9 +37,11 @@ const REDESIGNED_PATHS = new Set([
   '/route-segments',
   '/calendars',
   '/calendar-exceptions',
-  '/travel-profiles',
-  '/templates',
+  '/generation-runs',
+  '/incidents',
   '/segment-times',
+  '/templates',
+  '/trips',
 ])
 const resourceChildren: RouteRecordRaw[] = crudResources
   .filter(({ routePath }) => !REDESIGNED_PATHS.has(routePath))
@@ -71,12 +75,14 @@ const routes: RouteRecordRaw[] = [
       { path: 'calendars', name: 'calendars', component: CalendarsView },
       { path: 'calendar-exceptions', name: 'calendar-exceptions', component: CalendarExceptionsView },
       { path: 'generation-runs', name: 'generation-runs', component: GenerationRunsView },
+      { path: 'incidents', name: 'incidents', component: IncidentsView },
       { path: 'templates', name: 'templates', component: TemplatesView },
       { path: 'travel-profiles', name: 'travel-profiles', component: TravelProfilesView },
       // Fase 6: operaciones de viaje + reportes — no son recursos CRUD
       // genericos (sin listado/alta/edicion tabular), se registran aparte.
       { path: 'operations', name: 'operations', component: OperationsView },
       { path: 'reports', name: 'reports', component: ReportsView },
+      { path: 'trips', name: 'trips', component: TripsView },
     ],
   },
 ]

@@ -83,7 +83,9 @@ type AdminService interface {
 
 	// Listados de solo lectura
 	ListTrips(ctx context.Context, date, status string, routeID int64, pg types.PaginationParams) ([]TripInstance, int, error)
-	ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error)
+ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string, pg types.PaginationParams) ([]TripIncident, int, error)
+	GetIncident(ctx context.Context, id int64) (TripIncident, error)
+	UpdateIncident(ctx context.Context, id int64, status string, resolutionNotes *string) (TripIncident, error)
 	ListGenerationRuns(ctx context.Context, status, dateFrom, dateTo string, triggeredByUserID int64, pg types.PaginationParams) ([]GenerationRun, int, error)
 	GetGenerationRun(ctx context.Context, id int64) (GenerationRun, []TripInstance, error)
 
@@ -613,11 +615,41 @@ func (s *adminService) ListTrips(ctx context.Context, date, status string, route
 	return s.repo.ListTrips(ctx, date, status, routeID, pg)
 }
 
-func (s *adminService) ListIncidents(ctx context.Context, status string, pg types.PaginationParams) ([]TripIncident, int, error) {
+// ListIncidents lista incidencias con filtros. La creacion la hace el
+// driver via /api/driver/trips/{id}/incidents (no esta expuesto en el
+// modulo admin); el admin solo lista y resuelve.
+func (s *adminService) ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string, pg types.PaginationParams) ([]TripIncident, int, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
-	return s.repo.ListIncidents(ctx, status, pg)
+	return s.repo.ListIncidents(ctx, status, incidentType, dateFrom, dateTo, pg)
+}
+
+// GetIncident devuelve una incidencia por id (drill-down).
+func (s *adminService) GetIncident(ctx context.Context, id int64) (TripIncident, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return TripIncident{}, err
+	}
+	return s.repo.GetIncident(ctx, id)
+}
+
+// UpdateIncident cambia el estado de una incidencia y opcionalmente sus
+// notas de resolucion. Valida el status contra el ENUM de la tabla y
+// verifica que la incidencia exista antes de tocar la BD.
+func (s *adminService) UpdateIncident(ctx context.Context, id int64, status string, resolutionNotes *string) (TripIncident, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return TripIncident{}, err
+	}
+	switch status {
+	case "OPEN", "IN_REVIEW", "RESOLVED":
+		// ok
+	default:
+		return TripIncident{}, apperror.ValidationError{Field: "status", Reason: "debe ser OPEN, IN_REVIEW o RESOLVED"}
+	}
+	if _, err := s.repo.GetIncident(ctx, id); err != nil {
+		return TripIncident{}, err
+	}
+	return s.repo.UpdateIncident(ctx, id, status, resolutionNotes)
 }
 
 // ListGenerationRuns lista corridas con filtros opcionales. La tabla es
