@@ -36,3 +36,22 @@ export const ERROR_NETWORK = 'No se pudo conectar con el servidor. Verificá tu 
 export function getErrorMessage(status: number, serverMessage?: string): string {
   return serverMessage || ERROR_BY_STATUS[status] || ERROR_FALLBACK_DEFAULT
 }
+
+// Fase 3: auth, sesion y fetch wrapper.
+export const LOGIN_LABELS = {
+  documentNumber: 'Número de documento',
+  password: 'Contraseña',
+  submit: 'Iniciar sesión',
+  requiredField: 'Este campo es obligatorio.',
+  unexpectedError: ERROR_FALLBACK_DEFAULT,
+} as const
+
+export const SESSION_LABELS = {
+  logout: 'Cerrar sesión',
+  expiringSoon: (minutes: number) =>
+    `Tu sesión vence en ${minutes} minuto${minutes === 1 ? '' : 's'}. Guardá tus cambios.`,
+  expiredTitle: 'Sesión expirada',
+  expiredBody:
+    'Tu sesión expiró. Tus datos en pantalla se conservan; iniciá sesión nuevamente para continuar.',
+  expiredConfirm: 'Ir a iniciar sesión',
+} as const
