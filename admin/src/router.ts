@@ -3,6 +3,8 @@ import AppLayout from './components/AppLayout.vue'
 import LoginView from './components/LoginView.vue'
 import CrudView from './components/CrudView.vue'
 import RouteStopsView from './components/RouteStopsView.vue'
+import OperationsView from './components/OperationsView.vue'
+import ReportsView from './components/ReportsView.vue'
 import { useAuth } from './auth/useAuth'
 import { crudResources } from './resources'
 
@@ -30,6 +32,10 @@ const routes: RouteRecordRaw[] = [
       { path: '', redirect: '/stops' },
       ...resourceChildren,
       { path: 'route-stops', name: 'route-stops', component: RouteStopsView },
+      // Fase 6: operaciones de viaje + reportes — no son recursos CRUD
+      // genericos (sin listado/alta/edicion tabular), se registran aparte.
+      { path: 'operations', name: 'operations', component: OperationsView },
+      { path: 'reports', name: 'reports', component: ReportsView },
     ],
   },
 ]

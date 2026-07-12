@@ -21,6 +21,10 @@ const { user, secondsLeft, sessionExpired, logout, dismissSessionExpired } = use
 const navItems = [
   ...crudResources.map(({ routePath, navLabel }) => ({ to: routePath, label: navLabel })),
   { to: '/route-stops', label: 'Paradas de ruta' },
+  // Fase 6: no son recursos CRUD genericos, se agregan aparte del array
+  // data-driven (mismo criterio que route-stops arriba).
+  { to: '/operations', label: 'Operaciones' },
+  { to: '/reports', label: 'Reportes' },
 ]
 
 const showExpiryBanner = computed(() => secondsLeft.value > 0 && secondsLeft.value <= 120)

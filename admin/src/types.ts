@@ -95,3 +95,61 @@ export interface PaginatedResponse<T> {
   page_size: number
   total: number
 }
+
+// ----------------------------------------------------------------------------
+// Reportes (Fase 6) — en espejo de Conflict/MatrixEntry/SeatAvail de
+// `backend/internal/modules/admin/repository.go` (columnas SELECT exactas,
+// no inventadas). Respuesta sin paginar: `{items: T[]}` (ver handler.go
+// seccion "Reportes (vistas)").
+// ----------------------------------------------------------------------------
+
+/** vw_schedule_conflicts — GET /admin/reports/conflicts (sin filtros). */
+export interface ScheduleConflict {
+  resource_type: string
+  resource_id: number
+  first_trip_id: number
+  second_trip_id: number
+  first_start_at: string
+  first_end_at: string
+  second_start_at: string
+  second_end_at: string
+}
+
+/** vw_route_time_matrix — GET /admin/reports/time-matrix (sin filtros). */
+export interface RouteTimeMatrixEntry {
+  route_id: number
+  route_code: string
+  route_name: string
+  direction: 'IDA' | 'VUELTA'
+  route_segment_id: number
+  segment_order: number
+  from_stop_code: string
+  from_stop_name: string
+  to_stop_code: string
+  to_stop_name: string
+  profile_id: number
+  profile_code: string
+  profile_name: string
+  travel_minutes: number
+  priority: number
+}
+
+/** vw_trip_segment_seat_availability — GET /admin/reports/seat-availability?trip_id=
+ * (trip_id obligatorio — el backend responde 422 sin un entero positivo). */
+export interface TripSeatAvailability {
+  trip_id: number
+  trip_code: string
+  service_date: string
+  direction: 'IDA' | 'VUELTA'
+  trip_seat_id: number
+  seat_number: number
+  seat_label: string
+  segment_order: number
+  available_or_occupied_from: string
+  available_or_occupied_until: string
+  state: string
+  reservation_id?: number | null
+  reservation_code?: string | null
+  reserved_at?: string | null
+  released_at?: string | null
+}
