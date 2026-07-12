@@ -506,6 +506,192 @@ func (h *AdminHandler) UpdateCalendar(w http.ResponseWriter, r *http.Request) {
 }
 
 // ----------------------------------------------------------------------------
+// Tramos de ruta (route_segments)
+// ----------------------------------------------------------------------------
+
+// ListRouteSegments maneja GET /admin/route-segments.
+func (h *AdminHandler) ListRouteSegments(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
+	segs, total, err := h.svc.ListRouteSegments(r.Context(), pg)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"items":     orEmpty(segs, routeSegmentSlice),
+		"page":      pg.Page,
+		"page_size": pg.PageSize,
+		"total":     total,
+	})
+}
+
+// CreateRouteSegment maneja POST /admin/route-segments.
+func (h *AdminHandler) CreateRouteSegment(w http.ResponseWriter, r *http.Request) {
+	var req RouteSegmentCreateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	seg, err := h.svc.CreateRouteSegment(r.Context(), req)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, seg)
+}
+
+// UpdateRouteSegment maneja PUT /admin/route-segments/{id}.
+func (h *AdminHandler) UpdateRouteSegment(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	var req RouteSegmentUpdateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	if err := h.svc.UpdateRouteSegment(r.Context(), id, req); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ----------------------------------------------------------------------------
+// Perfiles de tiempo de viaje (travel_time_profiles)
+// ----------------------------------------------------------------------------
+
+// ListTravelTimeProfiles maneja GET /admin/travel-profiles.
+func (h *AdminHandler) ListTravelTimeProfiles(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
+	profs, total, err := h.svc.ListTravelTimeProfiles(r.Context(), pg)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"items":     orEmpty(profs, travelProfileSlice),
+		"page":      pg.Page,
+		"page_size": pg.PageSize,
+		"total":     total,
+	})
+}
+
+// CreateTravelTimeProfile maneja POST /admin/travel-profiles.
+func (h *AdminHandler) CreateTravelTimeProfile(w http.ResponseWriter, r *http.Request) {
+	var req TravelTimeProfileCreateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	prof, err := h.svc.CreateTravelTimeProfile(r.Context(), req)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, prof)
+}
+
+// UpdateTravelTimeProfile maneja PUT /admin/travel-profiles/{id}.
+func (h *AdminHandler) UpdateTravelTimeProfile(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	var req TravelTimeProfileUpdateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	if err := h.svc.UpdateTravelTimeProfile(r.Context(), id, req); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ----------------------------------------------------------------------------
+// Tiempos de tramo por perfil (route_segment_travel_times)
+// ----------------------------------------------------------------------------
+
+// ListRouteSegmentTravelTimes maneja GET /admin/segment-times.
+func (h *AdminHandler) ListRouteSegmentTravelTimes(w http.ResponseWriter, r *http.Request) {
+	pg := parsePagination(r)
+	items, total, err := h.svc.ListRouteSegmentTravelTimes(r.Context(), pg)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"items":     orEmpty(items, segmentTimeSlice),
+		"page":      pg.Page,
+		"page_size": pg.PageSize,
+		"total":     total,
+	})
+}
+
+// CreateRouteSegmentTravelTime maneja POST /admin/segment-times.
+func (h *AdminHandler) CreateRouteSegmentTravelTime(w http.ResponseWriter, r *http.Request) {
+	var req RouteSegmentTravelTimeCreateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	item, err := h.svc.CreateRouteSegmentTravelTime(r.Context(), req)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, item)
+}
+
+// UpdateRouteSegmentTravelTime maneja PUT /admin/segment-times/{id}.
+func (h *AdminHandler) UpdateRouteSegmentTravelTime(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	var req RouteSegmentTravelTimeUpdateParams
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	if err := h.svc.UpdateRouteSegmentTravelTime(r.Context(), id, req); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ----------------------------------------------------------------------------
 // Operaciones de viajes
 // ----------------------------------------------------------------------------
 
@@ -644,6 +830,21 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/calendars", h.CreateCalendar)
 		r.Put("/calendars/{id}", h.UpdateCalendar)
 
+		// Tramos de ruta
+		r.Get("/route-segments", h.ListRouteSegments)
+		r.Post("/route-segments", h.CreateRouteSegment)
+		r.Put("/route-segments/{id}", h.UpdateRouteSegment)
+
+		// Perfiles de tiempo de viaje
+		r.Get("/travel-profiles", h.ListTravelTimeProfiles)
+		r.Post("/travel-profiles", h.CreateTravelTimeProfile)
+		r.Put("/travel-profiles/{id}", h.UpdateTravelTimeProfile)
+
+		// Tiempos de tramo por perfil
+		r.Get("/segment-times", h.ListRouteSegmentTravelTimes)
+		r.Post("/segment-times", h.CreateRouteSegmentTravelTime)
+		r.Put("/segment-times/{id}", h.UpdateRouteSegmentTravelTime)
+
 		// Operaciones de viajes
 		r.Post("/trips/{id}/status", h.UpdateTripStatus)
 		r.Post("/trips/generate", h.GenerateTrip)
@@ -670,6 +871,9 @@ const (
 	routeStopSlice
 	templateSlice
 	calendarSlice
+	routeSegmentSlice
+	travelProfileSlice
+	segmentTimeSlice
 	conflictSlice
 	matrixSlice
 	seatAvailSlice
@@ -715,6 +919,21 @@ func orEmpty(v any, kind sliceKind) any {
 			return s
 		}
 		return []Calendar{}
+	case routeSegmentSlice:
+		if s, ok := v.([]RouteSegment); ok && s != nil {
+			return s
+		}
+		return []RouteSegment{}
+	case travelProfileSlice:
+		if s, ok := v.([]TravelTimeProfile); ok && s != nil {
+			return s
+		}
+		return []TravelTimeProfile{}
+	case segmentTimeSlice:
+		if s, ok := v.([]RouteSegmentTravelTime); ok && s != nil {
+			return s
+		}
+		return []RouteSegmentTravelTime{}
 	case conflictSlice:
 		if s, ok := v.([]Conflict); ok && s != nil {
 			return s

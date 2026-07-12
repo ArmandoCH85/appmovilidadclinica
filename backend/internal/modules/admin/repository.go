@@ -257,6 +257,94 @@ type CalendarCreateParams struct {
 // CalendarUpdateParams actualiza un calendario de servicio.
 type CalendarUpdateParams = CalendarCreateParams
 
+// RouteSegment refleja una fila de route_segments.
+type RouteSegment struct {
+	ID              int64 `json:"id"`
+	RouteID         int64 `json:"route_id"`
+	SegmentOrder    int   `json:"segment_order"`
+	FromRouteStopID int64 `json:"from_route_stop_id"`
+	ToRouteStopID   int64 `json:"to_route_stop_id"`
+	Active          bool  `json:"active"`
+}
+
+// RouteSegmentCreateParams crea un tramo de ruta.
+type RouteSegmentCreateParams struct {
+	RouteID         int64 `json:"route_id" validate:"required,gt=0"`
+	SegmentOrder    int   `json:"segment_order" validate:"required,gt=0"`
+	FromRouteStopID int64 `json:"from_route_stop_id" validate:"required,gt=0"`
+	ToRouteStopID   int64 `json:"to_route_stop_id" validate:"required,gt=0"`
+	Active          bool  `json:"active"`
+}
+
+// RouteSegmentUpdateParams actualiza un tramo de ruta.
+type RouteSegmentUpdateParams = RouteSegmentCreateParams
+
+// TravelTimeProfile refleja una fila de travel_time_profiles.
+type TravelTimeProfile struct {
+	ID         int64   `json:"id"`
+	Code       string  `json:"code"`
+	Name       string  `json:"name"`
+	ValidFrom  *string `json:"valid_from,omitempty"`
+	ValidUntil *string `json:"valid_until,omitempty"`
+	StartTime  *string `json:"start_time,omitempty"`
+	EndTime    *string `json:"end_time,omitempty"`
+	IsAllDay   bool    `json:"is_all_day"`
+	Monday     bool    `json:"monday"`
+	Tuesday    bool    `json:"tuesday"`
+	Wednesday  bool    `json:"wednesday"`
+	Thursday   bool    `json:"thursday"`
+	Friday     bool    `json:"friday"`
+	Saturday   bool    `json:"saturday"`
+	Sunday     bool    `json:"sunday"`
+	Priority   int     `json:"priority"`
+	IsDefault  bool    `json:"is_default"`
+	Active     bool    `json:"active"`
+}
+
+// TravelTimeProfileCreateParams crea un perfil de tiempos de viaje.
+type TravelTimeProfileCreateParams struct {
+	Code       string  `json:"code" validate:"required,max=40"`
+	Name       string  `json:"name" validate:"required,max=120"`
+	ValidFrom  *string `json:"valid_from,omitempty"`
+	ValidUntil *string `json:"valid_until,omitempty"`
+	StartTime  *string `json:"start_time,omitempty"`
+	EndTime    *string `json:"end_time,omitempty"`
+	IsAllDay   bool    `json:"is_all_day"`
+	Monday     bool    `json:"monday"`
+	Tuesday    bool    `json:"tuesday"`
+	Wednesday  bool    `json:"wednesday"`
+	Thursday   bool    `json:"thursday"`
+	Friday     bool    `json:"friday"`
+	Saturday   bool    `json:"saturday"`
+	Sunday     bool    `json:"sunday"`
+	Priority   int     `json:"priority" validate:"gte=0"`
+	IsDefault  bool    `json:"is_default"`
+	Active     bool    `json:"active"`
+}
+
+// TravelTimeProfileUpdateParams actualiza un perfil de tiempos de viaje.
+type TravelTimeProfileUpdateParams = TravelTimeProfileCreateParams
+
+// RouteSegmentTravelTime refleja una fila de route_segment_travel_times.
+type RouteSegmentTravelTime struct {
+	ID             int64   `json:"id"`
+	RouteSegmentID int64   `json:"route_segment_id"`
+	ProfileID      int64   `json:"profile_id"`
+	TravelMinutes  int     `json:"travel_minutes"`
+	Notes          *string `json:"notes,omitempty"`
+}
+
+// RouteSegmentTravelTimeCreateParams crea un tiempo de tramo.
+type RouteSegmentTravelTimeCreateParams struct {
+	RouteSegmentID int64   `json:"route_segment_id" validate:"required,gt=0"`
+	ProfileID      int64   `json:"profile_id" validate:"required,gt=0"`
+	TravelMinutes  int     `json:"travel_minutes" validate:"required,gt=0"`
+	Notes          *string `json:"notes,omitempty" validate:"max=255"`
+}
+
+// RouteSegmentTravelTimeUpdateParams actualiza un tiempo de tramo.
+type RouteSegmentTravelTimeUpdateParams = RouteSegmentTravelTimeCreateParams
+
 // Conflict refleja una fila de vw_schedule_conflicts.
 type Conflict struct {
 	ResourceType  string    `json:"resource_type"`
@@ -348,6 +436,21 @@ type AdminRepository interface {
 	ListCalendars(ctx context.Context, pg types.PaginationParams) ([]Calendar, int, error)
 	CreateCalendar(ctx context.Context, p CalendarCreateParams) (Calendar, error)
 	UpdateCalendar(ctx context.Context, id int64, p CalendarUpdateParams) error
+
+	// Tramos de ruta
+	ListRouteSegments(ctx context.Context, pg types.PaginationParams) ([]RouteSegment, int, error)
+	CreateRouteSegment(ctx context.Context, p RouteSegmentCreateParams) (RouteSegment, error)
+	UpdateRouteSegment(ctx context.Context, id int64, p RouteSegmentUpdateParams) error
+
+	// Perfiles de tiempo de viaje
+	ListTravelTimeProfiles(ctx context.Context, pg types.PaginationParams) ([]TravelTimeProfile, int, error)
+	CreateTravelTimeProfile(ctx context.Context, p TravelTimeProfileCreateParams) (TravelTimeProfile, error)
+	UpdateTravelTimeProfile(ctx context.Context, id int64, p TravelTimeProfileUpdateParams) error
+
+	// Tiempos de tramo por perfil
+	ListRouteSegmentTravelTimes(ctx context.Context, pg types.PaginationParams) ([]RouteSegmentTravelTime, int, error)
+	CreateRouteSegmentTravelTime(ctx context.Context, p RouteSegmentTravelTimeCreateParams) (RouteSegmentTravelTime, error)
+	UpdateRouteSegmentTravelTime(ctx context.Context, id int64, p RouteSegmentTravelTimeUpdateParams) error
 
 	// Operaciones de viajes
 	UpdateTripStatus(ctx context.Context, tripID int64, status string) error
@@ -935,6 +1038,238 @@ func (r *adminRepository) UpdateCalendar(ctx context.Context, id int64, p Calend
 		return fmt.Errorf("actualizando calendario: %w", err)
 	}
 	return ensureAffected(res, "calendario", id)
+}
+
+// ----------------------------------------------------------------------------
+// Tramos de ruta (route_segments)
+// ----------------------------------------------------------------------------
+
+// ListRouteSegments devuelve la pagina de tramos de ruta.
+func (r *adminRepository) ListRouteSegments(ctx context.Context, pg types.PaginationParams) ([]RouteSegment, int, error) {
+	pg.Normalize()
+	const q = `
+        SELECT id, route_id, segment_order, from_route_stop_id, to_route_stop_id, active
+          FROM route_segments
+         ORDER BY id
+         LIMIT ? OFFSET ?`
+	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
+	if err != nil {
+		return nil, 0, fmt.Errorf("listando tramos de ruta: %w", err)
+	}
+	defer rows.Close()
+
+	var segs []RouteSegment
+	for rows.Next() {
+		var s RouteSegment
+		if err := rows.Scan(&s.ID, &s.RouteID, &s.SegmentOrder,
+			&s.FromRouteStopID, &s.ToRouteStopID, &s.Active); err != nil {
+			return nil, 0, fmt.Errorf("escaneando tramo de ruta: %w", err)
+		}
+		segs = append(segs, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := r.count(ctx, "route_segments", "")
+	if err != nil {
+		return nil, 0, err
+	}
+	return segs, total, nil
+}
+
+// CreateRouteSegment inserta un tramo de ruta.
+func (r *adminRepository) CreateRouteSegment(ctx context.Context, p RouteSegmentCreateParams) (RouteSegment, error) {
+	res, err := r.db.ExecContext(ctx, `
+        INSERT INTO route_segments (route_id, segment_order, from_route_stop_id, to_route_stop_id, active)
+        VALUES (?, ?, ?, ?, ?)`,
+		p.RouteID, p.SegmentOrder, p.FromRouteStopID, p.ToRouteStopID, p.Active)
+	if err != nil {
+		return RouteSegment{}, fmt.Errorf("creando tramo de ruta: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return RouteSegment{}, fmt.Errorf("obteniendo id de tramo de ruta: %w", err)
+	}
+	return RouteSegment{
+		ID: id, RouteID: p.RouteID, SegmentOrder: p.SegmentOrder,
+		FromRouteStopID: p.FromRouteStopID, ToRouteStopID: p.ToRouteStopID,
+		Active: p.Active,
+	}, nil
+}
+
+// UpdateRouteSegment actualiza un tramo de ruta por id.
+func (r *adminRepository) UpdateRouteSegment(ctx context.Context, id int64, p RouteSegmentUpdateParams) error {
+	res, err := r.db.ExecContext(ctx, `
+        UPDATE route_segments
+           SET route_id = ?, segment_order = ?, from_route_stop_id = ?, to_route_stop_id = ?, active = ?
+         WHERE id = ?`,
+		p.RouteID, p.SegmentOrder, p.FromRouteStopID, p.ToRouteStopID, p.Active, id)
+	if err != nil {
+		return fmt.Errorf("actualizando tramo de ruta: %w", err)
+	}
+	return ensureAffected(res, "tramo de ruta", id)
+}
+
+// ----------------------------------------------------------------------------
+// Perfiles de tiempo de viaje (travel_time_profiles)
+// ----------------------------------------------------------------------------
+
+// ListTravelTimeProfiles devuelve la pagina de perfiles.
+func (r *adminRepository) ListTravelTimeProfiles(ctx context.Context, pg types.PaginationParams) ([]TravelTimeProfile, int, error) {
+	pg.Normalize()
+	const q = `
+        SELECT id, code, name, valid_from, valid_until, start_time, end_time,
+               is_all_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+               priority, is_default, active
+          FROM travel_time_profiles
+         ORDER BY id
+         LIMIT ? OFFSET ?`
+	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
+	if err != nil {
+		return nil, 0, fmt.Errorf("listando perfiles de tiempo: %w", err)
+	}
+	defer rows.Close()
+
+	var profs []TravelTimeProfile
+	for rows.Next() {
+		var p TravelTimeProfile
+		var validFrom, validUntil, startTime, endTime sql.NullString
+		if err := rows.Scan(&p.ID, &p.Code, &p.Name, &validFrom, &validUntil,
+			&startTime, &endTime, &p.IsAllDay,
+			&p.Monday, &p.Tuesday, &p.Wednesday, &p.Thursday, &p.Friday,
+			&p.Saturday, &p.Sunday, &p.Priority, &p.IsDefault, &p.Active); err != nil {
+			return nil, 0, fmt.Errorf("escaneando perfil de tiempo: %w", err)
+		}
+		p.ValidFrom = nullableStr(validFrom)
+		p.ValidUntil = nullableStr(validUntil)
+		p.StartTime = nullableStr(startTime)
+		p.EndTime = nullableStr(endTime)
+		profs = append(profs, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := r.count(ctx, "travel_time_profiles", "")
+	if err != nil {
+		return nil, 0, err
+	}
+	return profs, total, nil
+}
+
+// CreateTravelTimeProfile inserta un perfil de tiempo de viaje.
+func (r *adminRepository) CreateTravelTimeProfile(ctx context.Context, p TravelTimeProfileCreateParams) (TravelTimeProfile, error) {
+	res, err := r.db.ExecContext(ctx, `
+        INSERT INTO travel_time_profiles (code, name, valid_from, valid_until, start_time, end_time,
+               is_all_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+               priority, is_default, active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.Code, p.Name, p.ValidFrom, p.ValidUntil, p.StartTime, p.EndTime,
+		p.IsAllDay, p.Monday, p.Tuesday, p.Wednesday, p.Thursday, p.Friday,
+		p.Saturday, p.Sunday, p.Priority, p.IsDefault, p.Active)
+	if err != nil {
+		return TravelTimeProfile{}, fmt.Errorf("creando perfil de tiempo: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return TravelTimeProfile{}, fmt.Errorf("obteniendo id de perfil de tiempo: %w", err)
+	}
+	return TravelTimeProfile{
+		ID: id, Code: p.Code, Name: p.Name,
+		ValidFrom: p.ValidFrom, ValidUntil: p.ValidUntil,
+		StartTime: p.StartTime, EndTime: p.EndTime,
+		IsAllDay: p.IsAllDay, Monday: p.Monday, Tuesday: p.Tuesday,
+		Wednesday: p.Wednesday, Thursday: p.Thursday, Friday: p.Friday,
+		Saturday: p.Saturday, Sunday: p.Sunday,
+		Priority: p.Priority, IsDefault: p.IsDefault, Active: p.Active,
+	}, nil
+}
+
+// UpdateTravelTimeProfile actualiza un perfil de tiempo por id.
+func (r *adminRepository) UpdateTravelTimeProfile(ctx context.Context, id int64, p TravelTimeProfileUpdateParams) error {
+	res, err := r.db.ExecContext(ctx, `
+        UPDATE travel_time_profiles
+           SET code = ?, name = ?, valid_from = ?, valid_until = ?, start_time = ?, end_time = ?,
+               is_all_day = ?, monday = ?, tuesday = ?, wednesday = ?, thursday = ?,
+               friday = ?, saturday = ?, sunday = ?, priority = ?, is_default = ?, active = ?
+         WHERE id = ?`,
+		p.Code, p.Name, p.ValidFrom, p.ValidUntil, p.StartTime, p.EndTime,
+		p.IsAllDay, p.Monday, p.Tuesday, p.Wednesday, p.Thursday, p.Friday,
+		p.Saturday, p.Sunday, p.Priority, p.IsDefault, p.Active, id)
+	if err != nil {
+		return fmt.Errorf("actualizando perfil de tiempo: %w", err)
+	}
+	return ensureAffected(res, "perfil de tiempo", id)
+}
+
+// ----------------------------------------------------------------------------
+// Tiempos de tramo por perfil (route_segment_travel_times)
+// ----------------------------------------------------------------------------
+
+// ListRouteSegmentTravelTimes devuelve la pagina de tiempos de tramo.
+func (r *adminRepository) ListRouteSegmentTravelTimes(ctx context.Context, pg types.PaginationParams) ([]RouteSegmentTravelTime, int, error) {
+	pg.Normalize()
+	const q = `
+        SELECT id, route_segment_id, profile_id, travel_minutes, notes
+          FROM route_segment_travel_times
+         ORDER BY id
+         LIMIT ? OFFSET ?`
+	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
+	if err != nil {
+		return nil, 0, fmt.Errorf("listando tiempos de tramo: %w", err)
+	}
+	defer rows.Close()
+
+	var items []RouteSegmentTravelTime
+	for rows.Next() {
+		var t RouteSegmentTravelTime
+		var notes sql.NullString
+		if err := rows.Scan(&t.ID, &t.RouteSegmentID, &t.ProfileID,
+			&t.TravelMinutes, &notes); err != nil {
+			return nil, 0, fmt.Errorf("escaneando tiempo de tramo: %w", err)
+		}
+		t.Notes = nullableStr(notes)
+		items = append(items, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	total, err := r.count(ctx, "route_segment_travel_times", "")
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}
+
+// CreateRouteSegmentTravelTime inserta un tiempo de tramo.
+func (r *adminRepository) CreateRouteSegmentTravelTime(ctx context.Context, p RouteSegmentTravelTimeCreateParams) (RouteSegmentTravelTime, error) {
+	res, err := r.db.ExecContext(ctx, `
+        INSERT INTO route_segment_travel_times (route_segment_id, profile_id, travel_minutes, notes)
+        VALUES (?, ?, ?, ?)`,
+		p.RouteSegmentID, p.ProfileID, p.TravelMinutes, p.Notes)
+	if err != nil {
+		return RouteSegmentTravelTime{}, fmt.Errorf("creando tiempo de tramo: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return RouteSegmentTravelTime{}, fmt.Errorf("obteniendo id de tiempo de tramo: %w", err)
+	}
+	return RouteSegmentTravelTime{
+		ID: id, RouteSegmentID: p.RouteSegmentID, ProfileID: p.ProfileID,
+		TravelMinutes: p.TravelMinutes, Notes: p.Notes,
+	}, nil
+}
+
+// UpdateRouteSegmentTravelTime actualiza un tiempo de tramo por id.
+func (r *adminRepository) UpdateRouteSegmentTravelTime(ctx context.Context, id int64, p RouteSegmentTravelTimeUpdateParams) error {
+	res, err := r.db.ExecContext(ctx, `
+        UPDATE route_segment_travel_times
+           SET route_segment_id = ?, profile_id = ?, travel_minutes = ?, notes = ?
+         WHERE id = ?`,
+		p.RouteSegmentID, p.ProfileID, p.TravelMinutes, p.Notes, id)
+	if err != nil {
+		return fmt.Errorf("actualizando tiempo de tramo: %w", err)
+	}
+	return ensureAffected(res, "tiempo de tramo", id)
 }
 
 // ----------------------------------------------------------------------------

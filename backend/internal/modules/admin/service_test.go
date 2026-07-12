@@ -103,6 +103,33 @@ func (m *mockAdminRepo) CreateCalendar(_ context.Context, _ CalendarCreateParams
 func (m *mockAdminRepo) UpdateCalendar(_ context.Context, _ int64, _ CalendarUpdateParams) error {
 	return nil
 }
+func (m *mockAdminRepo) ListRouteSegments(_ context.Context, _ types.PaginationParams) ([]RouteSegment, int, error) {
+	return nil, 0, nil
+}
+func (m *mockAdminRepo) CreateRouteSegment(_ context.Context, _ RouteSegmentCreateParams) (RouteSegment, error) {
+	return RouteSegment{}, nil
+}
+func (m *mockAdminRepo) UpdateRouteSegment(_ context.Context, _ int64, _ RouteSegmentUpdateParams) error {
+	return nil
+}
+func (m *mockAdminRepo) ListTravelTimeProfiles(_ context.Context, _ types.PaginationParams) ([]TravelTimeProfile, int, error) {
+	return nil, 0, nil
+}
+func (m *mockAdminRepo) CreateTravelTimeProfile(_ context.Context, _ TravelTimeProfileCreateParams) (TravelTimeProfile, error) {
+	return TravelTimeProfile{}, nil
+}
+func (m *mockAdminRepo) UpdateTravelTimeProfile(_ context.Context, _ int64, _ TravelTimeProfileUpdateParams) error {
+	return nil
+}
+func (m *mockAdminRepo) ListRouteSegmentTravelTimes(_ context.Context, _ types.PaginationParams) ([]RouteSegmentTravelTime, int, error) {
+	return nil, 0, nil
+}
+func (m *mockAdminRepo) CreateRouteSegmentTravelTime(_ context.Context, _ RouteSegmentTravelTimeCreateParams) (RouteSegmentTravelTime, error) {
+	return RouteSegmentTravelTime{}, nil
+}
+func (m *mockAdminRepo) UpdateRouteSegmentTravelTime(_ context.Context, _ int64, _ RouteSegmentTravelTimeUpdateParams) error {
+	return nil
+}
 func (m *mockAdminRepo) UpdateTripStatus(_ context.Context, _ int64, _ string) error {
 	m.updateTripStatusCalls++
 	return m.updateTripStatusErr

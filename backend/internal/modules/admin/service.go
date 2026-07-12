@@ -55,6 +55,21 @@ type AdminService interface {
 	CreateCalendar(ctx context.Context, p CalendarCreateParams) (Calendar, error)
 	UpdateCalendar(ctx context.Context, id int64, p CalendarUpdateParams) error
 
+	// Tramos de ruta
+	ListRouteSegments(ctx context.Context, pg types.PaginationParams) ([]RouteSegment, int, error)
+	CreateRouteSegment(ctx context.Context, p RouteSegmentCreateParams) (RouteSegment, error)
+	UpdateRouteSegment(ctx context.Context, id int64, p RouteSegmentUpdateParams) error
+
+	// Perfiles de tiempo de viaje
+	ListTravelTimeProfiles(ctx context.Context, pg types.PaginationParams) ([]TravelTimeProfile, int, error)
+	CreateTravelTimeProfile(ctx context.Context, p TravelTimeProfileCreateParams) (TravelTimeProfile, error)
+	UpdateTravelTimeProfile(ctx context.Context, id int64, p TravelTimeProfileUpdateParams) error
+
+	// Tiempos de tramo por perfil
+	ListRouteSegmentTravelTimes(ctx context.Context, pg types.PaginationParams) ([]RouteSegmentTravelTime, int, error)
+	CreateRouteSegmentTravelTime(ctx context.Context, p RouteSegmentTravelTimeCreateParams) (RouteSegmentTravelTime, error)
+	UpdateRouteSegmentTravelTime(ctx context.Context, id int64, p RouteSegmentTravelTimeUpdateParams) error
+
 	// Operaciones de viajes
 	UpdateTripStatus(ctx context.Context, tripID int64, status string) error
 	TriggerManualGeneration(ctx context.Context, templateID int64, serviceDate string) error
@@ -301,10 +316,92 @@ func (s *adminService) UpdateCalendar(ctx context.Context, id int64, p CalendarU
 }
 
 // ----------------------------------------------------------------------------
-// Operaciones de viajes
+// Tramos de ruta
 // ----------------------------------------------------------------------------
 
-// UpdateTripStatus cambia el estado de un viaje.
+// ListRouteSegments lista tramos de ruta.
+func (s *adminService) ListRouteSegments(ctx context.Context, pg types.PaginationParams) ([]RouteSegment, int, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListRouteSegments(ctx, pg)
+}
+
+// CreateRouteSegment crea un tramo de ruta.
+func (s *adminService) CreateRouteSegment(ctx context.Context, p RouteSegmentCreateParams) (RouteSegment, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return RouteSegment{}, err
+	}
+	return s.repo.CreateRouteSegment(ctx, p)
+}
+
+// UpdateRouteSegment actualiza un tramo de ruta.
+func (s *adminService) UpdateRouteSegment(ctx context.Context, id int64, p RouteSegmentUpdateParams) error {
+	if err := requireAdmin(ctx); err != nil {
+		return err
+	}
+	return s.repo.UpdateRouteSegment(ctx, id, p)
+}
+
+// ----------------------------------------------------------------------------
+// Perfiles de tiempo de viaje
+// ----------------------------------------------------------------------------
+
+// ListTravelTimeProfiles lista perfiles de tiempo.
+func (s *adminService) ListTravelTimeProfiles(ctx context.Context, pg types.PaginationParams) ([]TravelTimeProfile, int, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListTravelTimeProfiles(ctx, pg)
+}
+
+// CreateTravelTimeProfile crea un perfil de tiempo de viaje.
+func (s *adminService) CreateTravelTimeProfile(ctx context.Context, p TravelTimeProfileCreateParams) (TravelTimeProfile, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return TravelTimeProfile{}, err
+	}
+	return s.repo.CreateTravelTimeProfile(ctx, p)
+}
+
+// UpdateTravelTimeProfile actualiza un perfil de tiempo de viaje.
+func (s *adminService) UpdateTravelTimeProfile(ctx context.Context, id int64, p TravelTimeProfileUpdateParams) error {
+	if err := requireAdmin(ctx); err != nil {
+		return err
+	}
+	return s.repo.UpdateTravelTimeProfile(ctx, id, p)
+}
+
+// ----------------------------------------------------------------------------
+// Tiempos de tramo por perfil
+// ----------------------------------------------------------------------------
+
+// ListRouteSegmentTravelTimes lista tiempos de tramo.
+func (s *adminService) ListRouteSegmentTravelTimes(ctx context.Context, pg types.PaginationParams) ([]RouteSegmentTravelTime, int, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListRouteSegmentTravelTimes(ctx, pg)
+}
+
+// CreateRouteSegmentTravelTime crea un tiempo de tramo.
+func (s *adminService) CreateRouteSegmentTravelTime(ctx context.Context, p RouteSegmentTravelTimeCreateParams) (RouteSegmentTravelTime, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return RouteSegmentTravelTime{}, err
+	}
+	return s.repo.CreateRouteSegmentTravelTime(ctx, p)
+}
+
+// UpdateRouteSegmentTravelTime actualiza un tiempo de tramo.
+func (s *adminService) UpdateRouteSegmentTravelTime(ctx context.Context, id int64, p RouteSegmentTravelTimeUpdateParams) error {
+	if err := requireAdmin(ctx); err != nil {
+		return err
+	}
+	return s.repo.UpdateRouteSegmentTravelTime(ctx, id, p)
+}
+
+// ----------------------------------------------------------------------------
+// Operaciones de viajes
+// ----------------------------------------------------------------------------
 func (s *adminService) UpdateTripStatus(ctx context.Context, tripID int64, status string) error {
 	if err := requireAdmin(ctx); err != nil {
 		return err

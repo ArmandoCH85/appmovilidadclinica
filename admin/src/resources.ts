@@ -246,7 +246,6 @@ export const templatesConfig: CrudResourceConfig = {
 
 // ----------------------------------------------------------------------------
 // Calendarios de servicio (service_calendars) — CalendarCreateParams
-// (CalendarUpdateParams es el mismo tipo, ver repository.go:258)
 // ----------------------------------------------------------------------------
 export const calendarsConfig: CrudResourceConfig = {
   path: '/admin/calendars',
@@ -275,9 +274,88 @@ export const calendarsConfig: CrudResourceConfig = {
   ],
 }
 
-/** Los 7 recursos administrables, en el orden del route table real
+// ----------------------------------------------------------------------------
+// Segmentos de ruta (route_segments) — RouteSegmentCreateParams
+// ----------------------------------------------------------------------------
+export const routeSegmentsConfig: CrudResourceConfig = {
+  path: '/admin/route-segments',
+  labelSingular: 'segmento de ruta',
+  labelPlural: 'Segmentos de ruta',
+  columns: [
+    { key: 'route_id', label: 'ID de ruta' },
+    { key: 'segment_order', label: 'Orden' },
+    { key: 'from_route_stop_id', label: 'Parada origen (route_stop_id)' },
+    { key: 'to_route_stop_id', label: 'Parada destino (route_stop_id)' },
+    { key: 'active', label: 'Activo' },
+  ],
+  fields: [
+    { key: 'route_id', label: 'ID de ruta', type: 'number', required: true },
+    { key: 'segment_order', label: 'Orden', type: 'number', required: true },
+    { key: 'from_route_stop_id', label: 'Parada origen (route_stop_id)', type: 'number', required: true },
+    { key: 'to_route_stop_id', label: 'Parada destino (route_stop_id)', type: 'number', required: true },
+    { key: 'active', label: 'Activo', type: 'boolean' },
+  ],
+}
+
+// ----------------------------------------------------------------------------
+// Perfiles de tiempo de viaje (travel_time_profiles) — TravelTimeProfileCreateParams
+// ----------------------------------------------------------------------------
+export const travelProfilesConfig: CrudResourceConfig = {
+  path: '/admin/travel-profiles',
+  labelSingular: 'perfil de tiempo',
+  labelPlural: 'Perfiles de tiempo de viaje',
+  columns: [
+    { key: 'code', label: 'Código' },
+    { key: 'name', label: 'Nombre' },
+    { key: 'priority', label: 'Prioridad' },
+    { key: 'is_default', label: 'Por defecto' },
+    { key: 'active', label: 'Activo' },
+  ],
+  fields: [
+    { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 40 },
+    { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 120 },
+    { key: 'valid_from', label: 'Vigente desde', type: 'date' },
+    { key: 'valid_until', label: 'Vigente hasta', type: 'date' },
+    { key: 'start_time', label: 'Hora de inicio (HH:MM:SS)', type: 'text' },
+    { key: 'end_time', label: 'Hora de fin (HH:MM:SS)', type: 'text' },
+    { key: 'is_all_day', label: 'Todo el día', type: 'boolean' },
+    { key: 'monday', label: 'Lunes', type: 'boolean' },
+    { key: 'tuesday', label: 'Martes', type: 'boolean' },
+    { key: 'wednesday', label: 'Miércoles', type: 'boolean' },
+    { key: 'thursday', label: 'Jueves', type: 'boolean' },
+    { key: 'friday', label: 'Viernes', type: 'boolean' },
+    { key: 'saturday', label: 'Sábado', type: 'boolean' },
+    { key: 'sunday', label: 'Domingo', type: 'boolean' },
+    { key: 'priority', label: 'Prioridad', type: 'number' },
+    { key: 'is_default', label: 'Por defecto', type: 'boolean' },
+    { key: 'active', label: 'Activo', type: 'boolean' },
+  ],
+}
+
+// ----------------------------------------------------------------------------
+// Tiempos por segmento (route_segment_travel_times) — RouteSegmentTravelTimeCreateParams
+// ----------------------------------------------------------------------------
+export const segmentTimesConfig: CrudResourceConfig = {
+  path: '/admin/segment-times',
+  labelSingular: 'tiempo de segmento',
+  labelPlural: 'Tiempos de segmento',
+  columns: [
+    { key: 'route_segment_id', label: 'ID de segmento' },
+    { key: 'profile_id', label: 'ID de perfil' },
+    { key: 'travel_minutes', label: 'Minutos de viaje' },
+    { key: 'notes', label: 'Notas' },
+  ],
+  fields: [
+    { key: 'route_segment_id', label: 'ID de segmento', type: 'number', required: true },
+    { key: 'profile_id', label: 'ID de perfil', type: 'number', required: true },
+    { key: 'travel_minutes', label: 'Minutos de viaje', type: 'number', required: true },
+    { key: 'notes', label: 'Notas', type: 'textarea', maxLength: 255 },
+  ],
+}
+
+/** Los recursos administrables, en el orden del route table real
  * (handler.go RegisterRoutes). Consumido por `router.ts` (rutas) y
- * `AppLayout.vue` (nav) para no repetir 7 bloques literales — ponytail: la
+ * `AppLayout.vue` (nav) para no repetir bloques literales — ponytail: la
  * data vive una vez, ambos consumidores mapean sobre el mismo array. */
 export const crudResources: Array<{ routePath: string; navLabel: string; config: CrudResourceConfig }> = [
   { routePath: '/stops', navLabel: 'Paradas', config: stopsConfig },
@@ -286,4 +364,7 @@ export const crudResources: Array<{ routePath: string; navLabel: string; config:
   { routePath: '/routes', navLabel: 'Rutas', config: routesConfig },
   { routePath: '/templates', navLabel: 'Plantillas de viaje', config: templatesConfig },
   { routePath: '/calendars', navLabel: 'Calendarios de servicio', config: calendarsConfig },
+  { routePath: '/route-segments', navLabel: 'Segmentos de ruta', config: routeSegmentsConfig },
+  { routePath: '/travel-profiles', navLabel: 'Perfiles de tiempo', config: travelProfilesConfig },
+  { routePath: '/segment-times', navLabel: 'Tiempos de segmento', config: segmentTimesConfig },
 ]
