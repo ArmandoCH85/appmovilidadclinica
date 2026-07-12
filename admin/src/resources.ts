@@ -180,37 +180,6 @@ export const routesConfig: CrudResourceConfig = {
 }
 
 // ----------------------------------------------------------------------------
-// Paradas de ruta (route_stops) — RouteStopCreateParams/UpdateParams
-// (identicos). SIN endpoint de listado plano: el backend solo registra
-// GET /admin/routes/{id}/stops (anidado bajo una ruta), nunca
-// GET /admin/route-stops (confirmado en handler.go RegisterRoutes — ese path
-// solo tiene POST y PUT). `path` de abajo sirve para alta/edicion; el listado
-// real lo resuelve `RouteStopsView.vue` con un selector de ruta + el prop
-// `listPath` de CrudView apuntando a `/admin/routes/{id}/stops` (deviation
-// documentada, ver apply-progress Fase 5).
-// ----------------------------------------------------------------------------
-export const routeStopsConfig: CrudResourceConfig = {
-  path: '/admin/route-stops',
-  labelSingular: 'parada de ruta',
-  labelPlural: 'Paradas de ruta',
-  columns: [
-    { key: 'stop_id', label: 'ID de parada' },
-    { key: 'stop_order', label: 'Orden' },
-    { key: 'dwell_minutes', label: 'Minutos de espera' },
-    { key: 'pickup_allowed', label: 'Permite subida' },
-    { key: 'dropoff_allowed', label: 'Permite bajada' },
-  ],
-  fields: [
-    { key: 'route_id', label: 'ID de ruta', type: 'number', required: true },
-    { key: 'stop_id', label: 'ID de parada', type: 'number', required: true },
-    { key: 'stop_order', label: 'Orden', type: 'number', required: true },
-    { key: 'dwell_minutes', label: 'Minutos de espera', type: 'number' },
-    { key: 'pickup_allowed', label: 'Permite subida', type: 'boolean' },
-    { key: 'dropoff_allowed', label: 'Permite bajada', type: 'boolean' },
-  ],
-}
-
-// ----------------------------------------------------------------------------
 // Plantillas de viaje (trip_templates) — TemplateCreateParams
 // (TemplateUpdateParams es el mismo tipo, ver repository.go:222)
 // ----------------------------------------------------------------------------

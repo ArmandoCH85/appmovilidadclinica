@@ -952,6 +952,13 @@ func (r *adminRepository) UpdateRouteStop(ctx context.Context, id int64, p Route
 		p.RouteID, p.StopID, p.StopOrder, p.DwellMinutes, p.PickupAllowed,
 		p.DropoffAllowed, id)
 	if err != nil {
+		// trg_route_stops_protect_structure (0001_schema.up.sql) rechaza con
+		// SIGNAL '45000' un cambio de route_id/stop_id/stop_order si la
+		// parada ya tiene tramos armados en route_segments — sin esta
+		// traduccion caia como 500 generico (mismo caso que route_segments).
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return spErr
+		}
 		return fmt.Errorf("actualizando parada de ruta: %w", err)
 	}
 	return ensureAffected(res, "parada de ruta", id)
