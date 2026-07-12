@@ -16,13 +16,13 @@ interface NavSection {
 }
 
 defineProps<{ sections: NavSection[] }>()
-const expanded = defineModel<string[]>('expanded', { required: true })
+const expanded = defineModel<string>('expanded', { required: true })
 const emit = defineEmits<{ navigate: [] }>()
 </script>
 
 <template>
   <nav class="app-navigation" aria-label="Navegación principal">
-    <Accordion v-model:value="expanded" multiple>
+    <Accordion v-model:value="expanded">
       <AccordionPanel v-for="section in sections" :key="section.group" :value="section.group">
         <AccordionHeader>
           <span class="nav-section-label">
@@ -32,17 +32,10 @@ const emit = defineEmits<{ navigate: [] }>()
         </AccordionHeader>
         <AccordionContent>
           <ul>
-            <li v-for="(item, idx) in section.items" :key="item.to">
+            <li v-for="item in section.items" :key="item.to">
               <RouterLink :to="item.to" class="nav-link" @click="emit('navigate')">
-                <span class="nav-rail" aria-hidden="true">
-                  <span v-if="idx > 0" class="nav-rail-line nav-rail-line-top"></span>
-                  <span class="nav-node"></span>
-                  <span v-if="idx < section.items.length - 1" class="nav-rail-line nav-rail-line-bottom"></span>
-                </span>
-                <span class="nav-row">
-                  <i :class="`pi pi-${item.icon}`" aria-hidden="true"></i>
-                  <span class="nav-label">{{ item.label }}</span>
-                </span>
+                <span class="nav-icon" aria-hidden="true"><i :class="`pi pi-${item.icon}`"></i></span>
+                <span class="nav-label">{{ item.label }}</span>
               </RouterLink>
             </li>
           </ul>
@@ -54,34 +47,36 @@ const emit = defineEmits<{ navigate: [] }>()
 
 <style scoped>
 .app-navigation {
-  --nav-text: #d1fae5;
-  --nav-muted: #86a99e;
-  --nav-border: rgba(236, 253, 245, 0.12);
-  --nav-accent: #fbbf24;
-  --nav-accent-rgb: 251, 191, 36;
-  --nav-hover: rgba(255, 255, 255, 0.055);
+  --nav-text: #ecfdf5;
+  --nav-muted: #91aaa2;
+  --nav-border: rgba(236, 253, 245, 0.1);
+  --nav-accent: #34d399;
+  --nav-hover: rgba(255, 255, 255, 0.05);
   min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: rgba(167, 243, 208, 0.24) transparent;
+  scrollbar-width: thin;
 }
 .app-navigation :deep(.p-accordion) {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.1rem;
 }
 .app-navigation :deep(.p-accordionpanel) {
   border: 0;
 }
 .app-navigation :deep(.p-accordionheader) {
   width: 100%;
-  min-height: 2.5rem;
+  min-height: 2.4rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.65rem 0.75rem 0.35rem;
-  border: 0;
-  box-shadow: none;
-  background: transparent;
-  color: var(--nav-muted);
+  padding: 0.6rem 0.65rem;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--nav-muted) !important;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -91,8 +86,11 @@ const emit = defineEmits<{ navigate: [] }>()
 }
 .app-navigation :deep(.p-accordionheader:hover),
 .app-navigation :deep(.p-accordionheader:focus-visible) {
-  background: transparent;
-  color: var(--nav-text);
+  background: var(--nav-hover) !important;
+  color: var(--nav-text) !important;
+}
+.app-navigation :deep(.p-accordionpanel[data-p-active='true'] .p-accordionheader) {
+  color: var(--nav-text) !important;
 }
 .app-navigation :deep(.p-accordionheader-toggle-icon) {
   width: 0.65rem;
@@ -100,9 +98,9 @@ const emit = defineEmits<{ navigate: [] }>()
   flex-shrink: 0;
 }
 .app-navigation :deep(.p-accordioncontent-content) {
-  padding: 0;
-  background: transparent;
-  color: inherit;
+  padding: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
 }
 .nav-section-label {
   display: flex;
@@ -123,18 +121,20 @@ const emit = defineEmits<{ navigate: [] }>()
 }
 .app-navigation ul {
   margin: 0;
-  padding: 0 0.35rem 0.45rem;
+  padding: 0 0.2rem 0.45rem;
   list-style: none;
 }
 .nav-link {
-  position: relative;
-  min-height: 2.45rem;
+  min-height: 2.5rem;
   display: flex;
-  align-items: stretch;
-  border-radius: 0.55rem;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.55rem;
+  border-left: 2px solid transparent;
+  border-radius: 0.45rem;
   color: var(--nav-muted);
   text-decoration: none;
-  transition: background-color 150ms ease, color 150ms ease;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 .nav-link:hover {
   background: var(--nav-hover);
@@ -143,83 +143,34 @@ const emit = defineEmits<{ navigate: [] }>()
 .nav-link:active {
   background: rgba(255, 255, 255, 0.09);
 }
-.nav-rail {
-  position: relative;
-  width: 1.25rem;
+.nav-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.035);
 }
-.nav-rail-line {
-  position: absolute;
-  left: 50%;
-  width: 1px;
-  background: var(--nav-border);
-  transform: translateX(-50%);
-}
-.nav-rail-line-top {
-  top: 0;
-  height: 50%;
-}
-.nav-rail-line-bottom {
-  bottom: 0;
-  height: 50%;
-}
-.nav-node {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0.45rem;
-  height: 0.45rem;
-  border: 1.5px solid var(--nav-muted);
-  border-radius: 50%;
-  background: #064e3b;
-  transform: translate(-50%, -50%);
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
-}
-.nav-row {
-  min-width: 0;
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.45rem 0.65rem 0.45rem 0.1rem;
-}
-.nav-row .pi {
-  width: 1rem;
-  flex-shrink: 0;
-  color: currentColor;
-  font-size: 0.88rem;
-  text-align: center;
+.nav-icon .pi {
+  font-size: 0.84rem;
 }
 .nav-label {
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .nav-link[aria-current='page'] {
-  background: rgba(255, 255, 255, 0.09);
+  border-left-color: var(--nav-accent);
+  background: rgba(52, 211, 153, 0.11);
   color: #ffffff;
-  font-weight: 650;
+  font-weight: 700;
 }
-.nav-link[aria-current='page']::after {
-  content: '';
-  position: absolute;
-  top: 0.45rem;
-  right: 0;
-  bottom: 0.45rem;
-  width: 2px;
-  border-radius: 2px 0 0 2px;
-  background: var(--nav-accent);
-}
-.nav-link[aria-current='page'] .nav-node {
-  border-color: var(--nav-accent);
-  background: var(--nav-accent);
-  box-shadow: 0 0 0 3px rgba(var(--nav-accent-rgb), 0.16);
-}
-
-@media (prefers-color-scheme: dark) {
-  .nav-node {
-    background: #043f31;
-  }
+.nav-link[aria-current='page'] .nav-icon {
+  background: rgba(52, 211, 153, 0.16);
+  color: #6ee7b7;
 }
 </style>

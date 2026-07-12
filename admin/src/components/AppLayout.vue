@@ -28,7 +28,7 @@ const navGroups = NAV_GROUP_ORDER.map((group) => ({
 
 const activeItem = computed(() => navItems.find((item) => item.to === route.path))
 const activeGroup = computed(() => activeItem.value?.group)
-const expandedGroups = useStorage<string[]>('admin-nav-expanded', activeGroup.value ? [activeGroup.value] : [])
+const expandedGroup = useStorage<string>('admin-nav-expanded-group', activeGroup.value ?? navGroups[0]?.group ?? '')
 const mobileNavVisible = ref(false)
 const mainContent = ref<HTMLElement | null>(null)
 
@@ -52,9 +52,7 @@ const roleLabel = computed(() => {
 watch(
   activeGroup,
   (group) => {
-    if (group && !expandedGroups.value.includes(group)) {
-      expandedGroups.value = [...expandedGroups.value, group]
-    }
+    if (group) expandedGroup.value = group
   },
   { immediate: true },
 )
@@ -100,15 +98,7 @@ function onConfirmSessionExpired() {
         <span>Navegación</span>
         <span>{{ navItems.length }} módulos</span>
       </div>
-      <AppNavigation v-model:expanded="expandedGroups" :sections="navGroups" />
-
-      <div class="system-status">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span>
-          <strong>Sistema operativo</strong>
-          <small>Panel administrativo</small>
-        </span>
-      </div>
+      <AppNavigation v-model:expanded="expandedGroup" :sections="navGroups" />
     </aside>
 
     <div class="app-workspace">
@@ -178,7 +168,7 @@ function onConfirmSessionExpired() {
         </div>
       </template>
       <AppNavigation
-        v-model:expanded="expandedGroups"
+        v-model:expanded="expandedGroup"
         :sections="navGroups"
         @navigate="mobileNavVisible = false"
       />
@@ -250,10 +240,10 @@ function onConfirmSessionExpired() {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem 0.75rem;
-  overflow-y: auto;
-  background: #064e3b;
+  gap: 0.55rem;
+  padding: 1rem 0.65rem 0.65rem;
+  overflow: hidden;
+  background: #0b211b;
   color: #ecfdf5;
   box-shadow: 0.5rem 0 2rem rgba(6, 78, 59, 0.08);
 }
@@ -299,7 +289,7 @@ function onConfirmSessionExpired() {
   display: flex;
   justify-content: space-between;
   padding: 0.15rem 0.7rem 0;
-  color: #86a99e;
+  color: #78938a;
   font-size: 0.67rem;
   font-weight: 650;
   letter-spacing: 0.06em;
@@ -307,35 +297,8 @@ function onConfirmSessionExpired() {
 }
 .app-sidebar :deep(.app-navigation) {
   flex: 1;
-}
-.system-status {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.75rem;
-  border: 1px solid rgba(236, 253, 245, 0.12);
-  border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.045);
-}
-.status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: #34d399;
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.14);
-}
-.system-status > span:last-child {
-  display: flex;
-  flex-direction: column;
-}
-.system-status strong {
-  color: #ecfdf5;
-  font-size: 0.75rem;
-}
-.system-status small {
-  color: #86a99e;
-  font-size: 0.68rem;
+  margin-right: -0.25rem;
+  padding-right: 0.25rem;
 }
 .app-workspace {
   min-width: 0;
@@ -465,7 +428,7 @@ function onConfirmSessionExpired() {
 
 :global(.mobile-drawer) {
   width: min(88vw, 19rem) !important;
-  background: #064e3b !important;
+  background: #0b211b !important;
   color: #ecfdf5 !important;
 }
 :global(.mobile-drawer .p-drawer-header) {
@@ -510,7 +473,7 @@ function onConfirmSessionExpired() {
     min-height: 4rem;
     padding-inline: 0.75rem;
   }
-  .account-copy,
+  .app-topbar .account-copy,
   .account-divider {
     display: none;
   }
@@ -543,7 +506,7 @@ function onConfirmSessionExpired() {
   }
   .app-sidebar,
   :global(.mobile-drawer) {
-    background: #043f31 !important;
+    background: #071a15 !important;
   }
   .app-topbar {
     background: color-mix(in srgb, #191c21 94%, transparent);
