@@ -9,10 +9,19 @@ import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import { useAuth } from '../auth/useAuth'
 import { APP_TITLE, SESSION_LABELS } from '../messages'
+import { crudResources } from '../resources'
 
 const router = useRouter()
 const route = useRoute()
 const { user, secondsLeft, sessionExpired, logout, dismissSessionExpired } = useAuth()
+
+// Fase 5: nav de los 7 recursos, data-driven desde `crudResources` +
+// `route-stops` (caso especial, ver RouteStopsView.vue). `aria-current`
+// marca la ruta activa — nunca solo color (a11y, ver design.md non-functional).
+const navItems = [
+  ...crudResources.map(({ routePath, navLabel }) => ({ to: routePath, label: navLabel })),
+  { to: '/route-stops', label: 'Paradas de ruta' },
+]
 
 const showExpiryBanner = computed(() => secondsLeft.value > 0 && secondsLeft.value <= 120)
 const bannerMinutes = computed(() => Math.max(1, Math.ceil(secondsLeft.value / 60)))
@@ -48,9 +57,22 @@ function onConfirmSessionExpired() {
       {{ SESSION_LABELS.expiringSoon(bannerMinutes) }}
     </p>
 
-    <main class="app-content">
-      <RouterView />
-    </main>
+    <div class="app-body">
+      <nav class="app-nav" aria-label="Recursos administrables">
+        <ul>
+          <li v-for="item in navItems" :key="item.to">
+            <!-- RouterLink ya setea aria-current="page" en la ruta activa
+                 (default ariaCurrentValue) — se estiliza via ese atributo,
+                 sin logica manual duplicada. -->
+            <RouterLink :to="item.to">{{ item.label }}</RouterLink>
+          </li>
+        </ul>
+      </nav>
+
+      <main class="app-content">
+        <RouterView />
+      </main>
+    </div>
 
     <Dialog
       :visible="sessionExpired"
@@ -92,9 +114,41 @@ function onConfirmSessionExpired() {
   background: #fef3c7;
   color: #78350f;
 }
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.app-nav {
+  border-right: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 1rem 0.5rem;
+  flex-shrink: 0;
+}
+.app-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.app-nav a {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+}
+/* Ruta activa: negrita + borde, nunca solo color (a11y). */
+.app-nav a[aria-current='page'] {
+  font-weight: 700;
+  border-left: 3px solid currentColor;
+  padding-left: calc(0.75rem - 3px);
+}
 .app-content {
   flex: 1;
   padding: 1rem;
+  min-width: 0;
 }
 @media (prefers-color-scheme: dark) {
   .app-header {
@@ -103,6 +157,9 @@ function onConfirmSessionExpired() {
   .session-banner {
     background: #451a03;
     color: #fde68a;
+  }
+  .app-nav {
+    border-right-color: rgba(255, 255, 255, 0.15);
   }
 }
 </style>

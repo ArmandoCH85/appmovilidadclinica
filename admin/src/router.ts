@@ -1,16 +1,21 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { defineComponent, h } from 'vue'
 import AppLayout from './components/AppLayout.vue'
 import LoginView from './components/LoginView.vue'
+import CrudView from './components/CrudView.vue'
+import RouteStopsView from './components/RouteStopsView.vue'
 import { useAuth } from './auth/useAuth'
+import { crudResources } from './resources'
 
-// Fase 5 reemplaza este placeholder por las rutas reales de los 7 recursos
-// (children de AppLayout, prop `resource` -> CrudView). Placeholder inline
-// para no inventar un archivo de componente que el diseno no contempla.
-const HomePlaceholder = defineComponent({
-  name: 'HomePlaceholder',
-  render: () => h('p', 'Panel administrativo — en construcción.'),
-})
+// Fase 5: las 6 rutas CRUD "planas" salen de `crudResources` (resources.ts)
+// — data-driven, un solo bloque en vez de 6 literales (ponytail). `route-stops`
+// es la 7ma pero no es generica (sin GET plano en el backend, ver
+// RouteStopsView.vue) — se registra aparte con su propio componente.
+const resourceChildren: RouteRecordRaw[] = crudResources.map(({ routePath, config }) => ({
+  path: routePath.slice(1),
+  name: routePath.slice(1),
+  component: CrudView,
+  props: { config },
+}))
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: LoginView },
@@ -21,7 +26,11 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: AppLayout,
     meta: { requiresAuth: true },
-    children: [{ path: '', name: 'home', component: HomePlaceholder }],
+    children: [
+      { path: '', redirect: '/stops' },
+      ...resourceChildren,
+      { path: 'route-stops', name: 'route-stops', component: RouteStopsView },
+    ],
   },
 ]
 

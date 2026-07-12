@@ -29,13 +29,19 @@ export function useCrudResource<T extends { id: number }>(basePath: string) {
   const loading = ref(false)
   const error = ref('')
 
-  async function list(): Promise<void> {
+  /** `listPathOverride` (Fase 5, `route-stops`): el backend no expone
+   * GET /admin/route-stops (solo POST/PUT top-level) — el listado real es
+   * GET /admin/routes/{id}/stops, anidado bajo una ruta concreta. En vez de
+   * inventar un endpoint que no existe, quien llama puede pasar el path de
+   * listado real por llamada; create/update siguen usando `basePath` sin
+   * cambios. Default: usa `basePath` (comportamiento de siempre). */
+  async function list(listPathOverride?: string): Promise<void> {
     loading.value = true
     error.value = ''
     try {
       const res = await request<PaginatedResponse<T>>(
         'GET',
-        `${basePath}?page=${page.value}&page_size=${pageSize.value}`
+        `${listPathOverride ?? basePath}?page=${page.value}&page_size=${pageSize.value}`
       )
       items.value = res.items
       page.value = res.page

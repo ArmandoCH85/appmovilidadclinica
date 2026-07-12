@@ -12,12 +12,16 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Password from 'primevue/password'
 import { useCrudResource } from '../api/crud'
 import { ApiError } from '../api/client'
 import { LABELS } from '../messages'
 import type { CrudField, CrudResourceConfig } from '../resources'
 
-const props = defineProps<{ config: CrudResourceConfig }>()
+// `listPath` (Fase 5): override del path de listado para recursos cuyo
+// GET real no coincide con `config.path` (route-stops — ver RouteStopsView.vue
+// y el comentario en api/crud.ts `list()`). Default: usa `config.path`.
+const props = defineProps<{ config: CrudResourceConfig; listPath?: string }>()
 
 type Row = Record<string, any>
 type ResourceRow = Row & { id: number }
@@ -26,14 +30,14 @@ const { items, page, pageSize, total, loading, error, list, create, update, soft
   useCrudResource<ResourceRow>(props.config.path)
 
 onMounted(() => {
-  list()
+  list(props.listPath)
 })
 
 // DataTable en modo lazy: el evento trae el indice 0-based de pagina.
 function onPage(event: { page: number; rows: number }): void {
   page.value = event.page + 1
   pageSize.value = event.rows
-  list()
+  list(props.listPath)
 }
 
 /** Nunca renderiza booleanos crudos ("true"/"false") ni celdas en blanco sin
@@ -109,7 +113,10 @@ function focusField(key: string): void {
 function validateClientSide(): boolean {
   for (const field of props.config.fields) {
     const value = formData[field.key]
-    if (field.required && (value === '' || value === null || value === undefined)) {
+    // `required:'create'` (ej. password de usuarios): solo obligatorio al
+    // dar de alta — en edicion, vacio significa "no cambiar" (ver resources.ts).
+    const isRequired = field.required === true || (field.required === 'create' && editingId.value === null)
+    if (isRequired && (value === '' || value === null || value === undefined)) {
       fieldErrors[field.key] = LABELS.requiredField
       focusField(field.key)
       return false
@@ -150,7 +157,7 @@ async function onSubmit(): Promise<void> {
       await update(editingId.value, { ...formData })
     }
     dialogVisible.value = false
-    await list()
+    await list(props.listPath)
   } catch (err) {
     if (err instanceof ApiError && err.code === 422) {
       const key = mapServerFieldError(err.message)
@@ -188,7 +195,7 @@ async function confirmDeactivate(): Promise<void> {
   try {
     await softDelete(confirmTarget.value)
     confirmTarget.value = null
-    await list()
+    await list(props.listPath)
   } finally {
     deactivating.value = false
   }
@@ -204,7 +211,7 @@ async function confirmDeactivate(): Promise<void> {
 
     <p v-if="error" role="alert" class="crud-error">
       {{ error }}
-      <Button label="Reintentar" text size="small" @click="list()" />
+      <Button label="Reintentar" text size="small" @click="list(props.listPath)" />
     </p>
 
     <DataTable
@@ -300,6 +307,27 @@ async function confirmDeactivate(): Promise<void> {
             :ref="(el) => { fieldEls[field.key] = el }"
             v-model="formData[field.key]"
           />
+          <Password
+            v-else-if="field.type === 'password'"
+            :inputId="fieldDomId(field)"
+            :ref="(el) => { fieldEls[field.key] = el }"
+            v-model="formData[field.key]"
+            :feedback="false"
+            toggleMask
+            fluid
+            :aria-invalid="!!fieldErrors[field.key]"
+            :aria-describedby="fieldErrors[field.key] ? `${fieldDomId(field)}-error` : undefined"
+          />
+          <input
+            v-else-if="field.type === 'date'"
+            :id="fieldDomId(field)"
+            :ref="(el) => { fieldEls[field.key] = el }"
+            type="date"
+            class="native-date"
+            v-model="formData[field.key]"
+            :aria-invalid="!!fieldErrors[field.key]"
+            :aria-describedby="fieldErrors[field.key] ? `${fieldDomId(field)}-error` : undefined"
+          />
 
           <p v-if="fieldErrors[field.key]" :id="`${fieldDomId(field)}-error`" role="alert" class="field-error">
             {{ fieldErrors[field.key] }}
@@ -352,6 +380,14 @@ async function confirmDeactivate(): Promise<void> {
 }
 .field label {
   font-weight: 600;
+}
+.native-date {
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
 }
 .field-error,
 .form-error {

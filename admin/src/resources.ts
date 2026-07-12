@@ -1,9 +1,8 @@
-// Contrato de configuracion de recurso CRUD (Fase 4, tarea 4.2 — alcance
-// acotado por el batch: SOLO el contrato tipado que consume `CrudView.vue`.
-// Las 7 configs reales (stops/users/vehicles/routes/route-stops/templates/
-// calendars) son trabajo de la Fase 5 ("Wiring por recurso") y NO se cargan
-// aca todavia — este archivo define la forma, no los datos.
-export type CrudFieldType = 'text' | 'number' | 'boolean' | 'select' | 'textarea'
+// Contrato de configuracion de recurso CRUD (Fase 4, tarea 4.2) + las 7
+// configs reales de recursos (Fase 5, tarea 5.1/5.2), groundeadas 1:1 contra
+// backend/internal/modules/admin/{handler,repository}.go — paths, columnas y
+// campos (con sus validate tags) leidos directo del codigo real, no inventados.
+export type CrudFieldType = 'text' | 'number' | 'boolean' | 'select' | 'textarea' | 'password' | 'date'
 
 export interface CrudFieldOption {
   value: string
@@ -14,12 +13,20 @@ export interface CrudFieldOption {
  * tag que espera el backend en *CreateParams/*UpdateParams (ej. "stop_type",
  * "employee_code", ver backend/internal/modules/admin/repository.go) —
  * `CrudView` arma el body del POST/PUT directo desde estas claves, sin capa
- * de mapeo intermedia. */
+ * de mapeo intermedia.
+ *
+ * `required: 'create'` (Fase 5, campo `password` de usuarios): el backend
+ * exige el campo solo en el alta (`UserCreateParams.Password
+ * validate:"required"`); en edicion es opcional — vacio significa "no
+ * cambiar la contraseña" (`UserUpdateParams`, sin validate:"required", y
+ * `service.go` UpdateUser no toca el hash si llega ""). Un `required:true`
+ * uniforme forzaria reingresar la contraseña en cada edicion; `false`
+ * perderia la validacion real en el alta. */
 export interface CrudField {
   key: string
   label: string
   type: CrudFieldType
-  required?: boolean
+  required?: boolean | 'create'
   maxLength?: number
   /** Solo para type:'select' — refleja un `validate:"oneof=..."` del backend. */
   options?: CrudFieldOption[]
@@ -32,10 +39,251 @@ export interface CrudColumn {
 }
 
 export interface CrudResourceConfig {
-  /** Path relativo bajo el API admin, ej. "/admin/stops". */
+  /** Path relativo bajo el API admin para alta/edicion, ej. "/admin/stops".
+   * Tambien se usa para el listado salvo que el recurso tenga un endpoint de
+   * lista distinto (ver `route-stops` mas abajo, y `listPath` en CrudView). */
   path: string
   labelSingular: string
   labelPlural: string
   columns: CrudColumn[]
   fields: CrudField[]
 }
+
+// ----------------------------------------------------------------------------
+// Paradas (transport_stops) — StopCreateParams/StopUpdateParams (identicos)
+// ----------------------------------------------------------------------------
+export const stopsConfig: CrudResourceConfig = {
+  path: '/admin/stops',
+  labelSingular: 'parada',
+  labelPlural: 'Paradas',
+  columns: [
+    { key: 'code', label: 'Código' },
+    { key: 'name', label: 'Nombre' },
+    { key: 'stop_type', label: 'Tipo' },
+    { key: 'active', label: 'Activa' },
+  ],
+  fields: [
+    { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 30 },
+    { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 150 },
+    {
+      key: 'stop_type',
+      label: 'Tipo',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'SEDE', label: 'Sede' },
+        { value: 'PARADERO', label: 'Paradero' },
+      ],
+    },
+    { key: 'reference_text', label: 'Referencia', type: 'textarea', maxLength: 255 },
+    { key: 'latitude', label: 'Latitud', type: 'number' },
+    { key: 'longitude', label: 'Longitud', type: 'number' },
+    { key: 'active', label: 'Activa', type: 'boolean' },
+  ],
+}
+
+// ----------------------------------------------------------------------------
+// Usuarios (users) — UserCreateParams/UserUpdateParams
+// ----------------------------------------------------------------------------
+export const usersConfig: CrudResourceConfig = {
+  path: '/admin/users',
+  labelSingular: 'usuario',
+  labelPlural: 'Usuarios',
+  columns: [
+    { key: 'employee_code', label: 'Legajo' },
+    { key: 'full_name', label: 'Nombre completo' },
+    { key: 'role', label: 'Rol' },
+    { key: 'active', label: 'Activo' },
+  ],
+  fields: [
+    { key: 'employee_code', label: 'Legajo', type: 'text', required: true, maxLength: 30 },
+    { key: 'document_number', label: 'Número de documento', type: 'text', required: true, maxLength: 20 },
+    // required:'create' — ver comentario en CrudField sobre este campo.
+    { key: 'password', label: 'Contraseña', type: 'password', required: 'create' },
+    { key: 'full_name', label: 'Nombre completo', type: 'text', required: true, maxLength: 150 },
+    {
+      key: 'role',
+      label: 'Rol',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'ADMIN', label: 'Administrador' },
+        { value: 'DRIVER', label: 'Conductor' },
+        { value: 'WORKER', label: 'Trabajador' },
+      ],
+    },
+    { key: 'department', label: 'Área', type: 'text', maxLength: 100 },
+    { key: 'phone', label: 'Teléfono', type: 'text', maxLength: 25 },
+    { key: 'preferred_stop_id', label: 'ID de parada preferida', type: 'number' },
+    { key: 'active', label: 'Activo', type: 'boolean' },
+  ],
+}
+
+// ----------------------------------------------------------------------------
+// Vehiculos (vehicles) — VehicleCreateParams/VehicleUpdateParams (identicos)
+// ----------------------------------------------------------------------------
+export const vehiclesConfig: CrudResourceConfig = {
+  path: '/admin/vehicles',
+  labelSingular: 'vehículo',
+  labelPlural: 'Vehículos',
+  columns: [
+    { key: 'internal_code', label: 'Código interno' },
+    { key: 'plate', label: 'Patente' },
+    { key: 'seat_capacity', label: 'Asientos' },
+    { key: 'active', label: 'Activo' },
+  ],
+  fields: [
+    { key: 'internal_code', label: 'Código interno', type: 'text', required: true, maxLength: 30 },
+    { key: 'plate', label: 'Patente', type: 'text', required: true, maxLength: 15 },
+    { key: 'description', label: 'Descripción', type: 'textarea', maxLength: 120 },
+    { key: 'seat_capacity', label: 'Cantidad de asientos', type: 'number', required: true },
+    { key: 'active', label: 'Activo', type: 'boolean' },
+  ],
+}
+
+// ----------------------------------------------------------------------------
+// Rutas (transport_routes) — RouteCreateParams/RouteUpdateParams (identicos)
+// ----------------------------------------------------------------------------
+export const routesConfig: CrudResourceConfig = {
+  path: '/admin/routes',
+  labelSingular: 'ruta',
+  labelPlural: 'Rutas',
+  columns: [
+    { key: 'code', label: 'Código' },
+    { key: 'name', label: 'Nombre' },
+    { key: 'direction', label: 'Sentido' },
+    { key: 'active', label: 'Activa' },
+  ],
+  fields: [
+    { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 40 },
+    { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 150 },
+    {
+      key: 'direction',
+      label: 'Sentido',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'IDA', label: 'Ida' },
+        { value: 'VUELTA', label: 'Vuelta' },
+      ],
+    },
+    { key: 'paired_route_id', label: 'ID de ruta emparejada', type: 'number' },
+    { key: 'active', label: 'Activa', type: 'boolean' },
+  ],
+}
+
+// ----------------------------------------------------------------------------
+// Paradas de ruta (route_stops) — RouteStopCreateParams/UpdateParams
+// (identicos). SIN endpoint de listado plano: el backend solo registra
+// GET /admin/routes/{id}/stops (anidado bajo una ruta), nunca
+// GET /admin/route-stops (confirmado en handler.go RegisterRoutes — ese path
+// solo tiene POST y PUT). `path` de abajo sirve para alta/edicion; el listado
+// real lo resuelve `RouteStopsView.vue` con un selector de ruta + el prop
+// `listPath` de CrudView apuntando a `/admin/routes/{id}/stops` (deviation
+// documentada, ver apply-progress Fase 5).
+// ----------------------------------------------------------------------------
+export const routeStopsConfig: CrudResourceConfig = {
+  path: '/admin/route-stops',
+  labelSingular: 'parada de ruta',
+  labelPlural: 'Paradas de ruta',
+  columns: [
+    { key: 'stop_id', label: 'ID de parada' },
+    { key: 'stop_order', label: 'Orden' },
+    { key: 'dwell_minutes', label: 'Minutos de espera' },
+    { key: 'pickup_allowed', label: 'Permite subida' },
+    { key: 'dropoff_allowed', label: 'Permite bajada' },
+  ],
+  fields: [
+    { key: 'route_id', label: 'ID de ruta', type: 'number', required: true },
+    { key: 'stop_id', label: 'ID de parada', type: 'number', required: true },
+    { key: 'stop_order', label: 'Orden', type: 'number', required: true },
+    { key: 'dwell_minutes', label: 'Minutos de espera', type: 'number' },
+    { key: 'pickup_allowed', label: 'Permite subida', type: 'boolean' },
+    { key: 'dropoff_allowed', label: 'Permite bajada', type: 'boolean' },
+  ],
+}
+
+// ----------------------------------------------------------------------------
+// Plantillas de viaje (trip_templates) — TemplateCreateParams
+// (TemplateUpdateParams es el mismo tipo, ver repository.go:222)
+// ----------------------------------------------------------------------------
+export const templatesConfig: CrudResourceConfig = {
+  path: '/admin/templates',
+  labelSingular: 'plantilla',
+  labelPlural: 'Plantillas de viaje',
+  columns: [
+    { key: 'code', label: 'Código' },
+    { key: 'name', label: 'Nombre' },
+    { key: 'route_id', label: 'ID de ruta' },
+    { key: 'departure_time', label: 'Hora de salida' },
+    { key: 'active', label: 'Activa' },
+  ],
+  fields: [
+    { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 50 },
+    { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 150 },
+    { key: 'route_id', label: 'ID de ruta', type: 'number', required: true },
+    { key: 'service_calendar_id', label: 'ID de calendario', type: 'number', required: true },
+    { key: 'departure_time', label: 'Hora de salida (HH:MM:SS)', type: 'text', required: true },
+    { key: 'default_vehicle_id', label: 'ID de vehículo por defecto', type: 'number', required: true },
+    { key: 'default_driver_id', label: 'ID de conductor por defecto', type: 'number', required: true },
+    {
+      key: 'profile_reference_mode',
+      label: 'Modo de referencia de perfil',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'TRIP_DEPARTURE', label: 'Salida del viaje' },
+        { value: 'SEGMENT_DEPARTURE', label: 'Salida del segmento' },
+      ],
+    },
+    { key: 'booking_open_days_before', label: 'Días de apertura de reserva', type: 'number' },
+    { key: 'booking_close_minutes_before', label: 'Minutos de cierre de reserva', type: 'number' },
+    { key: 'no_show_tolerance_minutes', label: 'Tolerancia de inasistencia (min)', type: 'number' },
+    { key: 'automatic_publish', label: 'Publicación automática', type: 'boolean' },
+    { key: 'active', label: 'Activa', type: 'boolean' },
+  ],
+}
+
+// ----------------------------------------------------------------------------
+// Calendarios de servicio (service_calendars) — CalendarCreateParams
+// (CalendarUpdateParams es el mismo tipo, ver repository.go:258)
+// ----------------------------------------------------------------------------
+export const calendarsConfig: CrudResourceConfig = {
+  path: '/admin/calendars',
+  labelSingular: 'calendario',
+  labelPlural: 'Calendarios de servicio',
+  columns: [
+    { key: 'code', label: 'Código' },
+    { key: 'name', label: 'Nombre' },
+    { key: 'valid_from', label: 'Vigente desde' },
+    { key: 'valid_until', label: 'Vigente hasta' },
+    { key: 'active', label: 'Activo' },
+  ],
+  fields: [
+    { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 40 },
+    { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 120 },
+    { key: 'valid_from', label: 'Vigente desde', type: 'date', required: true },
+    { key: 'valid_until', label: 'Vigente hasta', type: 'date', required: true },
+    { key: 'monday', label: 'Lunes', type: 'boolean' },
+    { key: 'tuesday', label: 'Martes', type: 'boolean' },
+    { key: 'wednesday', label: 'Miércoles', type: 'boolean' },
+    { key: 'thursday', label: 'Jueves', type: 'boolean' },
+    { key: 'friday', label: 'Viernes', type: 'boolean' },
+    { key: 'saturday', label: 'Sábado', type: 'boolean' },
+    { key: 'sunday', label: 'Domingo', type: 'boolean' },
+    { key: 'active', label: 'Activo', type: 'boolean' },
+  ],
+}
+
+/** Los 7 recursos administrables, en el orden del route table real
+ * (handler.go RegisterRoutes). Consumido por `router.ts` (rutas) y
+ * `AppLayout.vue` (nav) para no repetir 7 bloques literales — ponytail: la
+ * data vive una vez, ambos consumidores mapean sobre el mismo array. */
+export const crudResources: Array<{ routePath: string; navLabel: string; config: CrudResourceConfig }> = [
+  { routePath: '/stops', navLabel: 'Paradas', config: stopsConfig },
+  { routePath: '/users', navLabel: 'Usuarios', config: usersConfig },
+  { routePath: '/vehicles', navLabel: 'Vehículos', config: vehiclesConfig },
+  { routePath: '/routes', navLabel: 'Rutas', config: routesConfig },
+  { routePath: '/templates', navLabel: 'Plantillas de viaje', config: templatesConfig },
+  { routePath: '/calendars', navLabel: 'Calendarios de servicio', config: calendarsConfig },
+]
