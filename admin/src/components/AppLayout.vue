@@ -3,10 +3,15 @@
 // proactivo T-2min (role="status") y el modal bloqueante de sesion expirada
 // (backstop reactivo del 401, ver api/client.ts). Dialog de PrimeVue trae
 // focus-trap incorporado (razon de eleccion de libreria en el diseno).
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useStorage } from '@vueuse/core'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
+import Accordion from 'primevue/accordion'
+import AccordionPanel from 'primevue/accordionpanel'
+import AccordionHeader from 'primevue/accordionheader'
+import AccordionContent from 'primevue/accordioncontent'
 import { useAuth } from '../auth/useAuth'
 import { APP_TITLE, SESSION_LABELS } from '../messages'
 import { crudResources, NAV_GROUP_ORDER, type NavGroup } from '../resources'
@@ -19,17 +24,36 @@ const { user, secondsLeft, sessionExpired, logout, dismissSessionExpired } = use
 // memoria "admin nav agrupado por dominio"). `route-stops`/`operations`/
 // `reports` no son recursos CRUD genericos (ver comentarios en router.ts),
 // se suman aca con el grupo que les corresponde por dominio.
-const navItems: Array<{ to: string; label: string; group: NavGroup }> = [
-  ...crudResources.map(({ routePath, navLabel, group }) => ({ to: routePath, label: navLabel, group })),
-  { to: '/route-stops', label: 'Paradas de ruta', group: 'Rutas' },
-  { to: '/operations', label: 'Operaciones', group: 'Operación diaria' },
-  { to: '/reports', label: 'Reportes', group: 'Reportes' },
+const navItems: Array<{ to: string; label: string; group: NavGroup; icon: string }> = [
+  ...crudResources.map(({ routePath, navLabel, group, icon }) => ({ to: routePath, label: navLabel, group, icon })),
+  { to: '/route-stops', label: 'Paradas de ruta', group: 'Rutas', icon: 'map' },
+  { to: '/operations', label: 'Operaciones', group: 'Operación diaria', icon: 'cog' },
+  { to: '/reports', label: 'Reportes', group: 'Reportes', icon: 'chart-bar' },
 ]
 
 const navGroups = NAV_GROUP_ORDER.map((group) => ({
   group,
   items: navItems.filter((item) => item.group === group),
 })).filter((g) => g.items.length > 0)
+
+const activeGroup = computed(() => navItems.find((item) => item.to === route.path)?.group)
+
+// Grupos plegados/desplegados del sidebar, persistidos en localStorage
+// (VueUse `useStorage`, ya instalado — no reinventar persistencia). Semilla
+// inicial: solo el grupo de la ruta activa al primer ingreso.
+const expandedGroups = useStorage<string[]>('admin-nav-expanded', activeGroup.value ? [activeGroup.value] : [])
+
+// Si se navega (o refresca) a una ruta cuyo grupo esta plegado, se despliega
+// solo — nunca deja al admin mirando un sidebar sin la seccion activa visible.
+watch(
+  activeGroup,
+  (group) => {
+    if (group && !expandedGroups.value.includes(group)) {
+      expandedGroups.value = [...expandedGroups.value, group]
+    }
+  },
+  { immediate: true },
+)
 
 const showExpiryBanner = computed(() => secondsLeft.value > 0 && secondsLeft.value <= 120)
 const bannerMinutes = computed(() => Math.max(1, Math.ceil(secondsLeft.value / 60)))
@@ -68,17 +92,24 @@ function onConfirmSessionExpired() {
 
     <div class="app-body">
       <nav class="app-nav" aria-label="Recursos administrables">
-        <div v-for="section in navGroups" :key="section.group" class="app-nav-section">
-          <p class="app-nav-heading">{{ section.group }}</p>
-          <ul>
-            <li v-for="item in section.items" :key="item.to">
-              <!-- RouterLink ya setea aria-current="page" en la ruta activa
-                   (default ariaCurrentValue) — se estiliza via ese atributo,
-                   sin logica manual duplicada. -->
-              <RouterLink :to="item.to">{{ item.label }}</RouterLink>
-            </li>
-          </ul>
-        </div>
+        <Accordion v-model:value="expandedGroups" multiple>
+          <AccordionPanel v-for="section in navGroups" :key="section.group" :value="section.group">
+            <AccordionHeader>{{ section.group }}</AccordionHeader>
+            <AccordionContent>
+              <ul>
+                <li v-for="item in section.items" :key="item.to">
+                  <!-- RouterLink ya setea aria-current="page" en la ruta activa
+                       (default ariaCurrentValue) — se estiliza via ese atributo,
+                       sin logica manual duplicada. -->
+                  <RouterLink :to="item.to">
+                    <i :class="`pi pi-${item.icon}`" aria-hidden="true"></i>
+                    <span>{{ item.label }}</span>
+                  </RouterLink>
+                </li>
+              </ul>
+            </AccordionContent>
+          </AccordionPanel>
+        </Accordion>
       </nav>
 
       <main id="app-content" class="app-content" tabindex="-1">
@@ -151,32 +182,28 @@ function onConfirmSessionExpired() {
   padding: 1rem 0.5rem;
   flex-shrink: 0;
 }
-.app-nav-section + .app-nav-section {
-  margin-top: 1rem;
-}
-.app-nav-heading {
-  margin: 0 0 0.25rem;
-  padding: 0 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.6;
-}
 .app-nav ul {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0.25rem 0;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 .app-nav a {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
   text-decoration: none;
   color: inherit;
+}
+.app-nav a .pi {
+  font-size: 0.95rem;
+  opacity: 0.75;
+  width: 1rem;
+  text-align: center;
 }
 /* Ruta activa: negrita + borde, nunca solo color (a11y). */
 .app-nav a[aria-current='page'] {

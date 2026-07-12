@@ -467,19 +467,20 @@ export const NAV_GROUP_ORDER = [
 
 export type NavGroup = (typeof NAV_GROUP_ORDER)[number]
 
-export const crudResources: Array<{ routePath: string; navLabel: string; group: NavGroup; config: CrudResourceConfig; readOnly?: boolean }> = [
-  { routePath: '/stops', navLabel: 'Paradas', group: 'Catálogos maestros', config: stopsConfig },
-  { routePath: '/vehicles', navLabel: 'Vehículos', group: 'Catálogos maestros', config: vehiclesConfig },
-  { routePath: '/vehicle-seats', navLabel: 'Asientos', group: 'Catálogos maestros', config: vehicleSeatsConfig },
-  { routePath: '/users', navLabel: 'Usuarios', group: 'Catálogos maestros', config: usersConfig },
-  { routePath: '/routes', navLabel: 'Rutas', group: 'Rutas', config: routesConfig },
-  { routePath: '/route-segments', navLabel: 'Segmentos de ruta', group: 'Rutas', config: routeSegmentsConfig },
-  { routePath: '/calendars', navLabel: 'Calendarios de servicio', group: 'Calendarios y tiempos', config: calendarsConfig },
-  { routePath: '/calendar-exceptions', navLabel: 'Excepciones de calendario', group: 'Calendarios y tiempos', config: calendarExceptionsConfig },
-  { routePath: '/travel-profiles', navLabel: 'Perfiles de tiempo', group: 'Calendarios y tiempos', config: travelProfilesConfig },
-  { routePath: '/segment-times', navLabel: 'Tiempos de segmento', group: 'Calendarios y tiempos', config: segmentTimesConfig },
-  { routePath: '/templates', navLabel: 'Plantillas de viaje', group: 'Planificación', config: templatesConfig },
-  { routePath: '/generation-runs', navLabel: 'Corridas de generación', group: 'Planificación', config: generationRunsConfig, readOnly: true },
-  { routePath: '/trips', navLabel: 'Viajes', group: 'Operación diaria', config: tripsConfig, readOnly: true },
-  { routePath: '/incidents', navLabel: 'Incidencias', group: 'Operación diaria', config: incidentsConfig, readOnly: true },
+/** Icono primeicons (sin prefijo "pi-") por recurso — ancla visual en el nav. */
+export const crudResources: Array<{ routePath: string; navLabel: string; group: NavGroup; icon: string; config: CrudResourceConfig; readOnly?: boolean }> = [
+  { routePath: '/stops', navLabel: 'Paradas', group: 'Catálogos maestros', icon: 'map-marker', config: stopsConfig },
+  { routePath: '/vehicles', navLabel: 'Vehículos', group: 'Catálogos maestros', icon: 'car', config: vehiclesConfig },
+  { routePath: '/vehicle-seats', navLabel: 'Asientos', group: 'Catálogos maestros', icon: 'th-large', config: vehicleSeatsConfig },
+  { routePath: '/users', navLabel: 'Usuarios', group: 'Catálogos maestros', icon: 'users', config: usersConfig },
+  { routePath: '/routes', navLabel: 'Rutas', group: 'Rutas', icon: 'directions', config: routesConfig },
+  { routePath: '/route-segments', navLabel: 'Segmentos de ruta', group: 'Rutas', icon: 'sitemap', config: routeSegmentsConfig },
+  { routePath: '/calendars', navLabel: 'Calendarios de servicio', group: 'Calendarios y tiempos', icon: 'calendar', config: calendarsConfig },
+  { routePath: '/calendar-exceptions', navLabel: 'Excepciones de calendario', group: 'Calendarios y tiempos', icon: 'calendar-times', config: calendarExceptionsConfig },
+  { routePath: '/travel-profiles', navLabel: 'Perfiles de tiempo', group: 'Calendarios y tiempos', icon: 'clock', config: travelProfilesConfig },
+  { routePath: '/segment-times', navLabel: 'Tiempos de segmento', group: 'Calendarios y tiempos', icon: 'stopwatch', config: segmentTimesConfig },
+  { routePath: '/templates', navLabel: 'Plantillas de viaje', group: 'Planificación', icon: 'file', config: templatesConfig },
+  { routePath: '/generation-runs', navLabel: 'Corridas de generación', group: 'Planificación', icon: 'sync', config: generationRunsConfig, readOnly: true },
+  { routePath: '/trips', navLabel: 'Viajes', group: 'Operación diaria', icon: 'send', config: tripsConfig, readOnly: true },
+  { routePath: '/incidents', navLabel: 'Incidencias', group: 'Operación diaria', icon: 'exclamation-triangle', config: incidentsConfig, readOnly: true },
 ]
