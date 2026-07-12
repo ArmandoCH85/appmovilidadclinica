@@ -14,7 +14,7 @@
 // paradas de esa ruta — "Hasta" y el orden del segmento se CALCULAN solos
 // (la parada siguiente). Es imposible construir un tramo invalido desde la
 // UI.
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
@@ -53,8 +53,30 @@ onMounted(async () => {
   } finally {
     loadingRoutes.value = false
   }
+  loadSegmentIdsWithTimes()
 })
 const routesError = ref('')
+
+// -- Candado de integridad: un tramo que ya tiene tiempos cargados en la
+// matriz (route_segment_travel_times) no puede reasignar sus paradas — el
+// backend no lo impide (la FK protege el id, no from/to_route_stop_id), asi
+// que cambiar "Desde" de un tramo existente dejaria minutos calculados para
+// una conexion fisica que ya no es la real, sin ningun aviso. Se resuelve
+// en el cliente reusando /admin/segment-times (mismo endpoint que
+// SegmentTimesView.vue) para saber que tramos ya tienen celdas cargadas.
+const segmentIdsWithTimes = ref<Set<number>>(new Set())
+
+async function loadSegmentIdsWithTimes(): Promise<void> {
+  try {
+    const res = await request<{ items: Array<{ route_segment_id: number }> }>(
+      'GET',
+      '/admin/segment-times?page=1&page_size=200'
+    )
+    segmentIdsWithTimes.value = new Set(res.items.map((t) => t.route_segment_id))
+  } catch {
+    // Degradado: si falla, el candado queda deshabilitado — no bloquea la pantalla.
+  }
+}
 
 // -- Paradas de la ruta elegida: base de todo lo demas --
 const routeStops = ref<RouteStop[]>([])
@@ -115,6 +137,7 @@ async function loadSegments(): Promise<void> {
 watch(selectedRouteId, async (routeId) => {
   if (routeId === null) return
   await Promise.all([loadRouteStops(routeId), loadSegments()])
+  loadSegmentIdsWithTimes()
 })
 
 // ---------------------------------------------------------------------------
@@ -127,6 +150,11 @@ const fromRouteStopId = ref<number | null>(null)
 const active = ref(true)
 const submitting = ref(false)
 const formErrorMessage = ref('')
+const fieldErrors = reactive<Record<string, string>>({})
+
+const editLocked = computed(
+  () => editingId.value !== null && segmentIdsWithTimes.value.has(editingId.value)
+)
 
 // Ordenadas por stop_order (el backend ya las devuelve asi, ver
 // ListRouteStops: "ORDER BY stop_order").
@@ -151,6 +179,7 @@ const computedSegmentOrder = computed(() => {
 
 function resetFormState(): void {
   formErrorMessage.value = ''
+  for (const key of Object.keys(fieldErrors)) delete fieldErrors[key]
 }
 
 function openCreate(): void {
@@ -176,7 +205,7 @@ function closeDialog(): void {
 async function onSubmit(): Promise<void> {
   resetFormState()
   if (fromRouteStopId.value === null || toRouteStop.value === null || computedSegmentOrder.value === null) {
-    formErrorMessage.value = 'Elegí la parada de origen.'
+    fieldErrors.from = 'Elegí la parada de origen.'
     return
   }
   if (selectedRouteId.value === null) return
@@ -355,8 +384,19 @@ async function confirmDeactivate(): Promise<void> {
             optionLabel="label"
             optionValue="value"
             placeholder="Elegir parada de origen…"
+            :disabled="editLocked"
+            aria-required="true"
+            :aria-invalid="!!fieldErrors.from"
+            :aria-describedby="fieldErrors.from ? 'segment-from-error' : editLocked ? 'segment-from-locked' : undefined"
           />
-          <p class="field-help">
+          <p v-if="fieldErrors.from" id="segment-from-error" role="alert" class="field-error">
+            {{ fieldErrors.from }}
+          </p>
+          <p v-else-if="editLocked" id="segment-from-locked" class="field-help field-locked">
+            <i class="pi pi-lock" aria-hidden="true"></i> Este tramo ya tiene tiempos cargados en la matriz — no se
+            puede reasignar sus paradas. Desactivalo y creá uno nuevo si necesitás otra conexión.
+          </p>
+          <p v-else class="field-help">
             "Hasta" y el orden del tramo se calculan solos: siempre es la parada siguiente en la ruta — el sistema no
             permite tramos entre paradas no consecutivas.
           </p>
@@ -470,6 +510,17 @@ async function confirmDeactivate(): Promise<void> {
 .required-mark {
   color: #b91c1c;
 }
+.field-error {
+  color: #b91c1c;
+  font-size: 0.875rem;
+  margin: 0;
+}
+.field-locked {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: #b45309;
+}
 .field-inline {
   margin-bottom: 0.5rem;
 }
@@ -525,13 +576,17 @@ async function confirmDeactivate(): Promise<void> {
   }
   .segments-error,
   .form-error,
-  .required-mark {
+  .required-mark,
+  .field-error {
     color: #fca5a5;
   }
   .segments-hint,
   .field-help,
   .segment-preview-order {
     color: #a1a1aa;
+  }
+  .field-locked {
+    color: #fbbf24;
   }
   .segments-empty-icon {
     color: #71717a;
