@@ -22,7 +22,7 @@ import type { CrudField, CrudResourceConfig } from '../resources'
 // `listPath` (Fase 5): override del path de listado para recursos cuyo
 // GET real no coincide con `config.path` (route-stops — ver RouteStopsView.vue
 // y el comentario en api/crud.ts `list()`). Default: usa `config.path`.
-const props = defineProps<{ config: CrudResourceConfig; listPath?: string; readOnly?: boolean }>()
+const props = defineProps<{ config: CrudResourceConfig; listPath?: string; readOnly?: boolean; defaults?: Record<string, unknown> }>()
 
 type Row = Record<string, any>
 type ResourceRow = Row & { id: number }
@@ -76,7 +76,7 @@ function openCreate(): void {
   editingId.value = null
   resetFormState()
   for (const field of props.config.fields) {
-    formData[field.key] = defaultValue(field)
+    formData[field.key] = props.defaults?.[field.key] ?? defaultValue(field)
   }
   dialogVisible.value = true
 }
@@ -288,7 +288,7 @@ async function confirmDeactivate(): Promise<void> {
       <form novalidate @submit.prevent="onSubmit">
         <p v-if="formErrorMessage" role="alert" class="form-error">{{ formErrorMessage }}</p>
 
-        <div v-for="field in props.config.fields" :key="field.key" class="field">
+        <div v-for="field in props.config.fields" v-show="!field.hidden" :key="field.key" class="field">
           <label :for="fieldDomId(field)">
             {{ field.label }}
             <span v-if="isFieldRequired(field)" class="required-mark" aria-hidden="true"> *</span>

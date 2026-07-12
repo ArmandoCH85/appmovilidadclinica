@@ -28,6 +28,8 @@ export interface CrudField {
   type: CrudFieldType
   required?: boolean | 'create'
   maxLength?: number
+  /** Oculta el campo del formulario (ej. FK padre en vistas anidadas). */
+  hidden?: boolean
   /** Solo para type:'select' — refleja un `validate:"oneof=..."` del backend. */
   options?: CrudFieldOption[]
   /** Solo para type:'number' — decimales visibles/editables (InputNumber).
@@ -369,7 +371,7 @@ export const calendarExceptionsConfig: CrudResourceConfig = {
     { key: 'reason', label: 'Motivo' },
   ],
   fields: [
-    { key: 'calendar_id', label: 'ID de calendario', type: 'number', required: true },
+    { key: 'calendar_id', label: 'ID de calendario', type: 'number', required: true, hidden: true },
     { key: 'exception_date', label: 'Fecha', type: 'date', required: true },
     {
       key: 'operation',

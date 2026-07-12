@@ -49,6 +49,7 @@ onMounted(async () => {
       :key="selectedCalendarId"
       :config="calendarExceptionsConfig"
       :list-path="`/admin/calendar-exceptions?calendar_id=${selectedCalendarId}`"
+      :defaults="{ calendar_id: selectedCalendarId }"
     />
     <p v-else>Elija un calendario arriba para ver y administrar sus excepciones.</p>
   </section>
