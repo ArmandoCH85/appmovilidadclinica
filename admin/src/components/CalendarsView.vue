@@ -71,9 +71,18 @@ function weekdaysSummary(c: Calendar): string {
   return WEEKDAYS.filter((d) => c[d.key]).map((d) => d.short).join(' ')
 }
 
+function formatDate(value: string | null | undefined): string {
+  if (!value) return '—'
+  const datePart = value.split('T')[0]
+  const [y, m, d] = datePart.split('-').map(Number)
+  if (!y || !m || !d) return value
+  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  return `${String(d).padStart(2, '0')} ${months[m - 1]} ${y}`
+}
+
 function rangeLabel(c: Calendar): string {
   if (!c.valid_from || !c.valid_until) return '—'
-  return `${c.valid_from} → ${c.valid_until}`
+  return `${formatDate(c.valid_from)} → ${formatDate(c.valid_until)}`
 }
 
 // -- Alta / edicion ------------------------------------------------------

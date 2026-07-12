@@ -39,7 +39,11 @@ function formatTime(value: string | null | undefined): string {
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
-  return value
+  const datePart = value.split('T')[0]
+  const [y, m, d] = datePart.split('-').map(Number)
+  if (!y || !m || !d) return value
+  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  return `${String(d).padStart(2, '0')} ${months[m - 1]} ${y}`
 }
 
 function scheduleDays(profile: TravelTimeProfile): string[] {
