@@ -80,3 +80,30 @@ certbot renew --dry-run
 mariadb -uroot -e "DROP DATABASE transporte_corporativo_mvp; CREATE DATABASE transporte_corporativo_mvp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 systemctl restart appmovilidadclinica.service
 ```
+
+## Datos de prueba
+
+`0001_schema.up.sql` hace `DROP TABLE` + `CREATE TABLE` de todo en **cada
+arranque** del backend (schema idempotente, sin tabla de control de
+migraciones) — cualquier dato cargado se borra en el próximo restart/rebuild.
+
+```bash
+# 1. Rebuild + restart primero (aplica el fix de migrate.go y crea los SPs)
+cd /opt/appmovilidadclinica/backend
+/usr/local/go/bin/go build -ldflags="-s -w" -o bin/server ./cmd/server
+systemctl restart appmovilidadclinica.service
+journalctl -u appmovilidadclinica.service -n 30   # confirmar arranque sin errores
+
+# 2. Cargar datos de prueba (backend/scripts/seed_demo_data.sql)
+mariadb -u appuser -p transporte_corporativo_mvp < backend/scripts/seed_demo_data.sql
+
+# 3. Probar login (password de los 5 usuarios demo: "password")
+curl -X POST https://sitechfactura.site/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"document_number":"90000001","password":"password"}'
+```
+
+Usuarios demo (ver `backend/scripts/seed_demo_data.sql`): `90000001` ADMIN,
+`90000002` DRIVER, `90000003`/`90000004`/`90000005` WORKER.
+
+Si reiniciás el servicio después de cargar datos, repetir el paso 2.
