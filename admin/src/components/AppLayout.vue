@@ -28,7 +28,14 @@ const navGroups = NAV_GROUP_ORDER.map((group) => ({
 
 const activeItem = computed(() => navItems.find((item) => item.to === route.path))
 const activeGroup = computed(() => activeItem.value?.group)
-const expandedGroup = useStorage<string>('admin-nav-expanded-group', activeGroup.value ?? navGroups[0]?.group ?? '')
+// Multiples grupos pueden quedar abiertos a la vez (diseno original, Fase 3
+// tarea 3.6): el refactor a AppNavigation.vue lo habia dejado como un solo
+// string + Accordion single-mode, cerrando cualquier otro grupo abierto al
+// entrar a uno nuevo. Restaura el array + Accordion `multiple`.
+const expandedGroups = useStorage<string[]>(
+  'admin-nav-expanded-groups',
+  activeGroup.value ? [activeGroup.value] : navGroups[0] ? [navGroups[0].group] : []
+)
 const mobileNavVisible = ref(false)
 const mainContent = ref<HTMLElement | null>(null)
 
@@ -52,7 +59,9 @@ const roleLabel = computed(() => {
 watch(
   activeGroup,
   (group) => {
-    if (group) expandedGroup.value = group
+    if (group && !expandedGroups.value.includes(group)) {
+      expandedGroups.value = [...expandedGroups.value, group]
+    }
   },
   { immediate: true },
 )
@@ -98,7 +107,7 @@ function onConfirmSessionExpired() {
         <span>Navegación</span>
         <span>{{ navItems.length }} módulos</span>
       </div>
-      <AppNavigation v-model:expanded="expandedGroup" :sections="navGroups" />
+      <AppNavigation v-model:expanded="expandedGroups" :sections="navGroups" />
     </aside>
 
     <div class="app-workspace">
@@ -168,7 +177,7 @@ function onConfirmSessionExpired() {
         </div>
       </template>
       <AppNavigation
-        v-model:expanded="expandedGroup"
+        v-model:expanded="expandedGroups"
         :sections="navGroups"
         @navigate="mobileNavVisible = false"
       />

@@ -16,13 +16,13 @@ interface NavSection {
 }
 
 defineProps<{ sections: NavSection[] }>()
-const expanded = defineModel<string>('expanded', { required: true })
+const expanded = defineModel<string[]>('expanded', { required: true })
 const emit = defineEmits<{ navigate: [] }>()
 </script>
 
 <template>
   <nav class="app-navigation" aria-label="Navegación principal">
-    <Accordion v-model:value="expanded">
+    <Accordion v-model:value="expanded" multiple>
       <AccordionPanel v-for="section in sections" :key="section.group" :value="section.group">
         <AccordionHeader>
           <span class="nav-section-label">
