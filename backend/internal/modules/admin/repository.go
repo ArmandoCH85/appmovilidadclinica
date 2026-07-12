@@ -1082,7 +1082,9 @@ func (r *adminRepository) UpdateTemplate(ctx context.Context, id int64, p Templa
 func (r *adminRepository) ListCalendars(ctx context.Context, pg types.PaginationParams) ([]Calendar, int, error) {
 	pg.Normalize()
 	const q = `
-        SELECT c.id, c.code, c.name, c.valid_from, c.valid_until,
+        SELECT c.id, c.code, c.name,
+               DATE_FORMAT(c.valid_from, '%Y-%m-%d') AS valid_from,
+               DATE_FORMAT(c.valid_until, '%Y-%m-%d') AS valid_until,
                c.monday, c.tuesday, c.wednesday, c.thursday, c.friday,
                c.saturday, c.sunday, c.active,
                (SELECT COUNT(*) FROM service_calendar_exceptions e WHERE e.calendar_id = c.id) AS exception_count,
@@ -1129,7 +1131,9 @@ func (r *adminRepository) ListCalendars(ctx context.Context, pg types.Pagination
 // GetCalendar devuelve un calendario por ID con conteos de referencias.
 func (r *adminRepository) GetCalendar(ctx context.Context, id int64) (Calendar, error) {
 	const q = `
-        SELECT c.id, c.code, c.name, c.valid_from, c.valid_until,
+        SELECT c.id, c.code, c.name,
+               DATE_FORMAT(c.valid_from, '%Y-%m-%d') AS valid_from,
+               DATE_FORMAT(c.valid_until, '%Y-%m-%d') AS valid_until,
                c.monday, c.tuesday, c.wednesday, c.thursday, c.friday,
                c.saturday, c.sunday, c.active,
                (SELECT COUNT(*) FROM service_calendar_exceptions e WHERE e.calendar_id = c.id) AS exception_count,
@@ -1285,7 +1289,10 @@ func (r *adminRepository) UpdateRouteSegment(ctx context.Context, id int64, p Ro
 func (r *adminRepository) ListTravelTimeProfiles(ctx context.Context, pg types.PaginationParams) ([]TravelTimeProfile, int, error) {
 	pg.Normalize()
 	const q = `
-        SELECT id, code, name, valid_from, valid_until, start_time, end_time,
+        SELECT id, code, name,
+               DATE_FORMAT(valid_from, '%Y-%m-%d') AS valid_from,
+               DATE_FORMAT(valid_until, '%Y-%m-%d') AS valid_until,
+               start_time, end_time,
                is_all_day, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
                priority, is_default, active
           FROM travel_time_profiles
@@ -1521,7 +1528,8 @@ func (r *adminRepository) UpdateVehicleSeat(ctx context.Context, id int64, p Veh
 func (r *adminRepository) ListCalendarExceptions(ctx context.Context, calendarID int64, pg types.PaginationParams) ([]CalendarException, int, error) {
 	pg.Normalize()
 	q := `SELECT e.id, e.calendar_id, c.code, c.name,
-               e.exception_date, e.operation, e.reason,
+               DATE_FORMAT(e.exception_date, '%Y-%m-%d') AS exception_date,
+               e.operation, e.reason,
                e.created_at, e.updated_at
           FROM service_calendar_exceptions e
           JOIN service_calendars c ON c.id = e.calendar_id`
@@ -1597,7 +1605,8 @@ func (r *adminRepository) UpdateCalendarException(ctx context.Context, id int64,
 func (r *adminRepository) GetCalendarException(ctx context.Context, id int64) (CalendarException, error) {
 	const q = `
         SELECT e.id, e.calendar_id, c.code, c.name,
-               e.exception_date, e.operation, e.reason,
+               DATE_FORMAT(e.exception_date, '%Y-%m-%d') AS exception_date,
+               e.operation, e.reason,
                e.created_at, e.updated_at
           FROM service_calendar_exceptions e
           JOIN service_calendars c ON c.id = e.calendar_id
