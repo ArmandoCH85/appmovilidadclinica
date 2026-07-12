@@ -45,10 +45,22 @@ func LoadConfig() Config {
 // NewPool crea y verifica un *sql.DB contra MariaDB. El DSN habilita
 // multiStatements (necesario para ejecutar el schema idempotente en un solo
 // db.Exec al arrancar), parseTime (mapea DATETIME a time.Time), la zona
-// horaria operativa America/Lima y un charset utf8mb4 consistente.
+// horaria operativa America/Lima, un charset utf8mb4 consistente y
+// clientFoundRows.
+//
+// clientFoundRows es critico: sin el, el protocolo MySQL reporta
+// RowsAffected() como filas REALMENTE CAMBIADAS, no filas que matchearon el
+// WHERE. Todo Update* de admin/repository.go llama ensureAffected(res, ...)
+// para decidir si el id existe (RowsAffected()==0 -> 404 NotFound). Si un
+// PUT llega con los mismos valores que ya tiene la fila (edicion sin
+// cambios reales, o un campo que vuelve a su valor original), MySQL no
+// "cambia" nada -> RowsAffected()==0 -> ensureAffected devuelve 404 aunque
+// el recurso exista y el UPDATE haya sido valido. clientFoundRows=true hace
+// que RowsAffected() cuente filas matcheadas (semantica correcta para un
+// chequeo de existencia, que es lo que ensureAffected realmente necesita).
 func NewPool(cfg Config) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?multiStatements=true&parseTime=true&loc=%s&charset=utf8mb4&collation=utf8mb4_unicode_ci&timeout=5s&readTimeout=10s&writeTimeout=10s",
+		"%s:%s@tcp(%s:%s)/%s?multiStatements=true&parseTime=true&loc=%s&charset=utf8mb4&collation=utf8mb4_unicode_ci&timeout=5s&readTimeout=10s&writeTimeout=10s&clientFoundRows=true",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name,
 		url.QueryEscape("America/Lima"),
 	)
