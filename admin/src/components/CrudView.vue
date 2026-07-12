@@ -13,6 +13,7 @@ import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Password from 'primevue/password'
+import { useToast } from 'primevue/usetoast'
 import { useCrudResource } from '../api/crud'
 import { ApiError } from '../api/client'
 import { LABELS } from '../messages'
@@ -28,6 +29,7 @@ type ResourceRow = Row & { id: number }
 
 const { items, page, pageSize, total, loading, error, list, create, update, softDelete } =
   useCrudResource<ResourceRow>(props.config.path)
+const toast = useToast()
 
 onMounted(() => {
   list(props.listPath)
@@ -107,15 +109,22 @@ function focusField(key: string): void {
   else el.$el?.focus?.()
 }
 
+/** `required:'create'` (ej. password de usuarios): solo obligatorio al dar
+ * de alta — en edicion, vacio significa "no cambiar" (ver resources.ts).
+ * Usado tanto por la validacion como por el asterisco visual del label
+ * (a11y: el usuario debe saber que un campo es obligatorio ANTES de
+ * equivocarse, no solo despues de un submit fallido). */
+function isFieldRequired(field: CrudField): boolean {
+  return field.required === true || (field.required === 'create' && editingId.value === null)
+}
+
 /** Validacion client-side (tarea 4.4): refleja required/maxLength de la
  * config antes de pegarle al server — la mayoria de errores 422 nunca
  * deberian llegar a disparar (backstop raro, ver diseno). */
 function validateClientSide(): boolean {
   for (const field of props.config.fields) {
     const value = formData[field.key]
-    // `required:'create'` (ej. password de usuarios): solo obligatorio al
-    // dar de alta — en edicion, vacio significa "no cambiar" (ver resources.ts).
-    const isRequired = field.required === true || (field.required === 'create' && editingId.value === null)
+    const isRequired = isFieldRequired(field)
     if (isRequired && (value === '' || value === null || value === undefined)) {
       fieldErrors[field.key] = LABELS.requiredField
       focusField(field.key)
@@ -150,14 +159,20 @@ async function onSubmit(): Promise<void> {
   if (!validateClientSide()) return
 
   submitting.value = true
+  const wasCreate = editingId.value === null
   try {
-    if (editingId.value === null) {
+    if (wasCreate) {
       await create({ ...formData })
     } else {
-      await update(editingId.value, { ...formData })
+      await update(editingId.value as number, { ...formData })
     }
     dialogVisible.value = false
     await list(props.listPath)
+    toast.add({
+      severity: 'success',
+      summary: wasCreate ? LABELS.created : LABELS.updated,
+      life: 4000,
+    })
   } catch (err) {
     if (err instanceof ApiError && err.code === 422) {
       const key = mapServerFieldError(err.message)
@@ -196,6 +211,7 @@ async function confirmDeactivate(): Promise<void> {
     await softDelete(confirmTarget.value)
     confirmTarget.value = null
     await list(props.listPath)
+    toast.add({ severity: 'success', summary: LABELS.deactivated, life: 4000 })
   } finally {
     deactivating.value = false
   }
@@ -226,7 +242,16 @@ async function confirmDeactivate(): Promise<void> {
       @page="onPage"
     >
       <template #empty>
-        <p>{{ LABELS.empty }}</p>
+        <div class="crud-empty">
+          <p>{{ LABELS.empty }}</p>
+          <Button
+            v-if="!props.readOnly"
+            :label="`Nuevo ${props.config.labelSingular}`"
+            icon="pi pi-plus"
+            text
+            @click="openCreate"
+          />
+        </div>
       </template>
 
       <Column v-for="col in props.config.columns" :key="col.key" :field="col.key" :header="col.label">
@@ -264,13 +289,17 @@ async function confirmDeactivate(): Promise<void> {
         <p v-if="formErrorMessage" role="alert" class="form-error">{{ formErrorMessage }}</p>
 
         <div v-for="field in props.config.fields" :key="field.key" class="field">
-          <label :for="fieldDomId(field)">{{ field.label }}</label>
+          <label :for="fieldDomId(field)">
+            {{ field.label }}
+            <span v-if="isFieldRequired(field)" class="required-mark" aria-hidden="true"> *</span>
+          </label>
 
           <InputText
             v-if="field.type === 'text'"
             :id="fieldDomId(field)"
             :ref="(el) => { fieldEls[field.key] = el }"
             v-model="formData[field.key]"
+            :aria-required="isFieldRequired(field)"
             :aria-invalid="!!fieldErrors[field.key]"
             :aria-describedby="fieldErrors[field.key] ? `${fieldDomId(field)}-error` : undefined"
           />
@@ -279,6 +308,7 @@ async function confirmDeactivate(): Promise<void> {
             :id="fieldDomId(field)"
             :ref="(el) => { fieldEls[field.key] = el }"
             v-model="formData[field.key]"
+            :aria-required="isFieldRequired(field)"
             :aria-invalid="!!fieldErrors[field.key]"
             :aria-describedby="fieldErrors[field.key] ? `${fieldDomId(field)}-error` : undefined"
           />
@@ -287,6 +317,10 @@ async function confirmDeactivate(): Promise<void> {
             :inputId="fieldDomId(field)"
             :ref="(el) => { fieldEls[field.key] = el }"
             v-model="formData[field.key]"
+            :minFractionDigits="field.decimals ?? 0"
+            :maxFractionDigits="field.decimals ?? 0"
+            :useGrouping="false"
+            :aria-required="isFieldRequired(field)"
             :aria-invalid="!!fieldErrors[field.key]"
             :aria-describedby="fieldErrors[field.key] ? `${fieldDomId(field)}-error` : undefined"
           />
@@ -298,6 +332,7 @@ async function confirmDeactivate(): Promise<void> {
             :options="field.options"
             optionLabel="label"
             optionValue="value"
+            :aria-required="isFieldRequired(field)"
             :aria-invalid="!!fieldErrors[field.key]"
             :aria-describedby="fieldErrors[field.key] ? `${fieldDomId(field)}-error` : undefined"
           />
@@ -315,6 +350,8 @@ async function confirmDeactivate(): Promise<void> {
             :feedback="false"
             toggleMask
             fluid
+            autocomplete="new-password"
+            :aria-required="isFieldRequired(field)"
             :aria-invalid="!!fieldErrors[field.key]"
             :aria-describedby="fieldErrors[field.key] ? `${fieldDomId(field)}-error` : undefined"
           />
@@ -325,6 +362,7 @@ async function confirmDeactivate(): Promise<void> {
             type="date"
             class="native-date"
             v-model="formData[field.key]"
+            :aria-required="isFieldRequired(field)"
             :aria-invalid="!!fieldErrors[field.key]"
             :aria-describedby="fieldErrors[field.key] ? `${fieldDomId(field)}-error` : undefined"
           />
@@ -372,6 +410,16 @@ async function confirmDeactivate(): Promise<void> {
   color: #b91c1c;
   margin: 0;
 }
+.crud-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0;
+}
+.required-mark {
+  color: #b91c1c;
+}
 .field {
   display: flex;
   flex-direction: column;
@@ -407,7 +455,8 @@ async function confirmDeactivate(): Promise<void> {
 @media (prefers-color-scheme: dark) {
   .crud-error,
   .field-error,
-  .form-error {
+  .form-error,
+  .required-mark {
     color: #fca5a5;
   }
 }

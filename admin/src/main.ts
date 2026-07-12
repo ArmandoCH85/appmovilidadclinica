@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
 import Aura from '@primeuix/themes/aura'
 import { definePreset } from '@primeuix/themes'
 import 'primeicons/primeicons.css'
@@ -31,4 +32,5 @@ const AdminPreset = definePreset(Aura, {
 createApp(App)
   .use(router)
   .use(PrimeVue, { theme: { preset: AdminPreset } })
+  .use(ToastService)
   .mount('#app')

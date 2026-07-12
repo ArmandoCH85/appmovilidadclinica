@@ -30,6 +30,10 @@ export interface CrudField {
   maxLength?: number
   /** Solo para type:'select' — refleja un `validate:"oneof=..."` del backend. */
   options?: CrudFieldOption[]
+  /** Solo para type:'number' — decimales visibles/editables (InputNumber).
+   * Default 0 (entero). Coordenadas (lat/long) necesitan la escala real de
+   * la columna DECIMAL del backend, no un entero redondeado. */
+  decimals?: number
 }
 
 /** Una columna de la tabla. `key` referencia una propiedad del item listado. */
@@ -76,8 +80,11 @@ export const stopsConfig: CrudResourceConfig = {
       ],
     },
     { key: 'reference_text', label: 'Referencia', type: 'textarea', maxLength: 255 },
-    { key: 'latitude', label: 'Latitud', type: 'number' },
-    { key: 'longitude', label: 'Longitud', type: 'number' },
+    // decimals:8 refleja la escala real de la columna (DECIMAL(10,8) /
+    // DECIMAL(11,8), backend/migrations/0001_schema.up.sql) — sin esto
+    // InputNumber redondea a entero mientras se escribe.
+    { key: 'latitude', label: 'Latitud', type: 'number', decimals: 8 },
+    { key: 'longitude', label: 'Longitud', type: 'number', decimals: 8 },
     { key: 'active', label: 'Activa', type: 'boolean' },
   ],
 }

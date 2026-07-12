@@ -18,6 +18,9 @@ export const LABELS = {
   confirm: 'Confirmar',
   empty: 'No hay registros para mostrar.',
   requiredField: 'Este campo es obligatorio.',
+  created: 'Registro creado correctamente.',
+  updated: 'Registro actualizado correctamente.',
+  deactivated: 'Registro desactivado correctamente.',
 } as const
 
 const ERROR_BY_STATUS: Record<number, string> = {
