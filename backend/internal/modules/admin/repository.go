@@ -726,7 +726,7 @@ func (r *adminRepository) UpdateUser(ctx context.Context, id int64, p UserUpdate
                    department = ?, phone = ?, preferred_stop_id = ?, active = ?
              WHERE id = ?`,
 			p.EmployeeCode, p.DocumentNumber, p.FullName, p.Role,
-			p.Department, p.Phone, p.PreferredStopID, id)
+			p.Department, p.Phone, p.PreferredStopID, p.Active, id)
 	} else {
 		res, err = r.db.ExecContext(ctx, `
             UPDATE users
@@ -734,7 +734,7 @@ func (r *adminRepository) UpdateUser(ctx context.Context, id int64, p UserUpdate
                    role = ?, department = ?, phone = ?, preferred_stop_id = ?, active = ?
              WHERE id = ?`,
 			p.EmployeeCode, p.DocumentNumber, p.Password, p.FullName, p.Role,
-			p.Department, p.Phone, p.PreferredStopID, id)
+			p.Department, p.Phone, p.PreferredStopID, p.Active, id)
 	}
 	if err != nil {
 		return fmt.Errorf("actualizando usuario: %w", err)
