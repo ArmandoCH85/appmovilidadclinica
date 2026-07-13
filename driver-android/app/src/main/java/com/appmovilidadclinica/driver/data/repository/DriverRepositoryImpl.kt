@@ -66,12 +66,8 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun startTrip(tripId: Long): Result<Unit> {
         return try {
-            val response = driverApi.startTrip(tripId)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(AppError.Unknown("Error al iniciar el viaje"))
-            }
+            driverApi.startTrip(tripId)
+            Result.success(Unit)
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
@@ -83,12 +79,8 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun completeTrip(tripId: Long): Result<Unit> {
         return try {
-            val response = driverApi.completeTrip(tripId)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(AppError.Unknown("Error al finalizar el viaje"))
-            }
+            driverApi.completeTrip(tripId)
+            Result.success(Unit)
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
@@ -100,12 +92,8 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun markArrival(tripStopTimeId: Long): Result<Unit> {
         return try {
-            val response = driverApi.markArrival(tripStopTimeId)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(AppError.Unknown("Error al marcar llegada"))
-            }
+            driverApi.markArrival(tripStopTimeId)
+            Result.success(Unit)
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
@@ -117,12 +105,8 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun markBoarded(reservationId: Long): Result<Unit> {
         return try {
-            val response = driverApi.boardPassenger(reservationId)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(AppError.Unknown("Error al marcar abordaje"))
-            }
+            driverApi.boardPassenger(reservationId)
+            Result.success(Unit)
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
@@ -134,12 +118,8 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun markNoShow(reservationId: Long): Result<Unit> {
         return try {
-            val response = driverApi.markNoShow(reservationId)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(AppError.Unknown("Error al marcar no-show"))
-            }
+            driverApi.markNoShow(reservationId)
+            Result.success(Unit)
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
@@ -151,12 +131,8 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun markAlighted(reservationId: Long): Result<Unit> {
         return try {
-            val response = driverApi.alightPassenger(reservationId)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(AppError.Unknown("Error al marcar bajada"))
-            }
+            driverApi.alightPassenger(reservationId)
+            Result.success(Unit)
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {

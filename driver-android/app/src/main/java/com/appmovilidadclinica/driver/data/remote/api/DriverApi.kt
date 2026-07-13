@@ -4,7 +4,6 @@ import com.appmovilidadclinica.driver.data.remote.dto.DriverTripDto
 import com.appmovilidadclinica.driver.data.remote.dto.IncidentRequestDto
 import com.appmovilidadclinica.driver.data.remote.dto.PassengerDto
 import com.appmovilidadclinica.driver.data.remote.dto.TripStopDto
-import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -21,23 +20,26 @@ interface DriverApi {
     @GET("driver/trips/{id}/stops")
     suspend fun getTripStops(@Path("id") tripId: Long): List<TripStopDto>
 
+    // Sin envoltorio Response<Unit>: asi Retrofit lanza HttpException en codigos
+    // no-2xx (204 en exito) y el repositorio puede mapear el error real del
+    // backend via ApiErrorMapper en vez de perderlo.
     @POST("driver/trips/{id}/start")
-    suspend fun startTrip(@Path("id") tripId: Long): Response<Unit>
+    suspend fun startTrip(@Path("id") tripId: Long)
 
     @POST("driver/trips/{id}/complete")
-    suspend fun completeTrip(@Path("id") tripId: Long): Response<Unit>
+    suspend fun completeTrip(@Path("id") tripId: Long)
 
     @POST("driver/trip-stops/{id}/arrival")
-    suspend fun markArrival(@Path("id") tripStopTimeId: Long): Response<Unit>
+    suspend fun markArrival(@Path("id") tripStopTimeId: Long)
 
     @POST("driver/reservations/{id}/board")
-    suspend fun boardPassenger(@Path("id") reservationId: Long): Response<Unit>
+    suspend fun boardPassenger(@Path("id") reservationId: Long)
 
     @POST("driver/reservations/{id}/no-show")
-    suspend fun markNoShow(@Path("id") reservationId: Long): Response<Unit>
+    suspend fun markNoShow(@Path("id") reservationId: Long)
 
     @POST("driver/reservations/{id}/alight")
-    suspend fun alightPassenger(@Path("id") reservationId: Long): Response<Unit>
+    suspend fun alightPassenger(@Path("id") reservationId: Long)
 
     @POST("driver/trips/{id}/incidents")
     suspend fun reportIncident(
