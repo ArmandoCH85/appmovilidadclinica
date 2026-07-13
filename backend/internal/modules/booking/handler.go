@@ -92,9 +92,32 @@ func (h *BookingHandler) VerifyQR(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(res)
 }
 
+// SelfCheckin maneja POST /reservations/{id}/self-checkin. No requiere body:
+// el worker_id se toma del JWT y el reservation_id del path. Valida que el
+// id sea entero positivo, delega al servicio, escribe 200 con
+// { reservation_id, status: BOARDED, boarded_at }.
+func (h *BookingHandler) SelfCheckin(w http.ResponseWriter, r *http.Request) {
+	reservationID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "id", Reason: "debe ser un entero positivo"})
+		return
+	}
+
+	res, err := h.svc.SelfCheckin(r.Context(), reservationID)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(res)
+}
+
 // RegisterRoutes monta los endpoints del modulo booking.
 func (h *BookingHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/reservations", h.Confirm)
 	r.Post("/reservations/{id}/cancel", h.Cancel)
 	r.Post("/reservations/verify-qr", h.VerifyQR)
+	// POST /reservations/{id}/self-checkin — el propio pasajero confirma
+	// su abordaje desde la app (boton de contingencia si falla la lectura
+	// del QR por el chofer). Ver `desarrollo_pasajero.md` §5.1.
+	r.Post("/reservations/{id}/self-checkin", h.SelfCheckin)
 }

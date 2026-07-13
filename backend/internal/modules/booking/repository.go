@@ -51,12 +51,26 @@ type Reservation struct {
 	ConfirmedAt               time.Time `json:"confirmed_at"`
 }
 
+// SelfCheckinResult es el resultado de sp_mark_reservation_boarded_self.
+// Solo expone lo que la app necesita para actualizar la UI (status +
+// boarded_at), sin filtrar el id interno.
+type SelfCheckinResult struct {
+	ReservationID int64     `json:"reservation_id"`
+	Status        string    `json:"status"`
+	BoardedAt     time.Time `json:"boarded_at"`
+}
+
 // BookingRepository abstrae el acceso a BD del modulo.
 type BookingRepository interface {
 	CheckActiveReservation(ctx context.Context, workerID, tripID int64) (bool, error)
 	ConfirmReservation(ctx context.Context, params ConfirmParams) (ConfirmResult, error)
 	CancelReservation(ctx context.Context, reservationID, actorUserID int64) error
 	VerifyQRToken(ctx context.Context, tokenHash string) (Reservation, error)
+	// SelfCheckin invoca sp_mark_reservation_boarded_self. El SP valida
+	// ownership (worker_id == reservation.worker_id), status=CONFIRMED y
+	// ventana de tiempo alrededor de la salida. Aqui solo se traduce el
+	// SIGNAL '45000' a ConflictError via dberr.TranslateSP.
+	SelfCheckin(ctx context.Context, reservationID, workerID int64) (SelfCheckinResult, error)
 }
 
 // bookingRepository es la implementacion concreta con database/sql.
@@ -144,6 +158,24 @@ func (r *bookingRepository) VerifyQRToken(ctx context.Context, tokenHash string)
 			return Reservation{}, nfErr
 		}
 		return Reservation{}, fmt.Errorf("buscando reserva por qr: %w", err)
+	}
+	return res, nil
+}
+
+// SelfCheckin llama a sp_mark_reservation_boarded_self (variante self del
+// sp_mark_reservation_boarded: no exige driver_id coincidente, pero valida
+// ownership real worker_id y ventana de tiempo). El SP actualiza el status a
+// BOARDED, marca boarded_at = CURRENT_TIMESTAMP y deja reservation_events
+// con event_type='BOARDED' y actor_user_id=worker_id para auditoria.
+func (r *bookingRepository) SelfCheckin(ctx context.Context, reservationID, workerID int64) (SelfCheckinResult, error) {
+	var res SelfCheckinResult
+	err := r.db.QueryRowContext(ctx, "CALL sp_mark_reservation_boarded_self(?, ?)",
+		reservationID, workerID).Scan(&res.ReservationID, &res.Status, &res.BoardedAt)
+	if err != nil {
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return SelfCheckinResult{}, spErr
+		}
+		return SelfCheckinResult{}, fmt.Errorf("llamando sp_mark_reservation_boarded_self: %w", err)
 	}
 	return res, nil
 }

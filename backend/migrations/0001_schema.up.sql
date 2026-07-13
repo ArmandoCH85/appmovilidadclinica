@@ -27,6 +27,7 @@ DROP VIEW IF EXISTS vw_route_time_matrix;
 DROP PROCEDURE IF EXISTS sp_mark_reservation_alighted;
 DROP PROCEDURE IF EXISTS sp_mark_reservation_no_show;
 DROP PROCEDURE IF EXISTS sp_mark_reservation_boarded;
+DROP PROCEDURE IF EXISTS sp_mark_reservation_boarded_self;
 DROP PROCEDURE IF EXISTS sp_mark_trip_stop_arrival;
 DROP PROCEDURE IF EXISTS sp_confirm_reservation;
 DROP PROCEDURE IF EXISTS sp_list_trip_seats;
@@ -1840,6 +1841,108 @@ BEGIN
         p_driver_id,
         v_effective_at,
         'Abordaje confirmado por el conductor'
+    );
+
+    COMMIT;
+END$$
+
+-- Self check-in: el propio trabajador confirma su abordaje desde la app.
+-- Variante de sp_mark_reservation_boarded que NO exige driver_id coincidente
+-- (no hay conductor en el flujo), pero SÍ exige ownership real
+-- (reservation.worker_id = p_worker_id) y ventana de tiempo alrededor del
+-- horario de salida del punto de origen. Ver `desarrollo_pasajero.md` §5.1.
+CREATE PROCEDURE sp_mark_reservation_boarded_self(
+    IN p_reservation_id BIGINT UNSIGNED,
+    IN p_worker_id BIGINT UNSIGNED
+)
+BEGIN
+    DECLARE v_status VARCHAR(20);
+    DECLARE v_reservation_worker_id BIGINT UNSIGNED;
+    DECLARE v_origin_stop_time_id BIGINT UNSIGNED;
+    DECLARE v_scheduled_departure_at DATETIME;
+    DECLARE v_effective_at DATETIME;
+    -- Ventana de self-checkin. Coincide con la que aplica la app en
+    -- MyReservationDetailViewModel.canSelfCheckin (±30 min alrededor de la
+    -- salida). El backend la valida server-side porque el cliente puede
+    -- ser modificado; nunca confiamos en el reloj del dispositivo.
+    DECLARE v_self_checkin_window_minutes SMALLINT DEFAULT 30;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+    SET v_effective_at = CURRENT_TIMESTAMP;
+
+    SELECT reservation.status,
+           reservation.worker_id,
+           reservation.origin_trip_stop_time_id,
+           origin_stop.scheduled_departure_at
+      INTO v_status,
+           v_reservation_worker_id,
+           v_origin_stop_time_id,
+           v_scheduled_departure_at
+      FROM reservations reservation
+      JOIN trip_stop_times origin_stop
+        ON origin_stop.id = reservation.origin_trip_stop_time_id
+     WHERE reservation.id = p_reservation_id
+     FOR UPDATE;
+
+    IF v_status <> 'CONFIRMED' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La reserva no está CONFIRMED';
+    END IF;
+
+    -- Ownership real: solo el dueño de la reserva puede auto-confirmar
+    -- su abordaje. Esto cierra el hueco de `cancel` (donde el backend no
+    -- valida ownership y la app lo mitiga con filtro client-side): aca la
+    -- validacion SI es server-side.
+    IF v_reservation_worker_id <> p_worker_id THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Solo el trabajador dueno de la reserva puede confirmar su abordaje';
+    END IF;
+
+    -- Ventana de tiempo: el boarding solo tiene sentido cerca del horario
+    -- real de salida del paradero de origen. ±30 min cubre llegadas
+    -- tempranas y pequenas demoras, y bloquea confirmaciones muy fuera
+    -- de tiempo que podrian ser intentos de fraude o bugs del cliente.
+    IF v_effective_at < DATE_SUB(v_scheduled_departure_at, INTERVAL v_self_checkin_window_minutes MINUTE)
+       OR v_effective_at > DATE_ADD(v_scheduled_departure_at, INTERVAL v_self_checkin_window_minutes MINUTE) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Fuera de la ventana de self-checkin (+/-30 min del horario de salida)';
+    END IF;
+
+    UPDATE reservations
+       SET status = 'BOARDED',
+           boarded_at = v_effective_at
+     WHERE id = p_reservation_id;
+
+    UPDATE trip_seat_segments
+       SET state = 'OCCUPIED'
+     WHERE reservation_id = p_reservation_id
+       AND state = 'RESERVED';
+
+    UPDATE reservation_segments
+       SET allocation_status = 'OCCUPIED'
+     WHERE reservation_id = p_reservation_id
+       AND allocation_status = 'RESERVED';
+
+    INSERT INTO reservation_events (
+        reservation_id,
+        event_type,
+        trip_stop_time_id,
+        actor_user_id,
+        event_at,
+        details
+    ) VALUES (
+        p_reservation_id,
+        'BOARDED',
+        v_origin_stop_time_id,
+        p_worker_id,
+        v_effective_at,
+        'Abordaje auto-confirmado por el pasajero (self check-in)'
     );
 
     COMMIT;

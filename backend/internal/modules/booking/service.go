@@ -16,6 +16,12 @@ type BookingService interface {
 	Confirm(ctx context.Context, req ConfirmRequest) (ConfirmResponse, error)
 	Cancel(ctx context.Context, reservationID, actorUserID int64) error
 	VerifyQR(ctx context.Context, token string) (Reservation, error)
+	// SelfCheckin confirma el abordaje del propio trabajador desde la app.
+	// El worker_id viene del JWT (ownership real server-side), no del body.
+	// La ventana de tiempo y el resto de las reglas viven en el SP
+	// (sp_mark_reservation_boarded_self) — aca solo resolvemos la identidad
+	// del caller. Ver `desarrollo_pasajero.md` §5.1.
+	SelfCheckin(ctx context.Context, reservationID int64) (SelfCheckinResult, error)
 }
 
 // ConfirmRequest es el cuerpo de POST /reservations. El worker_id se toma
@@ -103,6 +109,22 @@ func (s *bookingService) VerifyQR(ctx context.Context, token string) (Reservatio
 	sum := sha256.Sum256([]byte(token))
 	hash := hex.EncodeToString(sum[:])
 	return s.repo.VerifyQRToken(ctx, hash)
+}
+
+// SelfCheckin obtiene el worker_id del contexto (JWT) y delega al repo, que
+// llama a sp_mark_reservation_boarded_self. El SP es quien valida:
+//   - ownership real (reservation.worker_id == p_worker_id)
+//   - status = CONFIRMED (si no, 409)
+//   - ventana de tiempo ±30 min alrededor de origin_stop.scheduled_departure_at
+//
+// No validamos nada en Go para no duplicar reglas — el SP es la unica fuente
+// de verdad (mismo patron que Confirm/Cancel).
+func (s *bookingService) SelfCheckin(ctx context.Context, reservationID int64) (SelfCheckinResult, error) {
+	workerID, err := authctx.UserIDFromContext(ctx)
+	if err != nil {
+		return SelfCheckinResult{}, apperror.UnauthorizedError{Reason: "token sin identidad de trabajador"}
+	}
+	return s.repo.SelfCheckin(ctx, reservationID, workerID)
 }
 
 // newUUIDv4 genera un UUID v4 (RFC 4122) usando crypto/rand. Sin dependencia

@@ -11,6 +11,7 @@ DROP VIEW IF EXISTS vw_route_time_matrix;
 DROP PROCEDURE IF EXISTS sp_mark_reservation_alighted;
 DROP PROCEDURE IF EXISTS sp_mark_reservation_no_show;
 DROP PROCEDURE IF EXISTS sp_mark_reservation_boarded;
+DROP PROCEDURE IF EXISTS sp_mark_reservation_boarded_self;
 DROP PROCEDURE IF EXISTS sp_mark_trip_stop_arrival;
 DROP PROCEDURE IF EXISTS sp_confirm_reservation;
 DROP PROCEDURE IF EXISTS sp_list_trip_seats;

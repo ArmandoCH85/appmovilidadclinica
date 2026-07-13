@@ -15,13 +15,15 @@ import (
 // mockBookingRepo cumple BookingRepository para tests. Mock a mano, sin mockery.
 // Solo se rellenan los campos que cada test consume.
 type mockBookingRepo struct {
-	active     bool
-	activeErr  error
-	confirm    ConfirmResult
-	confirmErr error
-	cancelErr  error
-	verifyRes  Reservation
-	verifyErr  error
+	active      bool
+	activeErr   error
+	confirm     ConfirmResult
+	confirmErr  error
+	cancelErr   error
+	verifyRes   Reservation
+	verifyErr   error
+	selfCheckin SelfCheckinResult
+	selfCheckinErr error
 }
 
 func (m *mockBookingRepo) CheckActiveReservation(_ context.Context, _, _ int64) (bool, error) {
@@ -38,6 +40,10 @@ func (m *mockBookingRepo) CancelReservation(_ context.Context, _, _ int64) error
 
 func (m *mockBookingRepo) VerifyQRToken(_ context.Context, _ string) (Reservation, error) {
 	return m.verifyRes, m.verifyErr
+}
+
+func (m *mockBookingRepo) SelfCheckin(_ context.Context, _, _ int64) (SelfCheckinResult, error) {
+	return m.selfCheckin, m.selfCheckinErr
 }
 
 // ctxWithWorker construye un context que simula un JWT valido con el worker_id
