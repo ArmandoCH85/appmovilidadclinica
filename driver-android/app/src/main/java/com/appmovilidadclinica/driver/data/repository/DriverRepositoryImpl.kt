@@ -1,6 +1,7 @@
 package com.appmovilidadclinica.driver.data.repository
 
 import com.appmovilidadclinica.driver.data.mapper.toDomain
+import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.data.remote.api.DriverApi
 import com.appmovilidadclinica.driver.data.remote.dto.IncidentRequestDto
 import com.appmovilidadclinica.driver.domain.model.AppError
@@ -19,7 +20,8 @@ import javax.inject.Singleton
 
 @Singleton
 class DriverRepositoryImpl @Inject constructor(
-    private val driverApi: DriverApi
+    private val driverApi: DriverApi,
+    private val apiErrorMapper: ApiErrorMapper,
 ) : DriverRepository {
 
     override suspend fun getTrips(date: LocalDate): Result<List<DriverTrip>> {
@@ -28,7 +30,7 @@ class DriverRepositoryImpl @Inject constructor(
             val trips = driverApi.getTrips(dateStr).map { it.toDomain() }
             Result.success(trips)
         } catch (e: HttpException) {
-            Result.failure(mapHttpException(e))
+            Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -41,7 +43,7 @@ class DriverRepositoryImpl @Inject constructor(
             val passengers = driverApi.getPassengers(tripId).map { it.toDomain() }
             Result.success(passengers)
         } catch (e: HttpException) {
-            Result.failure(mapHttpException(e))
+            Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -54,7 +56,41 @@ class DriverRepositoryImpl @Inject constructor(
             val stops = driverApi.getTripStops(tripId).map { it.toDomain() }
             Result.success(stops)
         } catch (e: HttpException) {
-            Result.failure(mapHttpException(e))
+            Result.failure(apiErrorMapper.map(e))
+        } catch (e: IOException) {
+            Result.failure(AppError.Network("Sin conexión a internet"))
+        } catch (e: Exception) {
+            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
+        }
+    }
+
+    override suspend fun startTrip(tripId: Long): Result<Unit> {
+        return try {
+            val response = driverApi.startTrip(tripId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(AppError.Unknown("Error al iniciar el viaje"))
+            }
+        } catch (e: HttpException) {
+            Result.failure(apiErrorMapper.map(e))
+        } catch (e: IOException) {
+            Result.failure(AppError.Network("Sin conexión a internet"))
+        } catch (e: Exception) {
+            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
+        }
+    }
+
+    override suspend fun completeTrip(tripId: Long): Result<Unit> {
+        return try {
+            val response = driverApi.completeTrip(tripId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(AppError.Unknown("Error al finalizar el viaje"))
+            }
+        } catch (e: HttpException) {
+            Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -71,7 +107,7 @@ class DriverRepositoryImpl @Inject constructor(
                 Result.failure(AppError.Unknown("Error al marcar llegada"))
             }
         } catch (e: HttpException) {
-            Result.failure(mapHttpException(e))
+            Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -88,7 +124,7 @@ class DriverRepositoryImpl @Inject constructor(
                 Result.failure(AppError.Unknown("Error al marcar abordaje"))
             }
         } catch (e: HttpException) {
-            Result.failure(mapHttpException(e))
+            Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -105,7 +141,7 @@ class DriverRepositoryImpl @Inject constructor(
                 Result.failure(AppError.Unknown("Error al marcar no-show"))
             }
         } catch (e: HttpException) {
-            Result.failure(mapHttpException(e))
+            Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -122,7 +158,7 @@ class DriverRepositoryImpl @Inject constructor(
                 Result.failure(AppError.Unknown("Error al marcar bajada"))
             }
         } catch (e: HttpException) {
-            Result.failure(mapHttpException(e))
+            Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -155,22 +191,11 @@ class DriverRepositoryImpl @Inject constructor(
             
             Result.success(incident)
         } catch (e: HttpException) {
-            Result.failure(mapHttpException(e))
+            Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
-
-    private fun mapHttpException(e: HttpException): AppError {
-        return when (e.code()) {
-            401 -> AppError.Unauthorized("No autorizado")
-            403 -> AppError.Forbidden("Acceso denegado")
-            404 -> AppError.NotFound("No encontrado")
-            409 -> AppError.Conflict("Conflicto")
-            422 -> AppError.Validation(null, "Error de validación")
-            else -> AppError.Unknown("Error del servidor")
         }
     }
 }

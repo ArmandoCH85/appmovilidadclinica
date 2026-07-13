@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.domain.model.AppError
 import com.appmovilidadclinica.driver.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.domain.model.Passenger
+import com.appmovilidadclinica.driver.domain.model.TripStatus
 import com.appmovilidadclinica.driver.domain.model.TripStop
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
 import com.appmovilidadclinica.driver.presentation.common.SelectedTripHolder
@@ -58,6 +59,48 @@ class TripDetailViewModel(
                     stopsErrorMessage = stopsResult.exceptionOrNull()?.let(::messageFor),
                 )
             }
+        }
+    }
+
+    fun startTrip() {
+        _uiState.update { it.copy(pendingActionId = tripId) }
+        viewModelScope.launch {
+            val result = driverRepository.startTrip(tripId)
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            pendingActionId = null,
+                            toastMessage = "Viaje iniciado",
+                            trip = it.trip?.copy(status = TripStatus.IN_PROGRESS),
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(pendingActionId = null, toastMessage = messageFor(error)) }
+                },
+            )
+        }
+    }
+
+    fun completeTrip() {
+        _uiState.update { it.copy(pendingActionId = tripId) }
+        viewModelScope.launch {
+            val result = driverRepository.completeTrip(tripId)
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            pendingActionId = null,
+                            toastMessage = "Viaje finalizado",
+                            trip = it.trip?.copy(status = TripStatus.COMPLETED),
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(pendingActionId = null, toastMessage = messageFor(error)) }
+                },
+            )
         }
     }
 

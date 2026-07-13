@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Schedule
@@ -55,6 +57,7 @@ import androidx.lifecycle.viewmodel.initializer
 import com.appmovilidadclinica.driver.di.AppModule
 import com.appmovilidadclinica.driver.domain.model.Passenger
 import com.appmovilidadclinica.driver.domain.model.ReservationStatus
+import com.appmovilidadclinica.driver.domain.model.TripStatus
 import com.appmovilidadclinica.driver.domain.model.TripStop
 import com.appmovilidadclinica.driver.domain.model.TripStopStatus
 import com.appmovilidadclinica.driver.presentation.common.color
@@ -161,6 +164,32 @@ fun TripDetailScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
+                        }
+                    }
+                }
+
+                if (trip.status == TripStatus.PUBLISHED || trip.status == TripStatus.BOARDING) {
+                    item {
+                        Button(
+                            onClick = viewModel::startTrip,
+                            enabled = state.pendingActionId != tripId,
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (state.pendingActionId == tripId) "Iniciando…" else "Iniciar viaje")
+                        }
+                    }
+                } else if (trip.status == TripStatus.IN_PROGRESS) {
+                    item {
+                        Button(
+                            onClick = viewModel::completeTrip,
+                            enabled = state.pendingActionId != tripId,
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                        ) {
+                            Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (state.pendingActionId == tripId) "Finalizando…" else "Finalizar viaje")
                         }
                     }
                 }

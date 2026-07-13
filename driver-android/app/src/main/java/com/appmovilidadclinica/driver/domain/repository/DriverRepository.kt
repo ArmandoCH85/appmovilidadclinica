@@ -10,6 +10,8 @@ interface DriverRepository {
     suspend fun getTrips(date: LocalDate): Result<List<DriverTrip>>
     suspend fun getPassengers(tripId: Long): Result<List<Passenger>>
     suspend fun getTripStops(tripId: Long): Result<List<TripStop>>
+    suspend fun startTrip(tripId: Long): Result<Unit>
+    suspend fun completeTrip(tripId: Long): Result<Unit>
     suspend fun markArrival(tripStopTimeId: Long): Result<Unit>
     suspend fun markBoarded(reservationId: Long): Result<Unit>
     suspend fun markNoShow(reservationId: Long): Result<Unit>

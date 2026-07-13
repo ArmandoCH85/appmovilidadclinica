@@ -2,6 +2,7 @@ package com.appmovilidadclinica.driver.di
 
 import android.content.Context
 import com.appmovilidadclinica.driver.data.local.SessionDataStore
+import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.data.remote.AuthInterceptor
 import com.appmovilidadclinica.driver.data.remote.api.AuthApi
 import com.appmovilidadclinica.driver.data.remote.api.BookingApi
@@ -88,7 +89,8 @@ object AppModule {
 
     fun provideDriverRepository(): DriverRepository {
         return DriverRepositoryImpl(
-            driverApi = provideDriverApi()
+            driverApi = provideDriverApi(),
+            apiErrorMapper = ApiErrorMapper(),
         )
     }
 

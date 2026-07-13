@@ -91,6 +91,33 @@ func (h *DriverHandler) ListStops(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, stops)
 }
 
+// StartTrip maneja POST /driver/trips/{id}/start — pasa el viaje a EN CURSO.
+func (h *DriverHandler) StartTrip(w http.ResponseWriter, r *http.Request) {
+	tripID, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	if err := h.svc.StartTrip(r.Context(), tripID); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// CompleteTrip maneja POST /driver/trips/{id}/complete — pasa el viaje a
+// COMPLETADO.
+func (h *DriverHandler) CompleteTrip(w http.ResponseWriter, r *http.Request) {
+	tripID, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	if err := h.svc.CompleteTrip(r.Context(), tripID); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // MarkArrivalStop maneja POST /driver/trip-stops/{id}/arrival — marca la
 // llegada del conductor a la parada indicada por trip_stop_time_id.
 func (h *DriverHandler) MarkArrivalStop(w http.ResponseWriter, r *http.Request) {
@@ -189,6 +216,8 @@ func (h *DriverHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/trips", h.ListTrips)
 		r.Get("/trips/{id}/passengers", h.ListPassengers)
 		r.Get("/trips/{id}/stops", h.ListStops)
+		r.Post("/trips/{id}/start", h.StartTrip)
+		r.Post("/trips/{id}/complete", h.CompleteTrip)
 		r.Post("/trip-stops/{id}/arrival", h.MarkArrivalStop)
 		r.Post("/reservations/{id}/board", h.Board)
 		r.Post("/reservations/{id}/no-show", h.NoShow)

@@ -21,6 +21,12 @@ interface DriverApi {
     @GET("driver/trips/{id}/stops")
     suspend fun getTripStops(@Path("id") tripId: Long): List<TripStopDto>
 
+    @POST("driver/trips/{id}/start")
+    suspend fun startTrip(@Path("id") tripId: Long): Response<Unit>
+
+    @POST("driver/trips/{id}/complete")
+    suspend fun completeTrip(@Path("id") tripId: Long): Response<Unit>
+
     @POST("driver/trip-stops/{id}/arrival")
     suspend fun markArrival(@Path("id") tripStopTimeId: Long): Response<Unit>
 

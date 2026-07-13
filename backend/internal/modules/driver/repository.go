@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/dberr"
 )
 
@@ -88,6 +89,13 @@ type DriverRepository interface {
 	// GetTripStops lista el cronograma de paradas de un viaje, ordenado por
 	// stop_order.
 	GetTripStops(ctx context.Context, tripID int64) ([]TripStop, error)
+
+	// StartTrip pasa el viaje a IN_PROGRESS. Solo valido desde PUBLISHED o
+	// BOARDING.
+	StartTrip(ctx context.Context, tripID int64) error
+
+	// CompleteTrip pasa el viaje a COMPLETED. Solo valido desde IN_PROGRESS.
+	CompleteTrip(ctx context.Context, tripID int64) error
 
 	// GetTripDriverID devuelve el driver_id asignado a un viaje. Usado por el
 	// servicio para validar que el conductor que llama este asignado.
@@ -253,6 +261,73 @@ func (r *driverRepository) GetTripStops(ctx context.Context, tripID int64) ([]Tr
 		stops = append(stops, s)
 	}
 	return stops, rows.Err()
+}
+
+// getTripStatus devuelve el status actual de un viaje. Uso interno para dar
+// un mensaje de conflicto util cuando StartTrip/CompleteTrip rechazan la
+// transicion por estado invalido.
+func (r *driverRepository) getTripStatus(ctx context.Context, tripID int64) (string, error) {
+	const q = `SELECT status FROM trip_instances WHERE id = ?`
+	var status string
+	err := r.db.QueryRowContext(ctx, q, tripID).Scan(&status)
+	if err != nil {
+		if nfErr := dberr.NotFound(err, "viaje", tripID); nfErr != err {
+			return "", nfErr
+		}
+		return "", fmt.Errorf("obteniendo estado del viaje: %w", err)
+	}
+	return status, nil
+}
+
+// StartTrip pasa el viaje a IN_PROGRESS. El UPDATE solo afecta filas en
+// PUBLISHED o BOARDING; si no afecta ninguna, se resuelve el estado actual
+// para devolver un ConflictError con mensaje util en vez de un 404 generico.
+func (r *driverRepository) StartTrip(ctx context.Context, tripID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+        UPDATE trip_instances
+           SET status = 'IN_PROGRESS'
+         WHERE id = ?
+           AND status IN ('PUBLISHED', 'BOARDING')`, tripID)
+	if err != nil {
+		return fmt.Errorf("iniciando viaje: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("verificando filas afectadas al iniciar viaje: %w", err)
+	}
+	if n == 0 {
+		current, cerr := r.getTripStatus(ctx, tripID)
+		if cerr != nil {
+			return cerr
+		}
+		return apperror.ConflictError{Msg: fmt.Sprintf("el viaje esta en estado %s, no se puede iniciar", current)}
+	}
+	return nil
+}
+
+// CompleteTrip pasa el viaje a COMPLETED. Mismo patron de validacion que
+// StartTrip: solo afecta viajes en IN_PROGRESS.
+func (r *driverRepository) CompleteTrip(ctx context.Context, tripID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+        UPDATE trip_instances
+           SET status = 'COMPLETED'
+         WHERE id = ?
+           AND status = 'IN_PROGRESS'`, tripID)
+	if err != nil {
+		return fmt.Errorf("finalizando viaje: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("verificando filas afectadas al finalizar viaje: %w", err)
+	}
+	if n == 0 {
+		current, cerr := r.getTripStatus(ctx, tripID)
+		if cerr != nil {
+			return cerr
+		}
+		return apperror.ConflictError{Msg: fmt.Sprintf("el viaje esta en estado %s, no se puede finalizar", current)}
+	}
+	return nil
 }
 
 // GetTripDriverID devuelve el driver_id de un viaje. El servicio lo usa para

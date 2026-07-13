@@ -20,6 +20,8 @@ type DriverService interface {
 	ListTrips(ctx context.Context, serviceDate string) ([]DriverTrip, error)
 	ListPassengers(ctx context.Context, tripID int64) ([]Passenger, error)
 	ListTripStops(ctx context.Context, tripID int64) ([]TripStop, error)
+	StartTrip(ctx context.Context, tripID int64) error
+	CompleteTrip(ctx context.Context, tripID int64) error
 	MarkArrival(ctx context.Context, tripStopTimeID int64) error
 	MarkBoarded(ctx context.Context, reservationID int64) error
 	MarkNoShow(ctx context.Context, reservationID int64) error
@@ -104,6 +106,32 @@ func (s *driverService) ListTripStops(ctx context.Context, tripID int64) ([]Trip
 		return nil, err
 	}
 	return s.repo.GetTripStops(ctx, tripID)
+}
+
+// StartTrip pasa el viaje a IN_PROGRESS. Valida que el conductor este
+// asignado antes de delegar al repositorio.
+func (s *driverService) StartTrip(ctx context.Context, tripID int64) error {
+	driverID, err := requireDriver(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.ensureAssigned(ctx, driverID, tripID); err != nil {
+		return err
+	}
+	return s.repo.StartTrip(ctx, tripID)
+}
+
+// CompleteTrip pasa el viaje a COMPLETED. Mismo flujo de validacion que
+// StartTrip.
+func (s *driverService) CompleteTrip(ctx context.Context, tripID int64) error {
+	driverID, err := requireDriver(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.ensureAssigned(ctx, driverID, tripID); err != nil {
+		return err
+	}
+	return s.repo.CompleteTrip(ctx, tripID)
 }
 
 // MarkArrival marca la llegada del conductor a una parada. Se valida la
