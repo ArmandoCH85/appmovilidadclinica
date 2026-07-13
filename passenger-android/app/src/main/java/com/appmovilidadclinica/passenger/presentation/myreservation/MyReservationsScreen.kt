@@ -119,7 +119,7 @@ private fun ReservationCard(reservation: Reservation, onClick: () -> Unit) {
             if (reservation.vehicleCode.isNotEmpty()) {
                 ReservaInfoRow(
                     icon = Icons.Default.DirectionsBus,
-                    text = "Vehículo ${reservation.vehicleCode} · ${reservation.plate}",
+                    text = "Vehículo ${reservation.plate}",
                 )
             }
 

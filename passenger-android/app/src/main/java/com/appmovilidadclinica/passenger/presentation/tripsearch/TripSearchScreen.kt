@@ -291,7 +291,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
             TripInfoRow(
                 icon = Icons.Default.DirectionsBus,
                 label = "Vehículo",
-                value = "${trip.vehicleCode} · ${trip.plate}",
+                value = trip.plate,
             )
 
             if (!enabled) {

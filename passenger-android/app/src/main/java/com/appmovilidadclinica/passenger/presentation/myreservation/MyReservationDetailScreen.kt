@@ -142,7 +142,7 @@ fun MyReservationDetailScreen(
                         Spacer(Modifier.height(6.dp))
                         DetailRow(
                             icon = Icons.Default.DirectionsBus,
-                            text = "Vehículo: ${reservation.vehicleCode} · ${reservation.plate}",
+                            text = "Vehículo: ${reservation.plate}",
                         )
                     }
                 }
