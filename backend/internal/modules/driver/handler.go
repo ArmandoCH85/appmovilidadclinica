@@ -74,6 +74,23 @@ func (h *DriverHandler) ListPassengers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, passengers)
 }
 
+// ListStops maneja GET /driver/trips/{id}/stops.
+func (h *DriverHandler) ListStops(w http.ResponseWriter, r *http.Request) {
+	tripID, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	stops, err := h.svc.ListTripStops(r.Context(), tripID)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	if stops == nil {
+		stops = []TripStop{}
+	}
+	writeJSON(w, stops)
+}
+
 // MarkArrivalStop maneja POST /driver/trip-stops/{id}/arrival — marca la
 // llegada del conductor a la parada indicada por trip_stop_time_id.
 func (h *DriverHandler) MarkArrivalStop(w http.ResponseWriter, r *http.Request) {
@@ -171,6 +188,7 @@ func (h *DriverHandler) RegisterRoutes(r chi.Router) {
 	r.Route("/driver", func(r chi.Router) {
 		r.Get("/trips", h.ListTrips)
 		r.Get("/trips/{id}/passengers", h.ListPassengers)
+		r.Get("/trips/{id}/stops", h.ListStops)
 		r.Post("/trip-stops/{id}/arrival", h.MarkArrivalStop)
 		r.Post("/reservations/{id}/board", h.Board)
 		r.Post("/reservations/{id}/no-show", h.NoShow)

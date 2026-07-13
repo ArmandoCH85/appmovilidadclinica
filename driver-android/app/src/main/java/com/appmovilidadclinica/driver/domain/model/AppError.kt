@@ -1,11 +1,11 @@
 package com.appmovilidadclinica.driver.domain.model
 
-sealed class AppError {
-    data class Unauthorized(val message: String) : AppError()
-    data class Forbidden(val message: String) : AppError()
-    data class NotFound(val message: String) : AppError()
-    data class Conflict(val message: String) : AppError()
-    data class Validation(val field: String?, val message: String) : AppError()
-    data class Network(val message: String) : AppError()
-    data class Unknown(val message: String) : AppError()
+sealed class AppError(msg: String) : Exception(msg) {
+    data class Unauthorized(override val message: String) : AppError(message)
+    data class Forbidden(override val message: String) : AppError(message)
+    data class NotFound(override val message: String) : AppError(message)
+    data class Conflict(override val message: String) : AppError(message)
+    data class Validation(val field: String?, override val message: String) : AppError(message)
+    data class Network(override val message: String) : AppError(message)
+    data class Unknown(override val message: String) : AppError(message)
 }

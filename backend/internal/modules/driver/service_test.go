@@ -18,6 +18,8 @@ type mockDriverRepo struct {
 	driverTripsErr    error
 	passengers        []Passenger
 	passengersErr     error
+	stops             []TripStop
+	stopsErr          error
 	tripDriverID      int64
 	tripDriverErr     error
 	stopTimeTripID    int64
@@ -38,6 +40,10 @@ func (m *mockDriverRepo) GetDriverTrips(_ context.Context, _ int64, _ string) ([
 
 func (m *mockDriverRepo) GetTripPassengers(_ context.Context, _ int64) ([]Passenger, error) {
 	return m.passengers, m.passengersErr
+}
+
+func (m *mockDriverRepo) GetTripStops(_ context.Context, _ int64) ([]TripStop, error) {
+	return m.stops, m.stopsErr
 }
 
 func (m *mockDriverRepo) GetTripDriverID(_ context.Context, _ int64) (int64, error) {

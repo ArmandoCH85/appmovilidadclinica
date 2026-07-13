@@ -19,6 +19,7 @@ const RoleDRIVER = "DRIVER"
 type DriverService interface {
 	ListTrips(ctx context.Context, serviceDate string) ([]DriverTrip, error)
 	ListPassengers(ctx context.Context, tripID int64) ([]Passenger, error)
+	ListTripStops(ctx context.Context, tripID int64) ([]TripStop, error)
 	MarkArrival(ctx context.Context, tripStopTimeID int64) error
 	MarkBoarded(ctx context.Context, reservationID int64) error
 	MarkNoShow(ctx context.Context, reservationID int64) error
@@ -90,6 +91,19 @@ func (s *driverService) ListPassengers(ctx context.Context, tripID int64) ([]Pas
 		return nil, err
 	}
 	return s.repo.GetTripPassengers(ctx, tripID)
+}
+
+// ListTripStops lista el cronograma de paradas de un viaje. Valida que el
+// conductor este asignado al viaje antes de exponer la lista.
+func (s *driverService) ListTripStops(ctx context.Context, tripID int64) ([]TripStop, error) {
+	driverID, err := requireDriver(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureAssigned(ctx, driverID, tripID); err != nil {
+		return nil, err
+	}
+	return s.repo.GetTripStops(ctx, tripID)
 }
 
 // MarkArrival marca la llegada del conductor a una parada. Se valida la

@@ -1,7 +1,12 @@
 package com.appmovilidadclinica.driver
 
 import android.app.Application
-import dagger.hilt.android.HiltAndroidApp
+import com.appmovilidadclinica.driver.di.AppModule
 
-@HiltAndroidApp
-class DriverApp : Application()
+class DriverApp : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+        AppModule.initialize(this)
+    }
+}

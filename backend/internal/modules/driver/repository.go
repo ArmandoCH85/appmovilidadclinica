@@ -56,6 +56,20 @@ type Passenger struct {
 	BoardedAt            *time.Time `json:"boarded_at,omitempty"`
 }
 
+// TripStop refleja una parada del cronograma de un viaje, con hora
+// programada y real de llegada/salida. Es el resultado del JOIN
+// trip_stop_times + transport_stops.
+type TripStop struct {
+	ID                   int64      `json:"id"`
+	StopName             string     `json:"stop_name"`
+	StopOrder            int        `json:"stop_order"`
+	ScheduledArrivalAt   time.Time  `json:"scheduled_arrival_at"`
+	ScheduledDepartureAt time.Time  `json:"scheduled_departure_at"`
+	ActualArrivalAt      *time.Time `json:"actual_arrival_at,omitempty"`
+	ActualDepartureAt    *time.Time `json:"actual_departure_at,omitempty"`
+	Status               string     `json:"status"`
+}
+
 // IncidentParams agrupa los campos para insertar en trip_incidents.
 type IncidentParams struct {
 	TripID       int64  `json:"trip_id" validate:"required,gt=0"`
@@ -70,6 +84,10 @@ type DriverRepository interface {
 
 	// GetTripPassengers lista los pasajeros CONFIRMED o BOARDED de un viaje.
 	GetTripPassengers(ctx context.Context, tripID int64) ([]Passenger, error)
+
+	// GetTripStops lista el cronograma de paradas de un viaje, ordenado por
+	// stop_order.
+	GetTripStops(ctx context.Context, tripID int64) ([]TripStop, error)
 
 	// GetTripDriverID devuelve el driver_id asignado a un viaje. Usado por el
 	// servicio para validar que el conductor que llama este asignado.
@@ -197,6 +215,44 @@ func (r *driverRepository) GetTripPassengers(ctx context.Context, tripID int64) 
 		passengers = append(passengers, p)
 	}
 	return passengers, rows.Err()
+}
+
+// GetTripStops lista el cronograma de paradas de un viaje ordenado por
+// stop_order. El JOIN a transport_stops trae el nombre de cada parada.
+func (r *driverRepository) GetTripStops(ctx context.Context, tripID int64) ([]TripStop, error) {
+	const q = `
+        SELECT tst.id, ts.name, tst.stop_order, tst.scheduled_arrival_at,
+               tst.scheduled_departure_at, tst.actual_arrival_at,
+               tst.actual_departure_at, tst.status
+          FROM trip_stop_times tst
+          JOIN transport_stops ts ON ts.id = tst.stop_id
+         WHERE tst.trip_id = ?
+         ORDER BY tst.stop_order`
+	rows, err := r.db.QueryContext(ctx, q, tripID)
+	if err != nil {
+		return nil, fmt.Errorf("listando paradas del viaje: %w", err)
+	}
+	defer rows.Close()
+
+	var stops []TripStop
+	for rows.Next() {
+		var s TripStop
+		var actualArrival, actualDeparture sql.NullTime
+		if err := rows.Scan(&s.ID, &s.StopName, &s.StopOrder, &s.ScheduledArrivalAt,
+			&s.ScheduledDepartureAt, &actualArrival, &actualDeparture, &s.Status); err != nil {
+			return nil, fmt.Errorf("escaneando parada del viaje: %w", err)
+		}
+		if actualArrival.Valid {
+			t := actualArrival.Time
+			s.ActualArrivalAt = &t
+		}
+		if actualDeparture.Valid {
+			t := actualDeparture.Time
+			s.ActualDepartureAt = &t
+		}
+		stops = append(stops, s)
+	}
+	return stops, rows.Err()
 }
 
 // GetTripDriverID devuelve el driver_id de un viaje. El servicio lo usa para
