@@ -66,20 +66,26 @@ class MyReservationDetailViewModel @Inject constructor(
         reservationFlow: Flow<Reservation?>,
     ): StateFlow<MyReservationDetailUiState> =
         combine(this, reservationFlow) { state, reservation ->
+            // Si el flow de Room emite la reserva con status CANCELLED
+            // (porque el repo.updateStatus() se ejecuto despues del
+            // cancel exitoso), marcamos cancelled=true para que el
+            // LaunchedEffect navegue atras. Sin esto, el cambio de
+            // status viene del flow de Room pero el flag cancelled
+            // esta en _uiState — nunca se sincronizan.
+            val cancelledFromFlow = reservation?.status == ReservationStatus.CANCELLED
             if (reservation != null && reservation != state.reservation) {
-                // El qrToken puede ser null si la reserva fue sincronizada
-                // desde el backend (GET /api/reservations no lo expone) o
-                // si la fila local fue creada sin pasar por `confirm()`.
-                // En ese caso dejamos qrBitmap en null y la UI muestra un
-                // placeholder de "QR no disponible" en vez de crashear.
                 val qr = reservation.qrToken
                 val bitmap = qr?.let { generateQrUseCase(it).toBitmap() }
                 state.copy(
                     reservation = reservation,
                     qrBitmap = bitmap,
+                    cancelled = state.cancelled || cancelledFromFlow,
                 )
             } else {
-                state.copy(reservation = reservation)
+                state.copy(
+                    reservation = reservation,
+                    cancelled = state.cancelled || cancelledFromFlow,
+                )
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MyReservationDetailUiState())
 
