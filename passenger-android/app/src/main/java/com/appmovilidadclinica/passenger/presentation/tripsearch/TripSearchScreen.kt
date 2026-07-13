@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,11 +16,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +41,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.appmovilidadclinica.passenger.domain.model.BookingState
 import com.appmovilidadclinica.passenger.domain.model.Stop
-import com.appmovilidadclinica.passenger.domain.model.TripDirection
 import com.appmovilidadclinica.passenger.domain.model.TripSearchResult
 import java.time.Instant
 import java.time.LocalDate
@@ -71,21 +68,6 @@ fun TripSearchScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = state.direction == TripDirection.IDA,
-                    onClick = { viewModel.onDirectionChange(TripDirection.IDA) },
-                    label = { Text("Ida") },
-                )
-                FilterChip(
-                    selected = state.direction == TripDirection.VUELTA,
-                    onClick = { viewModel.onDirectionChange(TripDirection.VUELTA) },
-                    label = { Text("Vuelta") },
-                )
-            }
-
-            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 12.dp))
-
             if (state.loadingStops) {
                 CircularProgressIndicator()
             } else {
