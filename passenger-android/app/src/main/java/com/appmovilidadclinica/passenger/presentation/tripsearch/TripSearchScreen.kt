@@ -15,6 +15,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.EventSeat
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -257,7 +261,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
 
             // Hora de salida
             TripInfoRow(
-                icon = Icons.Default.DateRange,
+                icon = Icons.Default.Schedule,
                 label = "Sale",
                 value = trip.originDepartureAt.toPeruTime(),
             )
@@ -266,7 +270,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
 
             // Hora de llegada
             TripInfoRow(
-                icon = Icons.Default.DateRange,
+                icon = Icons.Default.Flag,
                 label = "Llega",
                 value = trip.destinationArrivalAt.toPeruTime(),
             )
@@ -275,7 +279,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
 
             // Asientos disponibles
             TripInfoRow(
-                icon = Icons.Default.DateRange,
+                icon = Icons.Default.EventSeat,
                 label = "",
                 value = "${trip.availableSeats} asientos disponibles",
                 valueColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -285,7 +289,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
 
             // Vehiculo y placa
             TripInfoRow(
-                icon = Icons.Default.DateRange,
+                icon = Icons.Default.DirectionsBus,
                 label = "Vehículo",
                 value = "${trip.vehicleCode} · ${trip.plate}",
             )

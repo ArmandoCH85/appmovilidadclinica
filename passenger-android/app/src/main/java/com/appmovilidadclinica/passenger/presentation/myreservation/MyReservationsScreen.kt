@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.EventSeat
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -86,7 +88,7 @@ private fun ReservationCard(reservation: Reservation, onClick: () -> Unit) {
 
             // Hora de salida con icono
             ReservaInfoRow(
-                icon = Icons.Default.DateRange,
+                icon = Icons.Default.Schedule,
                 text = "Sale ${reservation.originDepartureAt.toPeruDateTime()}",
             )
 
@@ -94,7 +96,7 @@ private fun ReservationCard(reservation: Reservation, onClick: () -> Unit) {
 
             // Asiento con icono
             ReservaInfoRow(
-                icon = Icons.Default.DateRange,
+                icon = Icons.Default.EventSeat,
                 text = "Asiento ${reservation.seatLabel}",
             )
 
@@ -103,7 +105,7 @@ private fun ReservationCard(reservation: Reservation, onClick: () -> Unit) {
             // Vehiculo y placa con icono
             if (reservation.vehicleCode.isNotEmpty()) {
                 ReservaInfoRow(
-                    icon = Icons.Default.DateRange,
+                    icon = Icons.Default.DirectionsBus,
                     text = "Vehículo ${reservation.vehicleCode} · ${reservation.plate}",
                 )
             }

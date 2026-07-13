@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.EventSeat
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -111,7 +113,7 @@ fun MyReservationDetailScreen(
 
                     // Salida con icono
                     DetailRow(
-                        icon = Icons.Default.DateRange,
+                        icon = Icons.Default.Schedule,
                         text = "Salida: ${reservation.originDepartureAt.toPeruDateTime()}",
                     )
 
@@ -119,14 +121,14 @@ fun MyReservationDetailScreen(
 
                     // Asiento con icono
                     DetailRow(
-                        icon = Icons.Default.DateRange,
+                        icon = Icons.Default.EventSeat,
                         text = "Asiento: ${reservation.seatLabel}",
                     )
 
                     if (reservation.vehicleCode.isNotEmpty()) {
                         Spacer(Modifier.height(6.dp))
                         DetailRow(
-                            icon = Icons.Default.DateRange,
+                            icon = Icons.Default.DirectionsBus,
                             text = "Vehículo: ${reservation.vehicleCode} · ${reservation.plate}",
                         )
                     }
