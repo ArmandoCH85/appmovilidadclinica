@@ -160,7 +160,7 @@ fun TripDetailScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    "  ${trip.vehicleCode} · ${trip.plate}",
+                                    "  Vehículo ${trip.plate}",
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }

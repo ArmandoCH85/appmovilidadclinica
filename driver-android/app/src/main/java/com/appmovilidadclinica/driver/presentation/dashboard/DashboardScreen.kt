@@ -198,14 +198,6 @@ private fun TripCard(trip: DriverTrip, onClick: () -> Unit) {
                 )
             }
 
-            Spacer(Modifier.height(4.dp))
-
-            Text(
-                "${trip.tripCode} · ${trip.direction.name.lowercase().replaceFirstChar { it.uppercase() }}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
             Spacer(Modifier.height(10.dp))
 
             InfoRow(
@@ -217,7 +209,7 @@ private fun TripCard(trip: DriverTrip, onClick: () -> Unit) {
 
             InfoRow(
                 icon = Icons.Default.DirectionsBus,
-                text = "Vehículo ${trip.vehicleCode} · ${trip.plate}",
+                text = "Vehículo ${trip.plate}",
             )
 
             Spacer(Modifier.height(4.dp))
