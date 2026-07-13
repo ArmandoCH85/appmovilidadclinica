@@ -12,6 +12,7 @@ import com.appmovilidadclinica.driver.domain.model.Passenger
 import com.appmovilidadclinica.driver.domain.model.TripStop
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
 import retrofit2.HttpException
+import retrofit2.Response
 import java.io.IOException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -64,12 +65,17 @@ class DriverRepositoryImpl @Inject constructor(
         }
     }
 
+    // Estos 6 endpoints devuelven 204 sin cuerpo. Response<Unit> evita el
+    // "response body was null" que Retrofit tira con una suspend fun de
+    // retorno no-nulo desnudo; el error real de un fallo (4xx/5xx) se extrae
+    // a mano armando un HttpException con la Response, para que
+    // ApiErrorMapper pueda leer el errorBody() igual que en las demas calls.
+    private fun Response<Unit>.toResult(): Result<Unit> =
+        if (isSuccessful) Result.success(Unit) else Result.failure(apiErrorMapper.map(HttpException(this)))
+
     override suspend fun startTrip(tripId: Long): Result<Unit> {
         return try {
-            driverApi.startTrip(tripId)
-            Result.success(Unit)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
+            driverApi.startTrip(tripId).toResult()
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -79,10 +85,7 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun completeTrip(tripId: Long): Result<Unit> {
         return try {
-            driverApi.completeTrip(tripId)
-            Result.success(Unit)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
+            driverApi.completeTrip(tripId).toResult()
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -92,10 +95,7 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun markArrival(tripStopTimeId: Long): Result<Unit> {
         return try {
-            driverApi.markArrival(tripStopTimeId)
-            Result.success(Unit)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
+            driverApi.markArrival(tripStopTimeId).toResult()
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -105,10 +105,7 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun markBoarded(reservationId: Long): Result<Unit> {
         return try {
-            driverApi.boardPassenger(reservationId)
-            Result.success(Unit)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
+            driverApi.boardPassenger(reservationId).toResult()
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -118,10 +115,7 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun markNoShow(reservationId: Long): Result<Unit> {
         return try {
-            driverApi.markNoShow(reservationId)
-            Result.success(Unit)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
+            driverApi.markNoShow(reservationId).toResult()
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
@@ -131,10 +125,7 @@ class DriverRepositoryImpl @Inject constructor(
 
     override suspend fun markAlighted(reservationId: Long): Result<Unit> {
         return try {
-            driverApi.alightPassenger(reservationId)
-            Result.success(Unit)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
+            driverApi.alightPassenger(reservationId).toResult()
         } catch (e: IOException) {
             Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
