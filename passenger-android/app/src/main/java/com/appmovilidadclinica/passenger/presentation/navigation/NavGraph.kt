@@ -59,9 +59,7 @@ fun PassengerNavGraph(navController: NavHostController = rememberNavController()
         ) {
             CircularProgressIndicator()
         }
-        return
-    }
-
+    } else {
     NavHost(
         navController = navController,
         startDestination = if (user != null) Screen.TripSearch else Screen.Login,
@@ -99,6 +97,7 @@ fun PassengerNavGraph(navController: NavHostController = rememberNavController()
         composable<Screen.MyReservationDetail> {
             MyReservationDetailScreen(onBack = { navController.popBackStack() })
         }
+    }
     }
 
     if (sessionExpiredVisible) {
