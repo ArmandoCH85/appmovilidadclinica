@@ -29,6 +29,7 @@ data class MyReservationDetailUiState(
     val reservation: Reservation? = null,
     val qrBitmap: Bitmap? = null,
     val cancelling: Boolean = false,
+    val cancelled: Boolean = false,
     val checkingIn: Boolean = false,
     val errorMessage: String? = null,
     val showCancelConfirm: Boolean = false,
@@ -100,7 +101,7 @@ class MyReservationDetailViewModel @Inject constructor(
         _uiState.update { it.copy(cancelling = true, showCancelConfirm = false) }
         viewModelScope.launch {
             when (val result = reservationsRepository.cancel(reservationId)) {
-                is AppResult.Success -> _uiState.update { it.copy(cancelling = false) }
+                is AppResult.Success -> _uiState.update { it.copy(cancelling = false, cancelled = true) }
                 is AppResult.Failure -> _uiState.update {
                     it.copy(cancelling = false, errorMessage = errorMessageFor(result))
                 }

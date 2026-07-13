@@ -3,12 +3,19 @@ package com.appmovilidadclinica.passenger.presentation.myreservation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -16,8 +23,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -25,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.appmovilidadclinica.passenger.domain.model.Reservation
 import com.appmovilidadclinica.passenger.domain.model.ReservationStatus
+import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,12 +46,6 @@ fun MyReservationsScreen(
     val reservations by viewModel.reservations.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Re-sync contra el backend cada vez que la pantalla vuelve al frente
-    // (ON_RESUME). Eso cubre: venir de otra pantalla, regresar de otra app,
-    // cambio de orientacion, desbloquear el telefono. Sin esto, una reserva
-    // creada en otro dispositivo nunca aparece (Room esta vacia) hasta
-    // volver a abrir "Mis reservas" — y eso solo porque el `init` del
-    // ViewModel correria una unica vez.
     LaunchedEffect(Unit) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             viewModel.sync()
@@ -71,11 +75,56 @@ fun MyReservationsScreen(
 private fun ReservationCard(reservation: Reservation, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(reservation.routeName, style = MaterialTheme.typography.titleMedium)
-            Text("${reservation.originName} → ${reservation.destinationName}")
-            Text("Asiento ${reservation.seatLabel} · ${reservation.originDepartureAt}")
-            Text(statusLabel(reservation.status), color = statusColor(reservation.status))
+            // Origen → Destino
+            Text(
+                "${reservation.originName} → ${reservation.destinationName}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // Hora de salida con icono
+            ReservaInfoRow(
+                icon = Icons.Default.DateRange,
+                text = "Sale ${reservation.originDepartureAt.toPeruDateTime()}",
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            // Asiento con icono
+            ReservaInfoRow(
+                icon = Icons.Default.DateRange,
+                text = "Asiento ${reservation.seatLabel}",
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // Status con color semantico
+            Text(
+                statusLabel(reservation.status),
+                style = MaterialTheme.typography.labelMedium,
+                color = statusColor(reservation.status),
+                fontWeight = FontWeight.Medium,
+            )
         }
+    }
+}
+
+@Composable
+private fun ReservaInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            "  $text",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

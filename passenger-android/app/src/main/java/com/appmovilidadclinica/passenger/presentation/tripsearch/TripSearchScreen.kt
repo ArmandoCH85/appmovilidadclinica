@@ -5,8 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -35,13 +39,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.appmovilidadclinica.passenger.domain.model.BookingState
 import com.appmovilidadclinica.passenger.domain.model.Stop
 import com.appmovilidadclinica.passenger.domain.model.TripSearchResult
+import com.appmovilidadclinica.passenger.presentation.common.toPeruTime
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -235,15 +242,47 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
     val enabled = trip.bookingState == BookingState.OPEN
     Card(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("${trip.routeName} (${trip.routeCode})", style = MaterialTheme.typography.titleMedium)
-            Text("${trip.originName} → ${trip.destinationName}", style = MaterialTheme.typography.bodyMedium)
-            Text("Sale ${trip.originDepartureAt} · Llega ${trip.destinationArrivalAt}")
-            Text("Vehículo ${trip.vehicleCode} · ${trip.plate}")
-            Text("${trip.availableSeats} asientos disponibles")
+            // Origen → Destino como titulo principal
+            Text(
+                "${trip.originName} → ${trip.destinationName}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Hora de salida
+            TripInfoRow(
+                icon = Icons.Default.DateRange,
+                label = "Sale",
+                value = trip.originDepartureAt.toPeruTime(),
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // Hora de llegada
+            TripInfoRow(
+                icon = Icons.Default.DateRange,
+                label = "Llega",
+                value = trip.destinationArrivalAt.toPeruTime(),
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            // Asientos disponibles
+            TripInfoRow(
+                icon = Icons.Default.DateRange,
+                label = "",
+                value = "${trip.availableSeats} asientos disponibles",
+                valueColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
             if (!enabled) {
+                Spacer(Modifier.height(8.dp))
                 Text(
                     text = when (trip.bookingState) {
                         BookingState.NOT_OPEN -> "Reserva aún no abierta"
@@ -251,8 +290,38 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
                         else -> ""
                     },
                     color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun TripInfoRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String,
+    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (label.isNotEmpty()) {
+            Text(
+                "$label  ",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = valueColor,
+        )
     }
 }
