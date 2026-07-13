@@ -48,6 +48,15 @@ func LoadConfig() Config {
 // horaria operativa America/Lima, un charset utf8mb4 consistente y
 // clientFoundRows.
 //
+// time_zone en el DSN es un parametro de sistema: go-sql-driver/mysql manda
+// "SET time_zone='-05:00'" en CADA conexion nueva que abre el pool. Es
+// necesario ademas de loc=America/Lima: loc solo le dice al driver Go como
+// ETIQUETAR el DATETIME que lee, pero CURRENT_TIMESTAMP en los stored
+// procedures corre en la timezone de la SESION MySQL. Sin este parametro,
+// esa sesion cae en el default del server (tipicamente UTC), y el driver
+// Go termina etiquetando una hora UTC como si fuera hora de Lima -> 5h de
+// desfasaje en actual_arrival_at y timestamps similares.
+//
 // clientFoundRows es critico: sin el, el protocolo MySQL reporta
 // RowsAffected() como filas REALMENTE CAMBIADAS, no filas que matchearon el
 // WHERE. Todo Update* de admin/repository.go llama ensureAffected(res, ...)
@@ -60,9 +69,10 @@ func LoadConfig() Config {
 // chequeo de existencia, que es lo que ensureAffected realmente necesita).
 func NewPool(cfg Config) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?multiStatements=true&parseTime=true&loc=%s&charset=utf8mb4&collation=utf8mb4_unicode_ci&timeout=5s&readTimeout=10s&writeTimeout=10s&clientFoundRows=true",
+		"%s:%s@tcp(%s:%s)/%s?multiStatements=true&parseTime=true&loc=%s&time_zone=%s&charset=utf8mb4&collation=utf8mb4_unicode_ci&timeout=5s&readTimeout=10s&writeTimeout=10s&clientFoundRows=true",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name,
 		url.QueryEscape("America/Lima"),
+		url.QueryEscape("'-05:00'"),
 	)
 
 	db, err := sql.Open("mysql", dsn)
