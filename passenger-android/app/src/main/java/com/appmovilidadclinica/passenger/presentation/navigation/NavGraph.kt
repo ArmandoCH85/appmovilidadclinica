@@ -1,8 +1,13 @@
 package com.appmovilidadclinica.passenger.presentation.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -27,6 +32,7 @@ import com.appmovilidadclinica.passenger.presentation.tripsearch.TripSearchScree
 fun PassengerNavGraph(navController: NavHostController = rememberNavController()) {
     val sessionViewModel: SessionViewModel = hiltViewModel()
     val user by sessionViewModel.user.collectAsStateWithLifecycle()
+    val isLoading by sessionViewModel.isLoading.collectAsStateWithLifecycle()
     val sessionExpiredVisible by sessionViewModel.sessionExpiredDialogVisible.collectAsStateWithLifecycle()
 
     LaunchedEffect(user) {
@@ -41,6 +47,19 @@ fun PassengerNavGraph(navController: NavHostController = rememberNavController()
                 popUpTo(0) { inclusive = true }
             }
         }
+    }
+
+    // Mientras DataStore no haya emitido el primer valor de sesion, no
+    // decidimos la pantalla inicial — mostramos un splash Centrado en
+    // vez de parpadear Login -> TripSearch (o viceversa).
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
+        }
+        return
     }
 
     NavHost(

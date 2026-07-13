@@ -8,6 +8,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -17,16 +19,22 @@ import javax.inject.Inject
  * pantallas de pasajero, y centraliza el aviso T-2min + logout forzado por
  * 401, mismo patron que `useAuth.ts` + `AppLayout.vue` del panel admin.
  *
- * Inyecta `AuthRepository` directo (no un UseCase intermedio) — ver
- * memoria "android-passenger-module/ponytail-audit": los use cases que solo
- * delegaban sin logica propia se eliminaron.
+ * `isLoading` es true hasta que DataStore emite el primer valor de sesion.
+ * Sin esto, el NavGraph ve `user = null` (valor inicial del stateIn) y
+ * arranca en Login, despues DataStore emite el user real y hay un flash
+ * Login -> TripSearch. Con `isLoading`, el NavGraph espera a que DataStore
+ * responda antes de decidir la pantalla inicial.
  */
 @HiltViewModel
 class SessionViewModel @Inject constructor(
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     val user: StateFlow<User?> = authRepository.observeSession()
+        .onEach { _isLoading.value = false }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val secondsUntilExpiry: StateFlow<Long?> = authRepository.observeSecondsUntilExpiry()
