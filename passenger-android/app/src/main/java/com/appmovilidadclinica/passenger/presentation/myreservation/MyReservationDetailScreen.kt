@@ -122,6 +122,14 @@ fun MyReservationDetailScreen(
                         icon = Icons.Default.DateRange,
                         text = "Asiento: ${reservation.seatLabel}",
                     )
+
+                    if (reservation.vehicleCode.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        DetailRow(
+                            icon = Icons.Default.DateRange,
+                            text = "Vehículo: ${reservation.vehicleCode} · ${reservation.plate}",
+                        )
+                    }
                 }
             }
 

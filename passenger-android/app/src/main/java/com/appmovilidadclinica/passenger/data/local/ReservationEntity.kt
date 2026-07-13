@@ -31,4 +31,6 @@ data class ReservationEntity(
     val destinationName: String,
     val originDepartureAtEpochMillis: Long,
     val seatLabel: String,
+    val vehicleCode: String = "",
+    val plate: String = "",
 )

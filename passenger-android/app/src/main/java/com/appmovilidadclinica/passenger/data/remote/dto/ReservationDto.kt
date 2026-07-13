@@ -52,4 +52,6 @@ data class ReservationListItemDto(
     @SerialName("origin_name") val originName: String,
     @SerialName("destination_name") val destinationName: String,
     @SerialName("seat_label") val seatLabel: String,
+    @SerialName("vehicle_code") val vehicleCode: String = "",
+    @SerialName("plate") val plate: String = "",
 )

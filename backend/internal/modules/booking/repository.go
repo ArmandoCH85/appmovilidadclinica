@@ -204,6 +204,8 @@ type ReservationListItem struct {
 	OriginName                string    `json:"origin_name"`
 	DestinationName           string    `json:"destination_name"`
 	SeatLabel                 string    `json:"seat_label"`
+	VehicleCode               string    `json:"vehicle_code"`
+	Plate                     string    `json:"plate"`
 }
 
 // ListReservationsByWorker devuelve todas las reservas (cualquier status) del
@@ -223,7 +225,8 @@ func (r *bookingRepository) ListReservationsByWorker(ctx context.Context, worker
                r.status, r.confirmed_at,
                t.trip_code, t.scheduled_start_at,
                origin_stop.name, dest_stop.name,
-               ts.seat_label
+               ts.seat_label,
+               v.internal_code, v.plate
           FROM reservations r
           JOIN trip_instances t            ON t.id = r.trip_id
           JOIN trip_stop_times origin_tst  ON origin_tst.id = r.origin_trip_stop_time_id
@@ -231,6 +234,7 @@ func (r *bookingRepository) ListReservationsByWorker(ctx context.Context, worker
           JOIN trip_stop_times dest_tst    ON dest_tst.id = r.destination_trip_stop_time_id
           JOIN transport_stops dest_stop   ON dest_stop.id = dest_tst.stop_id
           JOIN trip_seats ts               ON ts.id = r.trip_seat_id
+          JOIN vehicles v                  ON v.id = t.vehicle_id
          WHERE r.worker_id = ?
          ORDER BY r.confirmed_at DESC`
 	rows, err := r.db.QueryContext(ctx, q, workerID)
@@ -249,6 +253,7 @@ func (r *bookingRepository) ListReservationsByWorker(ctx context.Context, worker
 			&it.TripCode, &it.ScheduledStartAt,
 			&it.OriginName, &it.DestinationName,
 			&it.SeatLabel,
+			&it.VehicleCode, &it.Plate,
 		); err != nil {
 			return nil, fmt.Errorf("escaneando reserva: %w", err)
 		}

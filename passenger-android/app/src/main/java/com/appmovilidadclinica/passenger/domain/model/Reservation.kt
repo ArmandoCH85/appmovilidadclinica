@@ -26,12 +26,13 @@ data class Reservation(
     val destinationTripStopTimeId: Long,
     val status: ReservationStatus,
     val confirmedAt: Instant,
-    /** Datos de contexto para mostrar en "Mi reserva" sin otra llamada de red. */
     val routeName: String,
     val originName: String,
     val destinationName: String,
     val originDepartureAt: Instant,
     val seatLabel: String,
+    val vehicleCode: String = "",
+    val plate: String = "",
 )
 
 /** Parametros para confirmar una reserva — ver Specs #3. */

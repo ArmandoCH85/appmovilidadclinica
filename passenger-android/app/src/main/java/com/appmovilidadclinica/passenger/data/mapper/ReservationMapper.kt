@@ -28,6 +28,8 @@ fun ReservationResponseDto.toEntity(
     destinationName = context.destinationName,
     originDepartureAtEpochMillis = context.originDepartureAt.toEpochMilli(),
     seatLabel = context.seatLabel,
+    vehicleCode = "",
+    plate = "",
 )
 
 /**
@@ -54,6 +56,8 @@ fun ReservationListItemDto.toEntity(
     destinationName = destinationName,
     originDepartureAtEpochMillis = OffsetDateTime.parse(scheduledStartAt).toInstant().toEpochMilli(),
     seatLabel = seatLabel,
+    vehicleCode = vehicleCode,
+    plate = plate,
 )
 
 fun ReservationEntity.toDomain(): Reservation = Reservation(
@@ -71,4 +75,6 @@ fun ReservationEntity.toDomain(): Reservation = Reservation(
     destinationName = destinationName,
     originDepartureAt = Instant.ofEpochMilli(originDepartureAtEpochMillis),
     seatLabel = seatLabel,
+    vehicleCode = vehicleCode,
+    plate = plate,
 )

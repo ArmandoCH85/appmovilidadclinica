@@ -281,6 +281,15 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
                 valueColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
+            Spacer(Modifier.height(6.dp))
+
+            // Vehiculo y placa
+            TripInfoRow(
+                icon = Icons.Default.DateRange,
+                label = "Vehículo",
+                value = "${trip.vehicleCode} · ${trip.plate}",
+            )
+
             if (!enabled) {
                 Spacer(Modifier.height(8.dp))
                 Text(

@@ -98,6 +98,16 @@ private fun ReservationCard(reservation: Reservation, onClick: () -> Unit) {
                 text = "Asiento ${reservation.seatLabel}",
             )
 
+            Spacer(Modifier.height(4.dp))
+
+            // Vehiculo y placa con icono
+            if (reservation.vehicleCode.isNotEmpty()) {
+                ReservaInfoRow(
+                    icon = Icons.Default.DateRange,
+                    text = "Vehículo ${reservation.vehicleCode} · ${reservation.plate}",
+                )
+            }
+
             Spacer(Modifier.height(8.dp))
 
             // Status con color semantico
