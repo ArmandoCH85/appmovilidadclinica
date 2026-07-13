@@ -14,11 +14,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.appmovilidadclinica.passenger.domain.model.Reservation
 import com.appmovilidadclinica.passenger.domain.model.ReservationStatus
 
@@ -30,6 +34,19 @@ fun MyReservationsScreen(
     viewModel: MyReservationsViewModel = hiltViewModel(),
 ) {
     val reservations by viewModel.reservations.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Re-sync contra el backend cada vez que la pantalla vuelve al frente
+    // (ON_RESUME). Eso cubre: venir de otra pantalla, regresar de otra app,
+    // cambio de orientacion, desbloquear el telefono. Sin esto, una reserva
+    // creada en otro dispositivo nunca aparece (Room esta vacia) hasta
+    // volver a abrir "Mis reservas" — y eso solo porque el `init` del
+    // ViewModel correria una unica vez.
+    LaunchedEffect(Unit) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.sync()
+        }
+    }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Mis reservas") }) }) { padding ->
         if (reservations.isEmpty()) {

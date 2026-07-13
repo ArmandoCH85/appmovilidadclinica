@@ -16,11 +16,13 @@ import javax.inject.Inject
  * ver diseño técnico. Inyecta `ReservationsRepository` directo (ver memoria
  * "android-passenger-module/ponytail-audit").
  *
- * `init` dispara un sync contra `GET /api/reservations` para que la cache
- * local refleje el estado real del backend. Sin esto, una reserva creada
- * en otro dispositivo o sesion nunca aparece (Room esta vacia al
- * respecto). El `observeReservations()` sigue siendo la fuente de verdad
- * para la UI — el sync solo escribe en Room, no emite directo.
+ * El sync contra `GET /api/reservations` se dispara desde la pantalla via
+ * `repeatOnLifecycle(RESUMED)`, no en el `init` del ViewModel — asi se
+ * re-ejecuta cada vez que el usuario vuelve a "Mis reservas" (otra app al
+ * frente, navegacion de ida y vuelta, etc.). Sin esto, una reserva creada
+ * en otro dispositivo/sesion solo apareceria la primera vez que se abre la
+ * pantalla; el re-sync al resumir asegura que la cache local refleje el
+ * estado actual del backend sin que el usuario tenga que tocar nada.
  */
 @HiltViewModel
 class MyReservationsViewModel @Inject constructor(
@@ -29,7 +31,14 @@ class MyReservationsViewModel @Inject constructor(
     val reservations: StateFlow<List<Reservation>> = reservationsRepository.observeReservations()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    init {
+    /**
+     * Llama al backend para sincronizar la cache local con la lista de
+     * reservas del WORKER autenticado. Disparado desde la pantalla en cada
+     * ON_RESUME via `repeatOnLifecycle`. Fire-and-forget: si falla (red,
+     * 5xx), la UI queda con lo que ya tenia en Room; no hay error visual
+     * salvo si el usuario quiere forzarlo con un pull-to-refresh futuro.
+     */
+    fun sync() {
         viewModelScope.launch {
             reservationsRepository.syncFromBackend()
         }
