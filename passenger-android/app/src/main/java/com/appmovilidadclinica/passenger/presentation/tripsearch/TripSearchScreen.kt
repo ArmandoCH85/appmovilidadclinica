@@ -2,6 +2,7 @@ package com.appmovilidadclinica.passenger.presentation.tripsearch
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,8 +23,10 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -155,18 +158,29 @@ private fun DatePickerField(
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
-    OutlinedTextField(
-        value = date.toString(),
-        onValueChange = {},
-        readOnly = true,
-        label = { Text("Fecha") },
-        trailingIcon = {
-            Icon(Icons.Default.DateRange, contentDescription = "Seleccionar fecha")
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { showDialog = true },
-    )
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .clickable { showDialog = true }
+    ) {
+        OutlinedTextField(
+            value = date.toString(),
+            onValueChange = {},
+            readOnly = true,
+            enabled = false,
+            label = { Text("Fecha") },
+            trailingIcon = {
+                Icon(Icons.Default.DateRange, contentDescription = "Seleccionar fecha")
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = LocalContentColor.current,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+        )
+    }
 
     if (showDialog) {
         // El DatePicker trabaja con milisegundos UTC a medianoche. Convertimos

@@ -31,3 +31,25 @@ data class SelfCheckinResponseDto(
     val status: String,
     @SerialName("boarded_at") val boardedAt: String,
 )
+
+/**
+ * GET /api/reservations — fila enriquecida de la lista del WORKER. NO trae
+ * `qr_token`: el backend no lo expone despues del confirm inicial, asi que
+ * las reservas sincronizadas tendran qrToken=null en la cache local.
+ */
+@Serializable
+data class ReservationListItemDto(
+    @SerialName("id") val id: Long,
+    @SerialName("reservation_code") val reservationCode: String,
+    @SerialName("trip_id") val tripId: Long,
+    @SerialName("trip_seat_id") val tripSeatId: Long,
+    @SerialName("origin_trip_stop_time_id") val originTripStopTimeId: Long,
+    @SerialName("destination_trip_stop_time_id") val destinationTripStopTimeId: Long,
+    val status: String,
+    @SerialName("confirmed_at") val confirmedAt: String,
+    @SerialName("trip_code") val tripCode: String,
+    @SerialName("scheduled_start_at") val scheduledStartAt: String,
+    @SerialName("origin_name") val originName: String,
+    @SerialName("destination_name") val destinationName: String,
+    @SerialName("seat_label") val seatLabel: String,
+)

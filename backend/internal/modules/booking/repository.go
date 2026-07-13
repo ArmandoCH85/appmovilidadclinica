@@ -71,6 +71,12 @@ type BookingRepository interface {
 	// ventana de tiempo alrededor de la salida. Aqui solo se traduce el
 	// SIGNAL '45000' a ConflictError via dberr.TranslateSP.
 	SelfCheckin(ctx context.Context, reservationID, workerID int64) (SelfCheckinResult, error)
+	// ListReservationsByWorker devuelve todas las reservas del worker, sin
+	// filtrar por status (la UI distingue CONFIRMED / BOARDED / COMPLETED /
+	// NO_SHOW / CANCELLED). JOIN con trip_instances para incluir el
+	// contexto minimo del viaje (trip_code + service_date) que la UI
+	// necesita para mostrar el resumen.
+	ListReservationsByWorker(ctx context.Context, workerID int64) ([]ReservationListItem, error)
 }
 
 // bookingRepository es la implementacion concreta con database/sql.
@@ -178,6 +184,80 @@ func (r *bookingRepository) SelfCheckin(ctx context.Context, reservationID, work
 		return SelfCheckinResult{}, fmt.Errorf("llamando sp_mark_reservation_boarded_self: %w", err)
 	}
 	return res, nil
+}
+
+// ReservationListItem es la fila enriquecida de ListReservationsByWorker.
+// Incluye el contexto del viaje (trip_code, scheduled_start_at), el nombre
+// de las paradas de origen/destino y el seat_label — todo lo que la UI
+// de "Mis reservas" necesita sin pedir un segundo roundtrip al detalle.
+type ReservationListItem struct {
+	ID                        int64     `json:"id"`
+	ReservationCode           string    `json:"reservation_code"`
+	TripID                    int64     `json:"trip_id"`
+	TripSeatID                int64     `json:"trip_seat_id"`
+	OriginTripStopTimeID      int64     `json:"origin_trip_stop_time_id"`
+	DestinationTripStopTimeID int64     `json:"destination_trip_stop_time_id"`
+	Status                    string    `json:"status"`
+	ConfirmedAt               time.Time `json:"confirmed_at"`
+	TripCode                  string    `json:"trip_code"`
+	ScheduledStartAt          time.Time `json:"scheduled_start_at"`
+	OriginName                string    `json:"origin_name"`
+	DestinationName           string    `json:"destination_name"`
+	SeatLabel                 string    `json:"seat_label"`
+}
+
+// ListReservationsByWorker devuelve todas las reservas (cualquier status) del
+// worker con el contexto del viaje (nombre de ruta, paradas, asiento) ya
+// joined, para que la UI de "Mis reservas" muestre info legible sin un
+// segundo roundtrip al detalle.
+//
+// IMPORTANTE: NO devolvemos qr_token_hash ni nada que permita regenerar el
+// QR — el qr_token crudo solo se entrega una vez al confirmar, y
+// qr_token_hash es inutil sin el crudo. Las reservas sincronizadas desde
+// este endpoint aparecern en la app sin QR visible; el usuario debera
+// cancelar y reconfirmar si quiere ver el QR.
+func (r *bookingRepository) ListReservationsByWorker(ctx context.Context, workerID int64) ([]ReservationListItem, error) {
+	const q = `
+        SELECT r.id, r.reservation_code, r.trip_id, r.trip_seat_id,
+               r.origin_trip_stop_time_id, r.destination_trip_stop_time_id,
+               r.status, r.confirmed_at,
+               t.trip_code, t.scheduled_start_at,
+               origin_stop.stop_name, dest_stop.stop_name,
+               ts.seat_label
+          FROM reservations r
+          JOIN trip_instances t            ON t.id = r.trip_id
+          JOIN trip_stop_times origin_tst  ON origin_tst.id = r.origin_trip_stop_time_id
+          JOIN transport_stops origin_stop ON origin_stop.id = origin_tst.stop_id
+          JOIN trip_stop_times dest_tst    ON dest_tst.id = r.destination_trip_stop_time_id
+          JOIN transport_stops dest_stop   ON dest_stop.id = dest_tst.stop_id
+          JOIN trip_seats ts               ON ts.id = r.trip_seat_id
+         WHERE r.worker_id = ?
+         ORDER BY r.confirmed_at DESC`
+	rows, err := r.db.QueryContext(ctx, q, workerID)
+	if err != nil {
+		return nil, fmt.Errorf("listando reservas del worker: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]ReservationListItem, 0)
+	for rows.Next() {
+		var it ReservationListItem
+		if err := rows.Scan(
+			&it.ID, &it.ReservationCode, &it.TripID, &it.TripSeatID,
+			&it.OriginTripStopTimeID, &it.DestinationTripStopTimeID,
+			&it.Status, &it.ConfirmedAt,
+			&it.TripCode, &it.ScheduledStartAt,
+			&it.OriginName, &it.DestinationName,
+			&it.SeatLabel,
+		); err != nil {
+			return nil, fmt.Errorf("escaneando reserva: %w", err)
+		}
+		items = append(items, it)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 // compile-time guard.

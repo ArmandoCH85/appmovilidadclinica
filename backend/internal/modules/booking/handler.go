@@ -111,8 +111,27 @@ func (h *BookingHandler) SelfCheckin(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(res)
 }
 
+// ListMine maneja GET /reservations. Devuelve todas las reservas del
+// trabajador autenticado (sin filtrar por status — la UI distingue
+// CONFIRMED / BOARDED / COMPLETED / NO_SHOW / CANCELLED). No expone el
+// qr_token ni su hash: una reserva sincronizada aparecera en la app sin
+// QR visible (tendria que cancelarse y reconfirmarse para regenerarlo).
+func (h *BookingHandler) ListMine(w http.ResponseWriter, r *http.Request) {
+	reservations, err := h.svc.ListForWorker(r.Context())
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	if reservations == nil {
+		reservations = []ReservationListItem{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(reservations)
+}
+
 // RegisterRoutes monta los endpoints del modulo booking.
 func (h *BookingHandler) RegisterRoutes(r chi.Router) {
+	r.Get("/reservations", h.ListMine)
 	r.Post("/reservations", h.Confirm)
 	r.Post("/reservations/{id}/cancel", h.Cancel)
 	r.Post("/reservations/verify-qr", h.VerifyQR)

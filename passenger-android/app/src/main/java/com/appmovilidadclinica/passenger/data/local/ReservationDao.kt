@@ -12,6 +12,9 @@ interface ReservationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ReservationEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<ReservationEntity>)
+
     @Update
     suspend fun update(entity: ReservationEntity)
 

@@ -22,6 +22,11 @@ type BookingService interface {
 	// (sp_mark_reservation_boarded_self) — aca solo resolvemos la identidad
 	// del caller. Ver `desarrollo_pasajero.md` §5.1.
 	SelfCheckin(ctx context.Context, reservationID int64) (SelfCheckinResult, error)
+	// ListForWorker devuelve todas las reservas (activas e historicas) del
+	// worker_id tomado del contexto (JWT). Es el endpoint que la app llama
+	// en "Mis reservas" para sincronizar con el backend — sin esto, una
+	// reserva creada en otro dispositivo o sesion no aparece en la app.
+	ListForWorker(ctx context.Context) ([]ReservationListItem, error)
 }
 
 // ConfirmRequest es el cuerpo de POST /reservations. El worker_id se toma
@@ -125,6 +130,18 @@ func (s *bookingService) SelfCheckin(ctx context.Context, reservationID int64) (
 		return SelfCheckinResult{}, apperror.UnauthorizedError{Reason: "token sin identidad de trabajador"}
 	}
 	return s.repo.SelfCheckin(ctx, reservationID, workerID)
+}
+
+// ListForWorker resuelve el worker_id del JWT y devuelve todas sus reservas.
+// Sin paginar: un WORKER tiene a lo sumo unos pocos viajes por dia, asi que
+// el catalogo total es chico. Ordenadas por confirmed_at DESC para que
+// la mas reciente salga primero (UX directa en la lista).
+func (s *bookingService) ListForWorker(ctx context.Context) ([]ReservationListItem, error) {
+	workerID, err := authctx.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, apperror.UnauthorizedError{Reason: "token sin identidad de trabajador"}
+	}
+	return s.repo.ListReservationsByWorker(ctx, workerID)
 }
 
 // newUUIDv4 genera un UUID v4 (RFC 4122) usando crypto/rand. Sin dependencia

@@ -48,11 +48,21 @@ fun MyReservationDetailScreen(
 
             androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 16.dp))
 
-            state.qrBitmap?.let { bitmap ->
+            if (state.qrBitmap != null) {
                 Image(
-                    bitmap = bitmap.asImageBitmap(),
+                    bitmap = state.qrBitmap!!.asImageBitmap(),
                     contentDescription = "Código QR de la reserva",
                     modifier = Modifier.size(240.dp),
+                )
+            } else {
+                // El qrToken puede ser null si la reserva fue sincronizada
+                // desde el backend (GET /api/reservations no expone el QR
+                // despues del confirm inicial). La UI indica el caso en vez
+                // de crashear.
+                Text(
+                    "QR no disponible. Cancele y reconfirme para regenerar el código.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
                 )
             }
 

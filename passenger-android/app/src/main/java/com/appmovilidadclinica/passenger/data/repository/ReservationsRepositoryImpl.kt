@@ -76,4 +76,32 @@ class ReservationsRepositoryImpl @Inject constructor(
 
     override fun observeReservation(reservationId: Long): Flow<Reservation?> =
         reservationDao.observeById(reservationId).map { it?.toDomain() }
+
+    /**
+     * Sincroniza la cache local con la lista del backend. Trae TODAS las
+     * reservas del WORKER y las inserta con REPLACE: las filas locales
+     * existentes (creadas por `confirm()` en este device) se actualizan
+     * con el status fresco del backend (importante si otra sesion
+     * cancela la reserva); las que no existen localmente aparecen.
+     *
+     * Preservacion de qrToken: REPLACE escribe TODA la fila, lo que
+     * borraria el qrToken de las reservas que creamos localmente. Para
+     * evitar perder ese dato irrecuperable, antes de cada upsert
+     * consultamos la fila local y copiamos su qrToken al DTO convertido
+     * a entidad. Si la fila no existia localmente, qrToken queda null
+     * (el backend no lo manda).
+     */
+    override suspend fun syncFromBackend(): AppResult<Int> {
+        val result = safeApiCall(errorMapper) { reservationsApi.list() }
+        if (result !is AppResult.Success) {
+            @Suppress("UNCHECKED_CAST")
+            return result as AppResult<Int>
+        }
+        val entities = result.data.map { dto ->
+            val existingQr = reservationDao.getById(dto.id)?.qrToken
+            dto.toEntity(preservedQrToken = existingQr)
+        }
+        reservationDao.upsertAll(entities)
+        return AppResult.Success(entities.size)
+    }
 }

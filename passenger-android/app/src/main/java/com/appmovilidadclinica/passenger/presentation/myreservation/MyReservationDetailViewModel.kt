@@ -66,9 +66,16 @@ class MyReservationDetailViewModel @Inject constructor(
     ): StateFlow<MyReservationDetailUiState> =
         combine(this, reservationFlow) { state, reservation ->
             if (reservation != null && reservation != state.reservation) {
+                // El qrToken puede ser null si la reserva fue sincronizada
+                // desde el backend (GET /api/reservations no lo expone) o
+                // si la fila local fue creada sin pasar por `confirm()`.
+                // En ese caso dejamos qrBitmap en null y la UI muestra un
+                // placeholder de "QR no disponible" en vez de crashear.
+                val qr = reservation.qrToken
+                val bitmap = qr?.let { generateQrUseCase(it).toBitmap() }
                 state.copy(
                     reservation = reservation,
-                    qrBitmap = generateQrUseCase(reservation.qrToken).toBitmap(),
+                    qrBitmap = bitmap,
                 )
             } else {
                 state.copy(reservation = reservation)

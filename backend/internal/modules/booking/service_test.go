@@ -46,6 +46,10 @@ func (m *mockBookingRepo) SelfCheckin(_ context.Context, _, _ int64) (SelfChecki
 	return m.selfCheckin, m.selfCheckinErr
 }
 
+func (m *mockBookingRepo) ListReservationsByWorker(_ context.Context, _ int64) ([]ReservationListItem, error) {
+	return nil, nil
+}
+
 // ctxWithWorker construye un context que simula un JWT valido con el worker_id
 // dado, tal como lo haria jwtauth.Verifier en produccion.
 func ctxWithWorker(t *testing.T, workerID int64) context.Context {

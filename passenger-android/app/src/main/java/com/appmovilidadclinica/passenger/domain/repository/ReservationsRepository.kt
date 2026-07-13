@@ -31,6 +31,19 @@ interface ReservationsRepository {
     fun observeReservations(): Flow<List<Reservation>>
 
     fun observeReservation(reservationId: Long): Flow<Reservation?>
+
+    /**
+     * GET /api/reservations — sincroniza la cache local con la lista del
+     * backend. Trae TODAS las reservas del WORKER (sin filtrar por status)
+     * y hace upsert en Room con REPLACE. Las reservas sincronizadas vienen
+     * SIN qrToken (el backend nunca lo expone despues del confirm inicial);
+     * las creadas localmente por `confirm()` conservan su qrToken porque
+     * el REPLACE sobre la misma PK mantiene la fila existente con su
+     * valor de qrToken intacto? No — REPLACE escribe TODA la fila. Por
+     * eso `syncFromBackend` preserva el qrToken local si la reserva ya
+     * existia con qrToken (mismo patron que la unicidad del JWT).
+     */
+    suspend fun syncFromBackend(): AppResult<Int>
 }
 
 /**
