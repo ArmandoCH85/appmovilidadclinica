@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.initializer
 import com.appmovilidadclinica.driver.di.AppModule
 import com.appmovilidadclinica.driver.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.domain.model.TripStatus
+import com.appmovilidadclinica.driver.presentation.common.SelectedTripHolder
 import com.appmovilidadclinica.driver.presentation.common.color
 import com.appmovilidadclinica.driver.presentation.common.label
 import com.appmovilidadclinica.driver.presentation.common.toPeruTime
@@ -129,7 +130,13 @@ fun DashboardScreen(
                         contentPadding = PaddingValues(bottom = 16.dp),
                     ) {
                         items(state.trips, key = { it.id }) { trip ->
-                            TripCard(trip, onClick = { onTripSelected(trip.id) })
+                            TripCard(
+                                trip,
+                                onClick = {
+                                    SelectedTripHolder.trip = trip
+                                    onTripSelected(trip.id)
+                                },
+                            )
                         }
                     }
                 }
