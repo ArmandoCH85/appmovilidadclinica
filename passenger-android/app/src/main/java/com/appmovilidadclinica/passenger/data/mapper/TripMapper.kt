@@ -15,6 +15,26 @@ import com.appmovilidadclinica.passenger.domain.model.TripStop
 import com.appmovilidadclinica.passenger.domain.model.TripStopStatus
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
+
+/**
+ * Parsea un timestamp del backend a Instant. El backend serializa con offset
+ * local (`-05:00` hora Lima), pero `Instant.parse()` SOLO acepta UTC (`Z`).
+ * `OffsetDateTime` acepta cualquier offset y `.toInstant()` normaliza a UTC.
+ * Funciona con `Z`, `-05:00`, `+00:00`, etc.
+ */
+private fun parseInstant(raw: String): Instant = OffsetDateTime.parse(raw).toInstant()
+
+/**
+ * Parsea un campo fecha-hora del backend a LocalDate. El backend manda
+ * `service_date` con hora+offset (`2026-07-14T00:00:00-05:00`), no fecha
+ * pura — `LocalDate.parse()` reventaba con DateTimeParseException porque
+ * espera solo la parte de fecha. Aceptamos los dos formatos: si trae hora,
+ * la descartamos; si es fecha pura, la usamos tal cual.
+ */
+private fun parseLocalDate(raw: String): LocalDate =
+    if (raw.length >= 10 && raw[10] == 'T') LocalDate.parse(raw.substring(0, 10))
+    else LocalDate.parse(raw)
 
 fun TripSearchResultDto.toDomain(): TripSearchResult = TripSearchResult(
     tripId = tripId,
@@ -23,13 +43,13 @@ fun TripSearchResultDto.toDomain(): TripSearchResult = TripSearchResult(
     routeName = routeName,
     direction = TripDirection.valueOf(direction),
     originName = originName,
-    originDepartureAt = Instant.parse(originDepartureAt),
+    originDepartureAt = parseInstant(originDepartureAt),
     destinationName = destinationName,
-    destinationArrivalAt = Instant.parse(destinationArrivalAt),
+    destinationArrivalAt = parseInstant(destinationArrivalAt),
     vehicleCode = vehicleCode,
     plate = plate,
-    bookingOpensAt = Instant.parse(bookingOpensAt),
-    bookingClosesAt = Instant.parse(bookingClosesAt),
+    bookingOpensAt = parseInstant(bookingOpensAt),
+    bookingClosesAt = parseInstant(bookingClosesAt),
     bookingState = BookingState.valueOf(bookingState),
     availableSeats = availableSeats,
 )
@@ -38,11 +58,11 @@ fun TripDetailResponseDto.toDomain(): TripDetail = TripDetail(
     tripId = trip.id,
     tripCode = trip.tripCode,
     routeId = trip.routeId,
-    serviceDate = LocalDate.parse(trip.serviceDate),
-    scheduledStartAt = Instant.parse(trip.scheduledStartAt),
-    scheduledEndAt = Instant.parse(trip.scheduledEndAt),
-    bookingOpensAt = Instant.parse(trip.bookingOpensAt),
-    bookingClosesAt = Instant.parse(trip.bookingClosesAt),
+    serviceDate = parseLocalDate(trip.serviceDate),
+    scheduledStartAt = parseInstant(trip.scheduledStartAt),
+    scheduledEndAt = parseInstant(trip.scheduledEndAt),
+    bookingOpensAt = parseInstant(trip.bookingOpensAt),
+    bookingClosesAt = parseInstant(trip.bookingClosesAt),
     status = TripStatus.valueOf(trip.status),
     stops = stops.sortedBy { it.stopOrder }.map { it.toDomain() },
 )
@@ -52,8 +72,8 @@ fun TripStopDto.toDomain(): TripStop = TripStop(
     stopId = stopId,
     stopOrder = stopOrder,
     stopName = stopName,
-    scheduledArrivalAt = Instant.parse(scheduledArrivalAt),
-    scheduledDepartureAt = Instant.parse(scheduledDepartureAt),
+    scheduledArrivalAt = parseInstant(scheduledArrivalAt),
+    scheduledDepartureAt = parseInstant(scheduledDepartureAt),
     status = TripStopStatus.valueOf(status),
 )
 
