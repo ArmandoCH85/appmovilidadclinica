@@ -99,17 +99,28 @@ class MyReservationDetailViewModel @Inject constructor(
             return !now.isBefore(windowStart) && !now.isAfter(windowEnd)
         }
 
-    fun askCancel() = _uiState.update { it.copy(showCancelConfirm = true) }
+    fun askCancel() {
+        android.util.Log.d("MyResDetail", "askCancel: showing dialog for ${route.reservationId}")
+        _uiState.update { it.copy(showCancelConfirm = true) }
+    }
     fun dismissCancel() = _uiState.update { it.copy(showCancelConfirm = false) }
 
     fun confirmCancel() {
-        val reservationId = _uiState.value.reservation?.reservationId ?: return
-        _uiState.update { it.copy(cancelling = true, showCancelConfirm = false) }
+        android.util.Log.d("MyResDetail", "confirmCancel: starting for ${route.reservationId}")
+        val reservationId = route.reservationId
+        _uiState.update { it.copy(cancelling = true, showCancelConfirm = false, errorMessage = null) }
         viewModelScope.launch {
+            android.util.Log.d("MyResDetail", "confirmCancel: calling API")
             when (val result = reservationsRepository.cancel(reservationId)) {
-                is AppResult.Success -> _uiState.update { it.copy(cancelling = false, cancelled = true) }
-                is AppResult.Failure -> _uiState.update {
-                    it.copy(cancelling = false, errorMessage = errorMessageFor(result))
+                is AppResult.Success -> {
+                    android.util.Log.d("MyResDetail", "confirmCancel: success")
+                    _uiState.update { it.copy(cancelling = false, cancelled = true) }
+                }
+                is AppResult.Failure -> {
+                    android.util.Log.e("MyResDetail", "confirmCancel: failure: $result")
+                    _uiState.update {
+                        it.copy(cancelling = false, errorMessage = errorMessageFor(result))
+                    }
                 }
             }
         }
