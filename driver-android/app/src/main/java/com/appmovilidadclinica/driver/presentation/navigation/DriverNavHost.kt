@@ -50,8 +50,14 @@ fun DriverNavHost(navController: NavHostController = rememberNavController()) {
                 popUpTo(ROUTE_LOGIN) { inclusive = true }
             }
         } else if (!loggedIn && !onLogin) {
+            // popUpTo(0) (el entero) es ambiguo en Navigation Compose y con
+            // mas de una pantalla apilada (ej. Dashboard + Perfil) corrompia
+            // el arbol de composicion (IndexOutOfBoundsException en
+            // Composer.endRoot al cerrar sesion desde Perfil). popUpTo con el
+            // id real del grafo es la forma correcta de vaciar todo el stack.
             navController.navigate(ROUTE_LOGIN) {
-                popUpTo(0) { inclusive = true }
+                popUpTo(navController.graph.id) { inclusive = true }
+                launchSingleTop = true
             }
         }
     }
@@ -98,14 +104,11 @@ fun DriverNavHost(navController: NavHostController = rememberNavController()) {
         }
 
         composable(ROUTE_PROFILE) {
-            ProfileScreen(
-                onBack = { navController.popBackStack() },
-                onLoggedOut = {
-                    navController.navigate(ROUTE_LOGIN) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-            )
+            // Cerrar sesion no navega aca — el LaunchedEffect(isLoggedIn) de
+            // arriba reacciona solo al cambio de sesion. Ver comentario en
+            // ProfileScreen.kt: navegar en los dos lugares a la vez rompia
+            // Nav Compose.
+            ProfileScreen(onBack = { navController.popBackStack() })
         }
     }
 }

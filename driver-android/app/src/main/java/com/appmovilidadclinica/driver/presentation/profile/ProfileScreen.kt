@@ -34,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +51,6 @@ import com.appmovilidadclinica.driver.di.AppModule
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
-    onLoggedOut: () -> Unit,
     viewModel: ProfileViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
@@ -63,9 +61,10 @@ fun ProfileScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.loggedOut) {
-        if (state.loggedOut) onLoggedOut()
-    }
+    // No navegamos aca al cerrar sesion: DriverNavHost observa isLoggedIn y
+    // redirige solo. Navegar en dos lugares a la vez (aca + el LaunchedEffect
+    // de la raiz) corrompia el arbol de composicion de Nav Compose y
+    // crasheaba la app (IndexOutOfBoundsException en Composer/Stack.pop).
 
     Scaffold(
         topBar = {
