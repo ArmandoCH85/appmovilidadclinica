@@ -222,7 +222,7 @@ func (r *bookingRepository) ListReservationsByWorker(ctx context.Context, worker
                r.origin_trip_stop_time_id, r.destination_trip_stop_time_id,
                r.status, r.confirmed_at,
                t.trip_code, t.scheduled_start_at,
-               origin_stop.stop_name, dest_stop.stop_name,
+               origin_stop.name, dest_stop.name,
                ts.seat_label
           FROM reservations r
           JOIN trip_instances t            ON t.id = r.trip_id
