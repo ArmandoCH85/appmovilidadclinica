@@ -12,8 +12,8 @@ interface ReservationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ReservationEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertAll(entities: List<ReservationEntity>)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAllIgnore(entities: List<ReservationEntity>)
 
     @Update
     suspend fun update(entity: ReservationEntity)
@@ -29,4 +29,10 @@ interface ReservationDao {
 
     @Query("SELECT * FROM reservations WHERE reservationId = :reservationId")
     suspend fun getById(reservationId: Long): ReservationEntity?
+
+    @Query("SELECT reservationId FROM reservations")
+    suspend fun getAllIds(): List<Long>
+
+    @Query("DELETE FROM reservations WHERE reservationId NOT IN (:ids)")
+    suspend fun deleteOrphans(ids: List<Long>)
 }

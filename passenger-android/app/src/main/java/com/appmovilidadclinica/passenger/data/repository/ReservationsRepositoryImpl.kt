@@ -78,18 +78,22 @@ class ReservationsRepositoryImpl @Inject constructor(
         reservationDao.observeById(reservationId).map { it?.toDomain() }
 
     /**
-     * Sincroniza la cache local con la lista del backend. Trae TODAS las
-     * reservas del WORKER y las inserta con REPLACE: las filas locales
-     * existentes (creadas por `confirm()` en este device) se actualizan
-     * con el status fresco del backend (importante si otra sesion
-     * cancela la reserva); las que no existen localmente aparecen.
+     * Sincroniza la cache local con la lista del backend.
      *
-     * Preservacion de qrToken: REPLACE escribe TODA la fila, lo que
-     * borraria el qrToken de las reservas que creamos localmente. Para
-     * evitar perder ese dato irrecuperable, antes de cada upsert
-     * consultamos la fila local y copiamos su qrToken al DTO convertido
-     * a entidad. Si la fila no existia localmente, qrToken queda null
-     * (el backend no lo manda).
+     * Estrategia que NO pisa el qrToken de reservas ya existentes:
+     * 1. INSERT OR IGNORE: inserta solo las reservas NUEVAS (que no
+     *    existen en Room). Las que ya existen se ignoran — su qrToken
+     *    y todos sus datos locales se preservan intactos.
+     * 2. UPDATE status: para las reservas que YA existen localmente,
+     *    actualiza SOLO el status (por si cambi en el backend: fue
+     *    cancelada, abordada, completada, etc.). No toca qrToken ni
+     *    ningun otro campo.
+     * 3. DELETE orphans: elimina de Room las reservas que ya no
+     *    existen en el backend (por ejemplo, si un admin las borr).
+     *
+     * Las reservas nuevas del sync vienen SIN qrToken (el backend
+     * nunca lo expone despus del confirm inicial). La UI muestra
+     * "QR no disponible" para esas.
      */
     override suspend fun syncFromBackend(): AppResult<Int> {
         val result = safeApiCall(errorMapper) { reservationsApi.list() }
@@ -97,11 +101,27 @@ class ReservationsRepositoryImpl @Inject constructor(
             @Suppress("UNCHECKED_CAST")
             return result as AppResult<Int>
         }
-        val entities = result.data.map { dto ->
-            val existingQr = reservationDao.getById(dto.id)?.qrToken
-            dto.toEntity(preservedQrToken = existingQr)
+
+        val remoteList = result.data
+        val remoteIds = remoteList.map { it.id }
+
+        // 1. Insertar solo las nuevas (IGNORE las que ya existen)
+        val newEntities = remoteList.map { it.toEntity(preservedQrToken = null) }
+        reservationDao.insertAllIgnore(newEntities)
+
+        // 2. Actualizar SOLO el status de las que ya existan localmente
+        val localIds = reservationDao.getAllIds().toSet()
+        for (dto in remoteList) {
+            if (dto.id in localIds) {
+                reservationDao.updateStatus(dto.id, dto.status)
+            }
         }
-        reservationDao.upsertAll(entities)
-        return AppResult.Success(entities.size)
+
+        // 3. Eliminar las que ya no existen en el backend
+        if (remoteIds.isNotEmpty()) {
+            reservationDao.deleteOrphans(remoteIds)
+        }
+
+        return AppResult.Success(remoteList.size)
     }
 }
