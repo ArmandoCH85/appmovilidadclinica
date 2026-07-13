@@ -11,6 +11,8 @@ import com.appmovilidadclinica.passenger.domain.model.TripSearchResult
 import com.appmovilidadclinica.passenger.domain.repository.StopsRepository
 import com.appmovilidadclinica.passenger.domain.repository.TripsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -93,38 +95,64 @@ class TripSearchViewModel @Inject constructor(
             return
         }
 
-        val direction = deriveDirection(origin, destination)
-        if (direction == null) {
+        val directions = deriveDirections(origin, destination)
+        if (directions.isEmpty()) {
             _uiState.update {
-                it.copy(errorMessage = "El origen debe ser una sede y el destino un paradero, o viceversa.")
+                it.copy(errorMessage = "No hay viajes configurados para esa combinación de paradas.")
             }
             return
         }
 
         _uiState.update { it.copy(searching = true, errorMessage = null) }
         viewModelScope.launch {
-            when (val result = tripsRepository.search(state.date, direction, originId, destinationId)) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(searching = false, results = result.data, hasSearched = true)
+            // Para sede→sede (ambas direcciones posibles), lanzamos las
+            // dos búsquedas en paralelo y mergearos. El backend SP es la
+            // fuente de verdad: devuelve lo que exista según la
+            // configuración de rutas del admin. Para combos unívocos
+            // (paradero→sede = solo IDA, sede→paradero = solo VUELTA)
+            // se hace una sola llamada.
+            val results = directions.map { dir ->
+                async { tripsRepository.search(state.date, dir, originId, destinationId) }
+            }.awaitAll()
+
+            val merged = results.flatMap { result ->
+                when (result) {
+                    is AppResult.Success -> result.data
+                    is AppResult.Failure -> emptyList()
                 }
-                is AppResult.Failure -> _uiState.update {
-                    it.copy(searching = false, hasSearched = true, errorMessage = "No se pudo buscar. Intente nuevamente.")
-                }
+            }
+            // Deduplicar por tripId por si el mismo viaje apareciera en
+            // ambas direcciones (no debería, pero defensivo).
+            val unique = merged.distinctBy { it.tripId }
+
+            _uiState.update {
+                it.copy(searching = false, results = unique, hasSearched = true)
             }
         }
     }
 
     /**
-     * Regla de negocio (ver `desarrollo_pasajero.md` §2.1):
-     *   PARADERO -> SEDE     = IDA
-     *   SEDE     -> PARADERO = VUELTA
-     * Cualquier otra combinacion (paradero->paradero, sede->sede) es
-     * invalida: el backend no tiene viajes con esa configuracion.
+     * Devuelve las direcciones a buscar para la combinación de paradas
+     * elegida, según las reglas del negocio (ver `desarrollo_pasajero.md`
+     * §2.1):
+     *   - PARADERO → SEDE = [IDA]
+     *   - SEDE → PARADERO = [VUELTA]
+     *   - SEDE → SEDE = [IDA, VUELTA] — ambigua: el destino es sede (IDA)
+     *     y el origen también es sede (VUELTA). El admin pudo haber
+     *     configurado la ruta como cualquiera de las dos, así que
+     *     buscamos ambas y el SP decide.
+     *   - PARADERO → PARADERO = [] — no válida según las reglas
+     *     estrictas del negocio (subida en paradero solo en IDA, y en
+     *     IDA el destino debe ser sede).
      */
-    private fun deriveDirection(origin: Stop, destination: Stop): TripDirection? = when {
-        origin.stopType == StopType.PARADERO && destination.stopType == StopType.SEDE -> TripDirection.IDA
-        origin.stopType == StopType.SEDE && destination.stopType == StopType.PARADERO -> TripDirection.VUELTA
-        else -> null
+    private fun deriveDirections(origin: Stop, destination: Stop): List<TripDirection> = when {
+        origin.stopType == StopType.PARADERO && destination.stopType == StopType.SEDE ->
+            listOf(TripDirection.IDA)
+        origin.stopType == StopType.SEDE && destination.stopType == StopType.PARADERO ->
+            listOf(TripDirection.VUELTA)
+        origin.stopType == StopType.SEDE && destination.stopType == StopType.SEDE ->
+            listOf(TripDirection.IDA, TripDirection.VUELTA)
+        else -> emptyList()
     }
 
     private fun errorMessageFor(error: AppError): String = when (error) {
