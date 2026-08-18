@@ -21,8 +21,13 @@
 -- migraciones). Cualquier restart/rebuild del servicio borra estos datos.
 -- Volver a correr este script despues de cada restart.
 --
--- Password de los 5 usuarios demo: "password" (hash bcrypt $2y$, compatible
--- con golang.org/x/crypto/bcrypt).
+-- Passwords de los 5 usuarios demo (hash bcrypt $2y$, compatible con
+-- golang.org/x/crypto/bcrypt):
+--   ADM-001 (admin)    -> "password"
+--   CON-001 (driver)   -> "12345678"
+--   TRA-001..003       -> "12345678"
+-- El admin conserva la password generica; los demas roles usan una mas larga
+-- para no colisionar con el seed si se reutiliza en otros ambientes.
 -- ============================================================================
 
 USE transporte_corporativo_mvp;

@@ -652,7 +652,7 @@ func (r *adminRepository) CreateStop(ctx context.Context, p StopCreateParams) (S
         VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		p.Code, p.Name, p.StopType, p.ReferenceText, p.Latitude, p.Longitude, p.Active)
 	if err != nil {
-		return Stop{}, fmt.Errorf("creando parada: %w", err)
+		return Stop{}, dberr.TranslatePlainSQL(err, "parada", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -674,7 +674,7 @@ func (r *adminRepository) UpdateStop(ctx context.Context, id int64, p StopUpdate
          WHERE id = ?`,
 		p.Code, p.Name, p.StopType, p.ReferenceText, p.Latitude, p.Longitude, p.Active, id)
 	if err != nil {
-		return fmt.Errorf("actualizando parada: %w", err)
+		return dberr.TranslatePlainSQL(err, "parada", "")
 	}
 	return ensureAffected(res, "parada", id)
 }
@@ -733,7 +733,7 @@ func (r *adminRepository) CreateUser(ctx context.Context, p UserCreateParams) (U
 		p.EmployeeCode, p.DocumentNumber, p.Password, p.FullName, p.Role,
 		p.Department, p.Phone, p.PreferredStopID, p.Active)
 	if err != nil {
-		return User{}, fmt.Errorf("creando usuario: %w", err)
+		return User{}, dberr.TranslatePlainSQL(err, "usuario", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -769,7 +769,7 @@ func (r *adminRepository) UpdateUser(ctx context.Context, id int64, p UserUpdate
 			p.Department, p.Phone, p.PreferredStopID, p.Active, id)
 	}
 	if err != nil {
-		return fmt.Errorf("actualizando usuario: %w", err)
+		return dberr.TranslatePlainSQL(err, "usuario", "")
 	}
 	return ensureAffected(res, "usuario", id)
 }
@@ -819,7 +819,7 @@ func (r *adminRepository) CreateVehicle(ctx context.Context, p VehicleCreatePara
         VALUES (?, ?, ?, ?, ?)`,
 		p.InternalCode, p.Plate, p.Description, p.SeatCapacity, p.Active)
 	if err != nil {
-		return Vehicle{}, fmt.Errorf("creando vehiculo: %w", err)
+		return Vehicle{}, dberr.TranslatePlainSQL(err, "vehiculo", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -839,7 +839,7 @@ func (r *adminRepository) UpdateVehicle(ctx context.Context, id int64, p Vehicle
          WHERE id = ?`,
 		p.InternalCode, p.Plate, p.Description, p.SeatCapacity, p.Active, id)
 	if err != nil {
-		return fmt.Errorf("actualizando vehiculo: %w", err)
+		return dberr.TranslatePlainSQL(err, "vehiculo", "")
 	}
 	return ensureAffected(res, "vehiculo", id)
 }
@@ -889,7 +889,7 @@ func (r *adminRepository) CreateRoute(ctx context.Context, p RouteCreateParams) 
         VALUES (?, ?, ?, ?, ?)`,
 		p.Code, p.Name, p.Direction, p.PairedRouteID, p.Active)
 	if err != nil {
-		return Route{}, fmt.Errorf("creando ruta: %w", err)
+		return Route{}, dberr.TranslatePlainSQL(err, "ruta", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -909,7 +909,7 @@ func (r *adminRepository) UpdateRoute(ctx context.Context, id int64, p RouteUpda
          WHERE id = ?`,
 		p.Code, p.Name, p.Direction, p.PairedRouteID, p.Active, id)
 	if err != nil {
-		return fmt.Errorf("actualizando ruta: %w", err)
+		return dberr.TranslatePlainSQL(err, "ruta", "")
 	}
 	return ensureAffected(res, "ruta", id)
 }
@@ -961,7 +961,7 @@ func (r *adminRepository) CreateRouteStop(ctx context.Context, p RouteStopCreate
         VALUES (?, ?, ?, ?, ?, ?)`,
 		p.RouteID, p.StopID, p.StopOrder, p.DwellMinutes, p.PickupAllowed, p.DropoffAllowed)
 	if err != nil {
-		return RouteStop{}, fmt.Errorf("creando parada de ruta: %w", err)
+		return RouteStop{}, dberr.TranslatePlainSQL(err, "parada de ruta", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -991,7 +991,7 @@ func (r *adminRepository) UpdateRouteStop(ctx context.Context, id int64, p Route
 		if spErr := dberr.TranslateSP(err); spErr != err {
 			return spErr
 		}
-		return fmt.Errorf("actualizando parada de ruta: %w", err)
+		return dberr.TranslatePlainSQL(err, "parada de ruta", "")
 	}
 	return ensureAffected(res, "parada de ruta", id)
 }
@@ -1055,7 +1055,7 @@ func (r *adminRepository) CreateTemplate(ctx context.Context, p TemplateCreatePa
 		p.BookingOpenDaysBefore, p.BookingCloseMinutesBefore,
 		p.NoShowToleranceMinutes, p.AutomaticPublish, p.Active)
 	if err != nil {
-		return Template{}, fmt.Errorf("creando plantilla: %w", err)
+		return Template{}, dberr.TranslatePlainSQL(err, "plantilla", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -1087,7 +1087,7 @@ func (r *adminRepository) UpdateTemplate(ctx context.Context, id int64, p Templa
 		p.BookingOpenDaysBefore, p.BookingCloseMinutesBefore,
 		p.NoShowToleranceMinutes, p.AutomaticPublish, p.Active, id)
 	if err != nil {
-		return fmt.Errorf("actualizando plantilla: %w", err)
+		return dberr.TranslatePlainSQL(err, "plantilla", "")
 	}
 	return ensureAffected(res, "plantilla", id)
 }
@@ -1269,7 +1269,7 @@ func (r *adminRepository) CreateRouteSegment(ctx context.Context, p RouteSegment
 		if spErr := dberr.TranslateSP(err); spErr != err {
 			return RouteSegment{}, spErr
 		}
-		return RouteSegment{}, fmt.Errorf("creando tramo de ruta: %w", err)
+		return RouteSegment{}, dberr.TranslatePlainSQL(err, "tramo de ruta", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -1294,7 +1294,7 @@ func (r *adminRepository) UpdateRouteSegment(ctx context.Context, id int64, p Ro
 		if spErr := dberr.TranslateSP(err); spErr != err {
 			return spErr
 		}
-		return fmt.Errorf("actualizando tramo de ruta: %w", err)
+		return dberr.TranslatePlainSQL(err, "tramo de ruta", "")
 	}
 	return ensureAffected(res, "tramo de ruta", id)
 }
@@ -1359,7 +1359,7 @@ func (r *adminRepository) CreateTravelTimeProfile(ctx context.Context, p TravelT
 		p.IsAllDay, p.Monday, p.Tuesday, p.Wednesday, p.Thursday, p.Friday,
 		p.Saturday, p.Sunday, p.Priority, p.IsDefault, p.Active)
 	if err != nil {
-		return TravelTimeProfile{}, fmt.Errorf("creando perfil de tiempo: %w", err)
+		return TravelTimeProfile{}, dberr.TranslatePlainSQL(err, "perfil de tiempo", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -1388,7 +1388,7 @@ func (r *adminRepository) UpdateTravelTimeProfile(ctx context.Context, id int64,
 		p.IsAllDay, p.Monday, p.Tuesday, p.Wednesday, p.Thursday, p.Friday,
 		p.Saturday, p.Sunday, p.Priority, p.IsDefault, p.Active, id)
 	if err != nil {
-		return fmt.Errorf("actualizando perfil de tiempo: %w", err)
+		return dberr.TranslatePlainSQL(err, "perfil de tiempo", "")
 	}
 	return ensureAffected(res, "perfil de tiempo", id)
 }
@@ -1439,7 +1439,7 @@ func (r *adminRepository) CreateRouteSegmentTravelTime(ctx context.Context, p Ro
         VALUES (?, ?, ?, ?)`,
 		p.RouteSegmentID, p.ProfileID, p.TravelMinutes, p.Notes)
 	if err != nil {
-		return RouteSegmentTravelTime{}, fmt.Errorf("creando tiempo de tramo: %w", err)
+		return RouteSegmentTravelTime{}, dberr.TranslatePlainSQL(err, "tiempo de tramo", "")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -1459,7 +1459,7 @@ func (r *adminRepository) UpdateRouteSegmentTravelTime(ctx context.Context, id i
          WHERE id = ?`,
 		p.RouteSegmentID, p.ProfileID, p.TravelMinutes, p.Notes, id)
 	if err != nil {
-		return fmt.Errorf("actualizando tiempo de tramo: %w", err)
+		return dberr.TranslatePlainSQL(err, "tiempo de tramo", "")
 	}
 	return ensureAffected(res, "tiempo de tramo", id)
 }
@@ -1515,7 +1515,7 @@ func (r *adminRepository) CreateVehicleSeat(ctx context.Context, p VehicleSeatCr
         VALUES (?, ?, ?, ?, ?)`,
 		p.VehicleID, p.SeatNumber, p.SeatLabel, p.Status, p.BlockReason)
 	if err != nil {
-		return VehicleSeat{}, fmt.Errorf("creando asiento de vehiculo: %w", err)
+		return VehicleSeat{}, dberr.TranslatePlainSQL(err, "asiento de vehiculo", "vehiculo")
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -1534,7 +1534,7 @@ func (r *adminRepository) UpdateVehicleSeat(ctx context.Context, id int64, p Veh
          WHERE id = ?`,
 		p.VehicleID, p.SeatNumber, p.SeatLabel, p.Status, p.BlockReason, id)
 	if err != nil {
-		return fmt.Errorf("actualizando asiento de vehiculo: %w", err)
+		return dberr.TranslatePlainSQL(err, "asiento de vehiculo", "vehiculo")
 	}
 	return ensureAffected(res, "asiento de vehiculo", id)
 }
@@ -2068,7 +2068,7 @@ func (r *adminRepository) UpdateTripStatus(ctx context.Context, tripID int64, st
          WHERE id = ?`,
 		status, tripID)
 	if err != nil {
-		return fmt.Errorf("actualizando estado de viaje: %w", err)
+		return dberr.TranslatePlainSQL(err, "viaje", "")
 	}
 	return ensureAffected(res, "viaje", tripID)
 }
