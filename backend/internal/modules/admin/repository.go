@@ -614,7 +614,7 @@ func (r *adminRepository) ListStops(ctx context.Context, pg types.PaginationPara
 	const q = `
         SELECT id, code, name, stop_type, reference_text, latitude, longitude, active
           FROM transport_stops
-         ORDER BY id
+         ORDER BY display_order, id
          LIMIT ? OFFSET ?`
 	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
 	if err != nil {
@@ -1009,7 +1009,7 @@ func (r *adminRepository) ListTemplates(ctx context.Context, pg types.Pagination
                booking_open_days_before, booking_close_minutes_before,
                no_show_tolerance_minutes, automatic_publish, active
           FROM trip_templates
-         ORDER BY id
+         ORDER BY departure_time, id
          LIMIT ? OFFSET ?`
 	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
 	if err != nil {

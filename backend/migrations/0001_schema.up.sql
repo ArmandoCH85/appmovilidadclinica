@@ -74,6 +74,7 @@ CREATE TABLE transport_stops (
     code                VARCHAR(30) NOT NULL,
     name                VARCHAR(150) NOT NULL,
     stop_type           ENUM('SEDE', 'PARADERO') NOT NULL,
+    display_order       INT UNSIGNED NULL,
     reference_text      VARCHAR(255) NULL,
     latitude            DECIMAL(10, 8) NULL,
     longitude           DECIMAL(11, 8) NULL,
