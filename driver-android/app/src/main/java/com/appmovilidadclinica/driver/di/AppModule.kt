@@ -3,32 +3,18 @@ package com.appmovilidadclinica.driver.di
 import android.content.Context
 import com.appmovilidadclinica.driver.data.local.SessionDataStore
 import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
-import com.appmovilidadclinica.driver.data.remote.AuthInterceptor
-import com.appmovilidadclinica.driver.data.remote.api.AuthApi
-import com.appmovilidadclinica.driver.data.remote.api.BookingApi
-import com.appmovilidadclinica.driver.data.remote.api.DriverApi
+import com.appmovilidadclinica.driver.data.remote.KtorApiClient
+import com.appmovilidadclinica.driver.data.remote.KtorClientFactory
+import com.appmovilidadclinica.driver.data.remote.KtorTokenProvider
 import com.appmovilidadclinica.driver.data.repository.AuthRepositoryImpl
 import com.appmovilidadclinica.driver.data.repository.BookingRepositoryImpl
 import com.appmovilidadclinica.driver.data.repository.DriverRepositoryImpl
 import com.appmovilidadclinica.driver.domain.repository.AuthRepository
 import com.appmovilidadclinica.driver.domain.repository.BookingRepository
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
-import java.util.concurrent.TimeUnit
+import io.ktor.client.HttpClient
 
 object AppModule {
-
-    private const val BASE_URL = "https://movilidad.sitech.site/api/"
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
 
     private lateinit var appContext: Context
 
@@ -42,61 +28,30 @@ object AppModule {
         return SessionDataStore(appContext)
     }
 
-    private fun provideAuthInterceptor(): AuthInterceptor {
-        return AuthInterceptor(provideSessionDataStore())
-    }
+    private fun provideKtorTokenProvider(): KtorTokenProvider =
+        KtorTokenProvider { provideSessionDataStore().currentToken() }
 
-    private fun provideOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
+    private fun provideHttpClient(): HttpClient =
+        KtorClientFactory.create(tokenProvider = provideKtorTokenProvider())
 
-        return OkHttpClient.Builder()
-            .addInterceptor(provideAuthInterceptor())
-            .addInterceptor(loggingInterceptor)
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
-            .build()
-    }
+    private fun provideKtorApiClient(): KtorApiClient = KtorApiClient(provideHttpClient())
 
-    private fun provideRetrofit(): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(provideOkHttpClient())
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-    }
-
-    private fun provideAuthApi(): AuthApi {
-        return provideRetrofit().create(AuthApi::class.java)
-    }
-
-    private fun provideDriverApi(): DriverApi {
-        return provideRetrofit().create(DriverApi::class.java)
-    }
-
-    private fun provideBookingApi(): BookingApi {
-        return provideRetrofit().create(BookingApi::class.java)
-    }
-
-    fun provideAuthRepository(): AuthRepository {
-        return AuthRepositoryImpl(
-            authApi = provideAuthApi(),
-            sessionDataStore = provideSessionDataStore()
-        )
-    }
-
-    fun provideDriverRepository(): DriverRepository {
-        return DriverRepositoryImpl(
-            driverApi = provideDriverApi(),
+    fun provideAuthRepository(): AuthRepository =
+        AuthRepositoryImpl(
+            apiClient = provideKtorApiClient(),
+            sessionDataStore = provideSessionDataStore(),
             apiErrorMapper = ApiErrorMapper(),
         )
-    }
 
-    fun provideBookingRepository(): BookingRepository {
-        return BookingRepositoryImpl(
-            bookingApi = provideBookingApi()
+    fun provideDriverRepository(): DriverRepository =
+        DriverRepositoryImpl(
+            apiClient = provideKtorApiClient(),
+            apiErrorMapper = ApiErrorMapper(),
         )
-    }
+
+    fun provideBookingRepository(): BookingRepository =
+        BookingRepositoryImpl(
+            apiClient = provideKtorApiClient(),
+            apiErrorMapper = ApiErrorMapper(),
+        )
 }

@@ -2,7 +2,7 @@
 
 import com.appmovilidadclinica.driver.data.mapper.toDomain
 import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
-import com.appmovilidadclinica.driver.data.remote.api.DriverApi
+import com.appmovilidadclinica.driver.data.remote.KtorApiClient
 import com.appmovilidadclinica.driver.shared.data.remote.dto.IncidentRequestDto
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
@@ -11,8 +11,8 @@ import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
-import retrofit2.HttpException
-import retrofit2.Response
+import io.ktor.client.call.body
+import io.ktor.client.statement.HttpResponse
 import java.io.IOException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -21,148 +21,100 @@ import javax.inject.Singleton
 
 @Singleton
 class DriverRepositoryImpl @Inject constructor(
-    private val driverApi: DriverApi,
+    private val apiClient: KtorApiClient,
     private val apiErrorMapper: ApiErrorMapper,
 ) : DriverRepository {
 
+    private suspend fun <T> safeCall(
+        call: suspend () -> HttpResponse,
+        parseBody: suspend (HttpResponse) -> T,
+    ): Result<T> = try {
+        val response = call()
+        if (response.status.value in 200..299) {
+            Result.success(parseBody(response))
+        } else {
+            Result.failure(apiErrorMapper.map(response))
+        }
+    } catch (e: IOException) {
+        Result.failure(AppError.Network("Sin conexion a internet"))
+    } catch (e: Exception) {
+        Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
+    }
+
+    private suspend fun noBodyCall(call: suspend () -> HttpResponse): Result<Unit> = try {
+        val response = call()
+        if (response.status.value in 200..299) {
+            Result.success(Unit)
+        } else {
+            Result.failure(apiErrorMapper.map(response))
+        }
+    } catch (e: IOException) {
+        Result.failure(AppError.Network("Sin conexion a internet"))
+    } catch (e: Exception) {
+        Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
+    }
+
     override suspend fun getTrips(date: LocalDate): Result<List<DriverTrip>> {
-        return try {
-            val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val trips = driverApi.getTrips(dateStr).map { it.toDomain() }
-            Result.success(trips)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
+        val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        return safeCall(
+            call = { apiClient.driverApi.getTrips(dateStr) },
+            parseBody = { response -> response.body<List<com.appmovilidadclinica.driver.shared.data.remote.dto.DriverTripDto>>().map { it.toDomain() } },
+        )
     }
 
-    override suspend fun getPassengers(tripId: Long): Result<List<Passenger>> {
-        return try {
-            val passengers = driverApi.getPassengers(tripId).map { it.toDomain() }
-            Result.success(passengers)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
+    override suspend fun getPassengers(tripId: Long): Result<List<Passenger>> =
+        safeCall(
+            call = { apiClient.driverApi.getPassengers(tripId) },
+            parseBody = { response -> response.body<List<com.appmovilidadclinica.driver.shared.data.remote.dto.PassengerDto>>().map { it.toDomain() } },
+        )
 
-    override suspend fun getTripStops(tripId: Long): Result<List<TripStop>> {
-        return try {
-            val stops = driverApi.getTripStops(tripId).map { it.toDomain() }
-            Result.success(stops)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
+    override suspend fun getTripStops(tripId: Long): Result<List<TripStop>> =
+        safeCall(
+            call = { apiClient.driverApi.getTripStops(tripId) },
+            parseBody = { response -> response.body<List<com.appmovilidadclinica.driver.shared.data.remote.dto.TripStopDto>>().map { it.toDomain() } },
+        )
 
-    // Estos 6 endpoints devuelven 204 sin cuerpo. Response<Unit> evita el
-    // "response body was null" que Retrofit tira con una suspend fun de
-    // retorno no-nulo desnudo; el error real de un fallo (4xx/5xx) se extrae
-    // a mano armando un HttpException con la Response, para que
-    // ApiErrorMapper pueda leer el errorBody() igual que en las demas calls.
-    private fun Response<Unit>.toResult(): Result<Unit> =
-        if (isSuccessful) Result.success(Unit) else Result.failure(apiErrorMapper.map(HttpException(this)))
+    override suspend fun startTrip(tripId: Long): Result<Unit> =
+        noBodyCall { apiClient.driverApi.startTrip(tripId) }
 
-    override suspend fun startTrip(tripId: Long): Result<Unit> {
-        return try {
-            driverApi.startTrip(tripId).toResult()
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
+    override suspend fun completeTrip(tripId: Long): Result<Unit> =
+        noBodyCall { apiClient.driverApi.completeTrip(tripId) }
 
-    override suspend fun completeTrip(tripId: Long): Result<Unit> {
-        return try {
-            driverApi.completeTrip(tripId).toResult()
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
+    override suspend fun markArrival(tripStopTimeId: Long): Result<Unit> =
+        noBodyCall { apiClient.driverApi.markArrival(tripStopTimeId) }
 
-    override suspend fun markArrival(tripStopTimeId: Long): Result<Unit> {
-        return try {
-            driverApi.markArrival(tripStopTimeId).toResult()
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
+    override suspend fun markBoarded(reservationId: Long): Result<Unit> =
+        noBodyCall { apiClient.driverApi.boardPassenger(reservationId) }
 
-    override suspend fun markBoarded(reservationId: Long): Result<Unit> {
-        return try {
-            driverApi.boardPassenger(reservationId).toResult()
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
+    override suspend fun markNoShow(reservationId: Long): Result<Unit> =
+        noBodyCall { apiClient.driverApi.markNoShow(reservationId) }
 
-    override suspend fun markNoShow(reservationId: Long): Result<Unit> {
-        return try {
-            driverApi.markNoShow(reservationId).toResult()
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
-
-    override suspend fun markAlighted(reservationId: Long): Result<Unit> {
-        return try {
-            driverApi.alightPassenger(reservationId).toResult()
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
+    override suspend fun markAlighted(reservationId: Long): Result<Unit> =
+        noBodyCall { apiClient.driverApi.alightPassenger(reservationId) }
 
     override suspend fun reportIncident(
         tripId: Long,
         type: String,
-        description: String
-    ): Result<Incident> {
-        return try {
-            val response = driverApi.reportIncident(
+        description: String,
+    ): Result<Incident> = safeCall(
+        call = {
+            apiClient.driverApi.reportIncident(
                 tripId,
                 IncidentRequestDto(
                     incident_type = type,
-                    description = description
+                    description = description,
                 )
             )
-            
-            val incidentId = response["id"] ?: throw Exception("No incident ID returned")
-            
-            val incident = Incident(
+        },
+        parseBody = { response ->
+            val body = response.body<Map<String, Long>>()
+            val incidentId = body["id"] ?: throw Exception("No incident ID returned")
+            Incident(
                 id = incidentId,
                 tripId = tripId,
                 incidentType = IncidentType.valueOf(type),
-                description = description
+                description = description,
             )
-            
-            Result.success(incident)
-        } catch (e: HttpException) {
-            Result.failure(apiErrorMapper.map(e))
-        } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
-        } catch (e: Exception) {
-            Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
-        }
-    }
+        },
+    )
 }

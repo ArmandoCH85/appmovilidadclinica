@@ -70,12 +70,14 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // Networking (Retrofit — AUN en uso, hasta migrar Repositories a Ktor)
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    // Networking (Ktor — Fase 1.5)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
+    implementation("io.ktor:ktor-client-core:3.0.3")
+    implementation("io.ktor:ktor-client-okhttp:3.0.3")
+    implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
+    implementation("io.ktor:ktor-client-logging:3.0.3")
+    implementation("co.touchlab:kermit:2.0.5")
 
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.1")

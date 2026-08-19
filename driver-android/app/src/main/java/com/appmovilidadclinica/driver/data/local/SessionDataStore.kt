@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.appmovilidadclinica.driver.shared.domain.model.User
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -41,6 +42,8 @@ class SessionDataStore @Inject constructor(
     }
     
     fun getToken(): Flow<String?> = context.dataStore.data.map { it[TOKEN_KEY] }
+
+    suspend fun currentToken(): String? = getToken().first()
     
     fun getUser(): Flow<User?> = context.dataStore.data.map { prefs ->
         prefs[USER_KEY]?.let { json.decodeFromString<User>(it) }
