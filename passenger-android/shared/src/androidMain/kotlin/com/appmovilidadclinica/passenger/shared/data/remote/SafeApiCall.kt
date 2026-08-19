@@ -1,12 +1,23 @@
-﻿package com.appmovilidadclinica.passenger.data.remote
+﻿package com.appmovilidadclinica.passenger.shared.data.remote
 
-import com.appmovilidadclinica.passenger.shared.data.remote.dto.ErrorResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.*
 import com.appmovilidadclinica.passenger.shared.domain.error.AppError
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.json.Json
 
+/**
+ * Traductor unico HTTP -> AppError, espejo Kotlin de
+ * `admin/src/api/client.ts` (`extractMessage`) y del shape
+ * `{"error":{"code","message"}}` que emite todo handler Go via
+ * `apperror.WriteJSONError`. Ningun repository parsea un error a mano â€”
+ * todos pasan por `safeApiCall`.
+ *
+ * Variante Ktor (antes usaba Retrofit `Response.errorBody()`). Ahora
+ * lee el body como texto via `bodyAsText()` y lo parsea con el mismo
+ * `ErrorResponseDto`.
+ */
 class ApiErrorMapper(private val json: Json = defaultJson) {
 
     suspend fun map(httpResponse: HttpResponse): AppError {
@@ -29,6 +40,8 @@ class ApiErrorMapper(private val json: Json = defaultJson) {
         }.getOrNull()
     }
 
+    // Mismo texto que admin/src/messages.ts â€” consistencia entre el
+    // panel web y esta app.
     private fun fallbackMessage(code: Int): String = when (code) {
         401 -> "Sesion expirada. Inicie sesion nuevamente."
         403 -> "No tiene permisos para realizar esta accion."
@@ -48,10 +61,14 @@ class ApiErrorMapper(private val json: Json = defaultJson) {
     }
 }
 
-suspend fun <T> safeApiCall(
+/**
+ * Envoltorio para requests con body de respuesta (200/201).
+ * Equivalente Ktor del antiguo `safeApiCall` Retrofit.
+ */
+suspend inline fun <T> safeApiCall(
     errorMapper: ApiErrorMapper,
-    call: suspend () -> HttpResponse,
-    parseBody: suspend (HttpResponse) -> T,
+    crossinline call: suspend () -> HttpResponse,
+    crossinline parseBody: suspend (HttpResponse) -> T,
 ): AppResult<T> = try {
     val response = call()
     if (response.status.value in 200..299) {
@@ -65,9 +82,12 @@ suspend fun <T> safeApiCall(
     AppResult.Failure(AppError.Unknown(e.message ?: "Ocurrio un error inesperado."))
 }
 
-suspend fun safeApiCallUnit(
+/**
+ * Envoltorio para requests sin body de respuesta (204, ej. cancel).
+ */
+suspend inline fun safeApiCallUnit(
     errorMapper: ApiErrorMapper,
-    call: suspend () -> HttpResponse,
+    crossinline call: suspend () -> HttpResponse,
 ): AppResult<Unit> = try {
     val response = call()
     if (response.status.value in 200..299) {

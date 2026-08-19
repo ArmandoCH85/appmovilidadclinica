@@ -2,8 +2,8 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.appmovilidadclinica.passenger.domain.error.AppError
-import com.appmovilidadclinica.passenger.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.error.AppError
+import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.domain.repository.ReservationsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

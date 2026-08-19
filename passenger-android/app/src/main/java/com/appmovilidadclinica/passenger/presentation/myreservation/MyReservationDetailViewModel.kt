@@ -5,7 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import com.appmovilidadclinica.passenger.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
@@ -146,7 +146,7 @@ class MyReservationDetailViewModel @Inject constructor(
                 is AppResult.Failure -> _uiState.update {
                     it.copy(
                         checkingIn = false,
-                        errorMessage = if (result.error is com.appmovilidadclinica.passenger.domain.error.AppError.NotFound) {
+                        errorMessage = if (result.error is com.appmovilidadclinica.passenger.shared.domain.error.AppError.NotFound) {
                             "Esta funciÃ³n todavÃ­a no estÃ¡ disponible en el servidor."
                         } else {
                             errorMessageFor(result)
@@ -158,6 +158,6 @@ class MyReservationDetailViewModel @Inject constructor(
     }
 
     private fun errorMessageFor(failure: AppResult.Failure): String =
-        (failure.error as? com.appmovilidadclinica.passenger.domain.error.AppError.Conflict)?.message
+        (failure.error as? com.appmovilidadclinica.passenger.shared.domain.error.AppError.Conflict)?.message
             ?: "OcurriÃ³ un error inesperado. Intente nuevamente."
 }

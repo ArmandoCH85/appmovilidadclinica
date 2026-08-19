@@ -1,6 +1,6 @@
 ﻿package com.appmovilidadclinica.passenger.domain.repository
 
-import com.appmovilidadclinica.passenger.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.model.TripDetail
 import com.appmovilidadclinica.passenger.shared.domain.model.TripDirection
 import com.appmovilidadclinica.passenger.shared.domain.model.TripSearchResult

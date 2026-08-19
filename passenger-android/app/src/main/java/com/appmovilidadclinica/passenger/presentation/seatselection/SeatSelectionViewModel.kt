@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import com.appmovilidadclinica.passenger.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
 import com.appmovilidadclinica.passenger.shared.domain.model.TripDetail
 import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
@@ -126,8 +126,8 @@ class SeatSelectionViewModel @Inject constructor(
         }
     }
 
-    private fun messageFor(error: com.appmovilidadclinica.passenger.domain.error.AppError): String = when (error) {
-        is com.appmovilidadclinica.passenger.domain.error.AppError.Conflict -> error.message
+    private fun messageFor(error: com.appmovilidadclinica.passenger.shared.domain.error.AppError): String = when (error) {
+        is com.appmovilidadclinica.passenger.shared.domain.error.AppError.Conflict -> error.message
         else -> "No se pudo confirmar la reserva. Intente nuevamente."
     }
 }

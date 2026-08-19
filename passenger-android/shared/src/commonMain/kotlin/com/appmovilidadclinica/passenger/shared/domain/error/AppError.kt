@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.passenger.domain.error
+package com.appmovilidadclinica.passenger.shared.domain.error
 
 /**
  * Todo error que puede llegar desde `data` a `domain`/`presentation`,

@@ -1,7 +1,7 @@
 ﻿package com.appmovilidadclinica.passenger.domain.usecase
 
-import com.appmovilidadclinica.passenger.domain.error.AppError
-import com.appmovilidadclinica.passenger.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.error.AppError
+import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.model.User
 import com.appmovilidadclinica.passenger.shared.domain.model.UserRole
 import com.appmovilidadclinica.passenger.domain.repository.AuthRepository
