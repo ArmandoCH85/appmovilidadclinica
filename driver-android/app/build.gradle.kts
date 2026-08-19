@@ -79,6 +79,9 @@ dependencies {
     implementation("io.ktor:ktor-client-logging:3.0.3")
     implementation("co.touchlab:kermit:2.0.5")
 
+    // Multiplatform Settings (Fase 4 — DataStore replacement)
+    implementation("com.russhwolf:multiplatform-settings:1.1.1")
+
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 

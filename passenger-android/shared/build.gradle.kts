@@ -32,6 +32,9 @@ kotlin {
 
             // Logging
             implementation(libs.kermit)
+
+            // Multiplatform Settings (Fase 4 — DataStore replacement)
+            implementation(libs.multiplatform.settings)
         }
 
         androidMain.dependencies {

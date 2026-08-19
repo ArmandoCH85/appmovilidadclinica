@@ -5,6 +5,7 @@ import com.appmovilidadclinica.driver.data.mapper.toDomain
 import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.data.remote.KtorApiClient
 import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginRequestDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginResponseDto
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.AuthResult
 import com.appmovilidadclinica.driver.shared.domain.model.User
@@ -12,6 +13,7 @@ import com.appmovilidadclinica.driver.domain.repository.AuthRepository
 import io.ktor.client.call.body
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,6 +24,8 @@ class AuthRepositoryImpl @Inject constructor(
     private val apiErrorMapper: ApiErrorMapper,
 ) : AuthRepository {
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     override suspend fun login(documentNumber: String, password: String): Result<AuthResult> {
         return try {
             val response = apiClient.authApi.login(
@@ -31,11 +35,12 @@ class AuthRepositoryImpl @Inject constructor(
                 )
             )
             if (response.status.value == 200) {
-                val body = response.body<com.appmovilidadclinica.driver.shared.data.remote.dto.LoginResponseDto>()
+                val body = response.body<LoginResponseDto>()
                 val user = body.user.toDomain()
-                val authResult = AuthResult(token = body.token, user = user)
-                sessionDataStore.saveSession(body.token, user)
-                Result.success(authResult)
+                val userJson = json.encodeToString(User.serializer(), user)
+                val exp = parseTokenExpiration(body.token)
+                sessionDataStore.saveSession(body.token, userJson, exp)
+                Result.success(AuthResult(token = body.token, user = user))
             } else {
                 val error = apiErrorMapper.map(response)
                 Result.failure(error)
@@ -56,7 +61,9 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override fun getCurrentUser(): Flow<User?> {
-        return sessionDataStore.getUser()
+        return sessionDataStore.getUser().map { jsonStr ->
+            jsonStr?.let { runCatching { json.decodeFromString(User.serializer(), it) }.getOrNull() }
+        }
     }
 
     override fun getToken(): Flow<String?> {
@@ -65,5 +72,11 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun clearSession() {
         sessionDataStore.clearSession()
+    }
+
+    private fun parseTokenExpiration(token: String): Long {
+        // Stub: expira en 24h. En realidad debería decodificar el JWT
+        // y leer el `exp` field. Para Fase 4 alcanza.
+        return System.currentTimeMillis() / 1000 + 24 * 60 * 60
     }
 }

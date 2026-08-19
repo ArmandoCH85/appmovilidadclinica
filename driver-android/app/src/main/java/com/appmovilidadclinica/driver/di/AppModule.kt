@@ -24,12 +24,12 @@ object AppModule {
 
     fun provideContext(): Context = appContext
 
-    private fun provideSessionDataStore(): SessionDataStore {
-        return SessionDataStore(appContext)
+    private val sessionDataStore: SessionDataStore by lazy {
+        SessionDataStore(appContext)
     }
 
     private fun provideKtorTokenProvider(): KtorTokenProvider =
-        KtorTokenProvider { provideSessionDataStore().currentToken() }
+        KtorTokenProvider { sessionDataStore.currentToken() }
 
     private fun provideHttpClient(): HttpClient =
         KtorClientFactory.create(tokenProvider = provideKtorTokenProvider())
@@ -39,7 +39,7 @@ object AppModule {
     fun provideAuthRepository(): AuthRepository =
         AuthRepositoryImpl(
             apiClient = provideKtorApiClient(),
-            sessionDataStore = provideSessionDataStore(),
+            sessionDataStore = sessionDataStore,
             apiErrorMapper = ApiErrorMapper(),
         )
 

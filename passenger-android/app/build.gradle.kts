@@ -82,6 +82,9 @@ dependencies {
     implementation(libs.ktor.client.logging)
     implementation(libs.kermit)
 
+    // Multiplatform Settings (Fase 4 — DataStore replacement)
+    implementation(libs.multiplatform.settings)
+
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)

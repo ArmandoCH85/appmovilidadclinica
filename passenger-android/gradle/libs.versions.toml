@@ -23,6 +23,8 @@ zxing = "3.5.3"
 # KMP (Fase 1)
 ktor = "3.0.3"
 kermit = "2.0.5"
+# Multiplatform Settings (Fase 4 — DataStore replacement)
+multiplatformSettings = "1.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -66,6 +68,9 @@ ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-conte
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
 kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
+
+# Multiplatform Settings (Fase 4)
+multiplatform-settings = { group = "com.russhwolf", name = "multiplatform-settings", version.ref = "multiplatformSettings" }
 
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test" }
 

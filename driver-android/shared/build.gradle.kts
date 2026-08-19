@@ -32,6 +32,9 @@ kotlin {
 
             // Logging
             implementation("co.touchlab:kermit:2.0.5")
+
+            // Multiplatform Settings (Fase 4 — DataStore replacement)
+            implementation("com.russhwolf:multiplatform-settings:1.1.1")
         }
 
         androidMain.dependencies {

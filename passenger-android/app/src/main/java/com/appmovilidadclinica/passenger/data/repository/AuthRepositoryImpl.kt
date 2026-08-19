@@ -2,7 +2,7 @@
 
 import android.util.Base64
 import com.appmovilidadclinica.passenger.data.local.SessionDataStore
-import com.appmovilidadclinica.passenger.data.local.StoredSession
+import com.appmovilidadclinica.passenger.shared.data.local.StoredSession
 import com.appmovilidadclinica.passenger.data.mapper.toDomain
 import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.passenger.data.remote.KtorApiClient

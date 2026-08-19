@@ -7,3 +7,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21" apply false
 }
+
+// Multiplatform Settings (Fase 4 — DataStore replacement)
+val multiplatformSettingsVersion = "1.1.1"

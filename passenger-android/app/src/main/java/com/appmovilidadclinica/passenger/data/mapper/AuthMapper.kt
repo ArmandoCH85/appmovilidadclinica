@@ -1,6 +1,6 @@
 ﻿package com.appmovilidadclinica.passenger.data.mapper
 
-import com.appmovilidadclinica.passenger.data.local.StoredSession
+import com.appmovilidadclinica.passenger.shared.data.local.StoredSession
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.UserDto
 import com.appmovilidadclinica.passenger.shared.domain.model.User
 import com.appmovilidadclinica.passenger.shared.domain.model.UserRole
