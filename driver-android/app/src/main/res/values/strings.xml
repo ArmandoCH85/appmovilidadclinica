@@ -4,10 +4,10 @@
     <!-- Login -->
     <string name="login_title">Iniciar Sesión</string>
     <string name="login_subtitle">Conductor</string>
-    <string name="login_document_label">Número de documento</string>
+    <string name="login_document_label">Usuario</string>
     <string name="login_password_label">Contraseña</string>
     <string name="login_button">Ingresar</string>
-    <string name="login_error_credentials">Documento o contraseña incorrectos</string>
+    <string name="login_error_credentials">Usuario o contraseña incorrectos</string>
     <string name="login_error_role">Esta app es para conductores</string>
     <string name="login_error_network">Sin conexión a internet</string>
 

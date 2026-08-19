@@ -1,10 +1,10 @@
-package com.appmovilidadclinica.driver.data.repository
+﻿package com.appmovilidadclinica.driver.data.repository
 
 import com.appmovilidadclinica.driver.data.mapper.toDomain
 import com.appmovilidadclinica.driver.data.remote.api.BookingApi
-import com.appmovilidadclinica.driver.data.remote.dto.VerifyQrRequestDto
-import com.appmovilidadclinica.driver.domain.model.AppError
-import com.appmovilidadclinica.driver.domain.model.Reservation
+import com.appmovilidadclinica.driver.shared.data.remote.dto.VerifyQrRequestDto
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.model.Reservation
 import com.appmovilidadclinica.driver.domain.repository.BookingRepository
 import retrofit2.HttpException
 import java.io.IOException
@@ -22,13 +22,13 @@ class BookingRepositoryImpl @Inject constructor(
             Result.success(reservation)
         } catch (e: HttpException) {
             val error = when (e.code()) {
-                404 -> AppError.NotFound("QR inválido")
+                404 -> AppError.NotFound("QR invÃ¡lido")
                 401 -> AppError.Unauthorized("No autorizado")
                 else -> AppError.Unknown("Error del servidor")
             }
             Result.failure(error)
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }

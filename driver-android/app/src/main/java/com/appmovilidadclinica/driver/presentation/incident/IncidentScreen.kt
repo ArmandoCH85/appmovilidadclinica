@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.incident
+﻿package com.appmovilidadclinica.driver.presentation.incident
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,7 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewmodel.initializer
 import com.appmovilidadclinica.driver.di.AppModule
-import com.appmovilidadclinica.driver.domain.model.IncidentType
+import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
 import com.appmovilidadclinica.driver.presentation.common.icon
 import com.appmovilidadclinica.driver.presentation.common.label
 
@@ -99,8 +99,8 @@ fun IncidentScreen(
             OutlinedTextField(
                 value = state.description,
                 onValueChange = viewModel::onDescriptionChange,
-                label = { Text("Descripción") },
-                placeholder = { Text("Describa la incidencia (máx. ${INCIDENT_DESCRIPTION_MAX_LENGTH} caracteres)") },
+                label = { Text("DescripciÃ³n") },
+                placeholder = { Text("Describa la incidencia (mÃ¡x. ${INCIDENT_DESCRIPTION_MAX_LENGTH} caracteres)") },
                 minLines = 4,
                 maxLines = 8,
                 modifier = Modifier.fillMaxWidth(),
@@ -145,9 +145,9 @@ fun IncidentScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissConfirm,
             title = { Text("Reportar incidencia") },
-            text = { Text("¿Confirma el envío de este reporte de incidencia?") },
+            text = { Text("Â¿Confirma el envÃ­o de este reporte de incidencia?") },
             confirmButton = {
-                TextButton(onClick = viewModel::confirmSubmit) { Text("Sí, enviar") }
+                TextButton(onClick = viewModel::confirmSubmit) { Text("SÃ­, enviar") }
             },
             dismissButton = {
                 TextButton(onClick = viewModel::dismissConfirm) { Text("Volver") }

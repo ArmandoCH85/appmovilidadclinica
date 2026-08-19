@@ -1,7 +1,7 @@
-package com.appmovilidadclinica.driver.data.mapper
+﻿package com.appmovilidadclinica.driver.data.mapper
 
-import com.appmovilidadclinica.driver.data.remote.dto.UserDto
-import com.appmovilidadclinica.driver.domain.model.User
+import com.appmovilidadclinica.driver.shared.data.remote.dto.UserDto
+import com.appmovilidadclinica.driver.shared.domain.model.User
 
 fun UserDto.toDomain(): User = User(
     id = id,

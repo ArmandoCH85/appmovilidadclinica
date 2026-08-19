@@ -1,6 +1,6 @@
-package com.appmovilidadclinica.driver.domain.repository
+﻿package com.appmovilidadclinica.driver.domain.repository
 
-import com.appmovilidadclinica.driver.domain.model.Reservation
+import com.appmovilidadclinica.driver.shared.domain.model.Reservation
 
 interface BookingRepository {
     suspend fun verifyQr(token: String): Result<Reservation>

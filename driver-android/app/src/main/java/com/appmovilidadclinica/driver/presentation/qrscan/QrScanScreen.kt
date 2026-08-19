@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.qrscan
+﻿package com.appmovilidadclinica.driver.presentation.qrscan
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -55,7 +55,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewmodel.initializer
 import com.appmovilidadclinica.driver.di.AppModule
-import com.appmovilidadclinica.driver.domain.model.ReservationStatus
+import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
 import kotlinx.coroutines.delay
 import java.util.concurrent.Executors
 
@@ -118,7 +118,7 @@ fun QrScanScreen(
                 )
 
                 Text(
-                    "Apunte la cámara al código QR del pasajero",
+                    "Apunte la cÃ¡mara al cÃ³digo QR del pasajero",
                     color = androidx.compose.ui.graphics.Color.White,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
@@ -138,7 +138,7 @@ fun QrScanScreen(
                         ) {
                             CircularProgressIndicator()
                             Spacer(Modifier.height(12.dp))
-                            Text("Verificando…")
+                            Text("Verificandoâ€¦")
                         }
                     }
                 }
@@ -165,9 +165,9 @@ fun QrScanScreen(
             title = { Text(state.passenger?.workerFullName ?: reservation.reservationCode) },
             text = {
                 Column {
-                    Text("Código: ${reservation.reservationCode}")
+                    Text("CÃ³digo: ${reservation.reservationCode}")
                     state.passenger?.let { p ->
-                        Text("Asiento ${p.seatLabel} · ${p.originStopName} → ${p.destinationStopName}")
+                        Text("Asiento ${p.seatLabel} Â· ${p.originStopName} â†’ ${p.destinationStopName}")
                     }
                     Text("Estado: ${statusLabel(reservation.status)}")
                 }
@@ -213,7 +213,7 @@ fun QrScanScreen(
 private fun statusLabel(status: ReservationStatus): String = when (status) {
     ReservationStatus.CONFIRMED -> "Confirmado"
     ReservationStatus.BOARDED -> "Abordado"
-    ReservationStatus.NO_SHOW -> "No se presentó"
+    ReservationStatus.NO_SHOW -> "No se presentÃ³"
     ReservationStatus.COMPLETED -> "Completado"
     ReservationStatus.CANCELLED -> "Cancelado"
 }
@@ -226,7 +226,7 @@ private fun PermissionRationale(onRequest: () -> Unit) {
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            "Se requiere permiso de cámara para escanear los códigos QR de los pasajeros.",
+            "Se requiere permiso de cÃ¡mara para escanear los cÃ³digos QR de los pasajeros.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(16.dp))
@@ -274,7 +274,7 @@ private fun CameraPreview(onQrDetected: (String) -> Unit, paused: Boolean) {
                         analysis,
                     )
                 } catch (e: Exception) {
-                    // Camara no disponible en este dispositivo/emulador — la pantalla
+                    // Camara no disponible en este dispositivo/emulador â€” la pantalla
                     // queda vacia pero no crashea la app.
                 }
             }, ContextCompat.getMainExecutor(ctx))

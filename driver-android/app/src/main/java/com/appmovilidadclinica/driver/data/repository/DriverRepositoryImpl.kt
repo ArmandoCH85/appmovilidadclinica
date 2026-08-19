@@ -1,15 +1,15 @@
-package com.appmovilidadclinica.driver.data.repository
+﻿package com.appmovilidadclinica.driver.data.repository
 
 import com.appmovilidadclinica.driver.data.mapper.toDomain
 import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.data.remote.api.DriverApi
-import com.appmovilidadclinica.driver.data.remote.dto.IncidentRequestDto
-import com.appmovilidadclinica.driver.domain.model.AppError
-import com.appmovilidadclinica.driver.domain.model.DriverTrip
-import com.appmovilidadclinica.driver.domain.model.Incident
-import com.appmovilidadclinica.driver.domain.model.IncidentType
-import com.appmovilidadclinica.driver.domain.model.Passenger
-import com.appmovilidadclinica.driver.domain.model.TripStop
+import com.appmovilidadclinica.driver.shared.data.remote.dto.IncidentRequestDto
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
+import com.appmovilidadclinica.driver.shared.domain.model.Incident
+import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
+import com.appmovilidadclinica.driver.shared.domain.model.Passenger
+import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
 import retrofit2.HttpException
 import retrofit2.Response
@@ -33,7 +33,7 @@ class DriverRepositoryImpl @Inject constructor(
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -46,7 +46,7 @@ class DriverRepositoryImpl @Inject constructor(
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -59,7 +59,7 @@ class DriverRepositoryImpl @Inject constructor(
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -77,7 +77,7 @@ class DriverRepositoryImpl @Inject constructor(
         return try {
             driverApi.startTrip(tripId).toResult()
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -87,7 +87,7 @@ class DriverRepositoryImpl @Inject constructor(
         return try {
             driverApi.completeTrip(tripId).toResult()
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -97,7 +97,7 @@ class DriverRepositoryImpl @Inject constructor(
         return try {
             driverApi.markArrival(tripStopTimeId).toResult()
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -107,7 +107,7 @@ class DriverRepositoryImpl @Inject constructor(
         return try {
             driverApi.boardPassenger(reservationId).toResult()
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -117,7 +117,7 @@ class DriverRepositoryImpl @Inject constructor(
         return try {
             driverApi.markNoShow(reservationId).toResult()
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -127,7 +127,7 @@ class DriverRepositoryImpl @Inject constructor(
         return try {
             driverApi.alightPassenger(reservationId).toResult()
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -160,7 +160,7 @@ class DriverRepositoryImpl @Inject constructor(
         } catch (e: HttpException) {
             Result.failure(apiErrorMapper.map(e))
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }

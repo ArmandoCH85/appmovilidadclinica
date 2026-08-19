@@ -1,7 +1,7 @@
-package com.appmovilidadclinica.driver.data.remote.api
+﻿package com.appmovilidadclinica.driver.data.remote.api
 
-import com.appmovilidadclinica.driver.data.remote.dto.LoginRequestDto
-import com.appmovilidadclinica.driver.data.remote.dto.LoginResponseDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginRequestDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginResponseDto
 import retrofit2.http.Body
 import retrofit2.http.POST
 

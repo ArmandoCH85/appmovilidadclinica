@@ -1,12 +1,12 @@
-package com.appmovilidadclinica.driver.presentation.tripdetail
+﻿package com.appmovilidadclinica.driver.presentation.tripdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.appmovilidadclinica.driver.domain.model.AppError
-import com.appmovilidadclinica.driver.domain.model.DriverTrip
-import com.appmovilidadclinica.driver.domain.model.Passenger
-import com.appmovilidadclinica.driver.domain.model.TripStatus
-import com.appmovilidadclinica.driver.domain.model.TripStop
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
+import com.appmovilidadclinica.driver.shared.domain.model.Passenger
+import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
+import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
 import com.appmovilidadclinica.driver.presentation.common.SelectedTripHolder
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -144,8 +144,8 @@ class TripDetailViewModel(
 
     private fun messageFor(error: Throwable): String = when (error) {
         is AppError.Conflict -> error.message
-        is AppError.Forbidden -> "No está asignado a este viaje."
-        is AppError.Network -> "Sin conexión a internet."
-        else -> "Ocurrió un error inesperado."
+        is AppError.Forbidden -> "No estÃ¡ asignado a este viaje."
+        is AppError.Network -> "Sin conexiÃ³n a internet."
+        else -> "OcurriÃ³ un error inesperado."
     }
 }

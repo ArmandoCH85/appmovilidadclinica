@@ -1,8 +1,8 @@
-package com.appmovilidadclinica.driver.data.mapper
+﻿package com.appmovilidadclinica.driver.data.mapper
 
-import com.appmovilidadclinica.driver.data.remote.dto.TripStopDto
-import com.appmovilidadclinica.driver.domain.model.TripStop
-import com.appmovilidadclinica.driver.domain.model.TripStopStatus
+import com.appmovilidadclinica.driver.shared.data.remote.dto.TripStopDto
+import com.appmovilidadclinica.driver.shared.domain.model.TripStop
+import com.appmovilidadclinica.driver.shared.domain.model.TripStopStatus
 import java.time.Instant
 
 fun TripStopDto.toDomain(): TripStop = TripStop(

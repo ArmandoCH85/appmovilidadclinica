@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
 
 object AppModule {
 
-    private const val BASE_URL = "https://sitechfactura.site/api/"
+    private const val BASE_URL = "https://movilidad.sitech.site/api/"
 
     private val json = Json {
         ignoreUnknownKeys = true

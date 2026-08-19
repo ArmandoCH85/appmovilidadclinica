@@ -1,9 +1,9 @@
-package com.appmovilidadclinica.driver.presentation.incident
+﻿package com.appmovilidadclinica.driver.presentation.incident
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.appmovilidadclinica.driver.domain.model.AppError
-import com.appmovilidadclinica.driver.domain.model.IncidentType
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,7 +46,7 @@ class IncidentViewModel(
             return
         }
         if (state.description.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Ingrese una descripción.") }
+            _uiState.update { it.copy(errorMessage = "Ingrese una descripciÃ³n.") }
             return
         }
         _uiState.update { it.copy(showConfirm = true) }
@@ -73,7 +73,7 @@ class IncidentViewModel(
 
     private fun messageFor(error: Throwable): String = when (error) {
         is AppError.Validation -> error.message
-        is AppError.Network -> "Sin conexión a internet."
+        is AppError.Network -> "Sin conexiÃ³n a internet."
         else -> "No se pudo reportar la incidencia."
     }
 }

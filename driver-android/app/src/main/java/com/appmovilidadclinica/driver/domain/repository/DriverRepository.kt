@@ -1,9 +1,9 @@
-package com.appmovilidadclinica.driver.domain.repository
+﻿package com.appmovilidadclinica.driver.domain.repository
 
-import com.appmovilidadclinica.driver.domain.model.DriverTrip
-import com.appmovilidadclinica.driver.domain.model.Incident
-import com.appmovilidadclinica.driver.domain.model.Passenger
-import com.appmovilidadclinica.driver.domain.model.TripStop
+import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
+import com.appmovilidadclinica.driver.shared.domain.model.Incident
+import com.appmovilidadclinica.driver.shared.domain.model.Passenger
+import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import java.time.LocalDate
 
 interface DriverRepository {

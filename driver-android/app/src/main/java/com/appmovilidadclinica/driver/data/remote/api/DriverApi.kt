@@ -1,9 +1,9 @@
-package com.appmovilidadclinica.driver.data.remote.api
+﻿package com.appmovilidadclinica.driver.data.remote.api
 
-import com.appmovilidadclinica.driver.data.remote.dto.DriverTripDto
-import com.appmovilidadclinica.driver.data.remote.dto.IncidentRequestDto
-import com.appmovilidadclinica.driver.data.remote.dto.PassengerDto
-import com.appmovilidadclinica.driver.data.remote.dto.TripStopDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.DriverTripDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.IncidentRequestDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.PassengerDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.TripStopDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -24,7 +24,7 @@ interface DriverApi {
     // Response<Unit>, no un suspend fun de retorno no-nulo desnudo: estos
     // endpoints responden 204 sin cuerpo. Retrofit tira una excepcion interna
     // ("response body was null") si el tipo de retorno de una suspend fun es
-    // no-nulo y el cuerpo es null — Response<Unit> evita ese problema porque
+    // no-nulo y el cuerpo es null â€” Response<Unit> evita ese problema porque
     // no intenta deserializar/desempaquetar el cuerpo. El error real (4xx/5xx)
     // se mapea a mano en el repositorio via ApiErrorMapper leyendo el
     // errorBody(), no se pierde.

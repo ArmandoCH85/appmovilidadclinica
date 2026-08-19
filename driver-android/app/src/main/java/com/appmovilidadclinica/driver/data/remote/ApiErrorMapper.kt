@@ -1,7 +1,7 @@
-package com.appmovilidadclinica.driver.data.remote
+﻿package com.appmovilidadclinica.driver.data.remote
 
-import com.appmovilidadclinica.driver.data.remote.dto.ErrorResponseDto
-import com.appmovilidadclinica.driver.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.data.remote.dto.ErrorResponseDto
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import java.io.IOException
@@ -15,7 +15,7 @@ class ApiErrorMapper @Inject constructor() {
     fun map(throwable: Throwable): AppError {
         return when (throwable) {
             is HttpException -> mapHttpException(throwable)
-            is IOException -> AppError.Network("Sin conexión a internet")
+            is IOException -> AppError.Network("Sin conexiÃ³n a internet")
             else -> AppError.Unknown(throwable.message ?: "Error desconocido")
         }
     }

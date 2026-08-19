@@ -1,8 +1,8 @@
-package com.appmovilidadclinica.driver.data.mapper
+﻿package com.appmovilidadclinica.driver.data.mapper
 
-import com.appmovilidadclinica.driver.data.remote.dto.PassengerDto
-import com.appmovilidadclinica.driver.domain.model.Passenger
-import com.appmovilidadclinica.driver.domain.model.ReservationStatus
+import com.appmovilidadclinica.driver.shared.data.remote.dto.PassengerDto
+import com.appmovilidadclinica.driver.shared.domain.model.Passenger
+import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
 import java.time.Instant
 
 fun PassengerDto.toDomain(): Passenger = Passenger(

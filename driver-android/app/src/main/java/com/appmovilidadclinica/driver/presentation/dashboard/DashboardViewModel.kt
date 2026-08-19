@@ -1,9 +1,9 @@
-package com.appmovilidadclinica.driver.presentation.dashboard
+﻿package com.appmovilidadclinica.driver.presentation.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.appmovilidadclinica.driver.domain.model.AppError
-import com.appmovilidadclinica.driver.domain.model.DriverTrip
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,8 +64,8 @@ class DashboardViewModel(
     }
 
     private fun messageFor(error: Throwable): String = when (error) {
-        is AppError.Network -> "Sin conexión a internet."
-        is AppError.Unauthorized -> "Sesión expirada."
+        is AppError.Network -> "Sin conexiÃ³n a internet."
+        is AppError.Unauthorized -> "SesiÃ³n expirada."
         else -> "No se pudieron cargar los viajes."
     }
 }

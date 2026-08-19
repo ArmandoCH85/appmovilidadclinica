@@ -1,12 +1,12 @@
-package com.appmovilidadclinica.driver.data.repository
+﻿package com.appmovilidadclinica.driver.data.repository
 
 import com.appmovilidadclinica.driver.data.local.SessionDataStore
 import com.appmovilidadclinica.driver.data.mapper.toDomain
 import com.appmovilidadclinica.driver.data.remote.api.AuthApi
-import com.appmovilidadclinica.driver.data.remote.dto.LoginRequestDto
-import com.appmovilidadclinica.driver.domain.model.AppError
-import com.appmovilidadclinica.driver.domain.model.AuthResult
-import com.appmovilidadclinica.driver.domain.model.User
+import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginRequestDto
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.model.AuthResult
+import com.appmovilidadclinica.driver.shared.domain.model.User
 import com.appmovilidadclinica.driver.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -42,12 +42,12 @@ class AuthRepositoryImpl @Inject constructor(
             Result.success(authResult)
         } catch (e: HttpException) {
             val error = when (e.code()) {
-                401 -> AppError.Unauthorized("Documento o contraseña incorrectos")
+                401 -> AppError.Unauthorized("Documento o contraseÃ±a incorrectos")
                 else -> AppError.Unknown("Error del servidor")
             }
             Result.failure(error)
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexión a internet"))
+            Result.failure(AppError.Network("Sin conexiÃ³n a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }

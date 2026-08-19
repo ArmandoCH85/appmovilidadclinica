@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.dashboard
+﻿package com.appmovilidadclinica.driver.presentation.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,8 +41,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewmodel.initializer
 import com.appmovilidadclinica.driver.di.AppModule
-import com.appmovilidadclinica.driver.domain.model.DriverTrip
-import com.appmovilidadclinica.driver.domain.model.TripStatus
+import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
+import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
 import com.appmovilidadclinica.driver.presentation.common.SelectedTripHolder
 import com.appmovilidadclinica.driver.presentation.common.color
 import com.appmovilidadclinica.driver.presentation.common.label
@@ -67,7 +67,7 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Viajes del día") },
+                title = { Text("Viajes del dÃ­a") },
                 actions = {
                     IconButton(onClick = viewModel::refresh) {
                         Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
@@ -157,7 +157,7 @@ private fun DateSelector(
         horizontalArrangement = Arrangement.Center,
     ) {
         IconButton(onClick = onPreviousDay) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = "Día anterior")
+            Icon(Icons.Default.ChevronLeft, contentDescription = "DÃ­a anterior")
         }
         Text(
             date.format(DateTimeFormatter.ofPattern("EEE d 'de' MMMM", Locale("es", "PE")))
@@ -166,7 +166,7 @@ private fun DateSelector(
             fontWeight = FontWeight.Medium,
         )
         IconButton(onClick = onNextDay) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "Día siguiente")
+            Icon(Icons.Default.ChevronRight, contentDescription = "DÃ­a siguiente")
         }
     }
 }
@@ -202,14 +202,14 @@ private fun TripCard(trip: DriverTrip, onClick: () -> Unit) {
 
             InfoRow(
                 icon = Icons.Default.Schedule,
-                text = "${trip.scheduledStartAt.toPeruTime()} – ${trip.scheduledEndAt.toPeruTime()}",
+                text = "${trip.scheduledStartAt.toPeruTime()} â€“ ${trip.scheduledEndAt.toPeruTime()}",
             )
 
             Spacer(Modifier.height(4.dp))
 
             InfoRow(
                 icon = Icons.Default.DirectionsBus,
-                text = "Vehículo ${trip.plate}",
+                text = "VehÃ­culo ${trip.plate}",
             )
 
             Spacer(Modifier.height(4.dp))

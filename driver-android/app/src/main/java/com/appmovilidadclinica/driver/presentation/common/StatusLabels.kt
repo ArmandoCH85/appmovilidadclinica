@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.common
+﻿package com.appmovilidadclinica.driver.presentation.common
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
@@ -7,11 +7,11 @@ import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.appmovilidadclinica.driver.domain.model.Direction
-import com.appmovilidadclinica.driver.domain.model.IncidentType
-import com.appmovilidadclinica.driver.domain.model.ReservationStatus
-import com.appmovilidadclinica.driver.domain.model.TripStatus
-import com.appmovilidadclinica.driver.domain.model.TripStopStatus
+import com.appmovilidadclinica.driver.shared.domain.model.Direction
+import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
+import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
+import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
+import com.appmovilidadclinica.driver.shared.domain.model.TripStopStatus
 import com.appmovilidadclinica.driver.ui.theme.ReservationBoarded
 import com.appmovilidadclinica.driver.ui.theme.ReservationCancelled
 import com.appmovilidadclinica.driver.ui.theme.ReservationCompleted
@@ -54,7 +54,7 @@ fun Direction.label(): String = when (this) {
 fun ReservationStatus.label(): String = when (this) {
     ReservationStatus.CONFIRMED -> "Confirmado"
     ReservationStatus.BOARDED -> "Abordado"
-    ReservationStatus.NO_SHOW -> "No se presentó"
+    ReservationStatus.NO_SHOW -> "No se presentÃ³"
     ReservationStatus.COMPLETED -> "Completado"
     ReservationStatus.CANCELLED -> "Cancelado"
 }
@@ -69,8 +69,8 @@ fun ReservationStatus.color(): Color = when (this) {
 
 fun TripStopStatus.label(): String = when (this) {
     TripStopStatus.PENDING -> "Pendiente"
-    TripStopStatus.ARRIVED -> "Llegó"
-    TripStopStatus.DEPARTED -> "Partió"
+    TripStopStatus.ARRIVED -> "LlegÃ³"
+    TripStopStatus.DEPARTED -> "PartiÃ³"
     TripStopStatus.SKIPPED -> "Omitida"
 }
 
@@ -82,7 +82,7 @@ fun TripStopStatus.color(): Color = when (this) {
 }
 
 fun IncidentType.label(): String = when (this) {
-    IncidentType.BREAKDOWN -> "Avería"
+    IncidentType.BREAKDOWN -> "AverÃ­a"
     IncidentType.DELAY -> "Retraso"
     IncidentType.ACCIDENT -> "Accidente"
     IncidentType.OTHER -> "Otro"

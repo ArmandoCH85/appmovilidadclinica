@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "DriverApp"
 include(":app")
+include(":shared")

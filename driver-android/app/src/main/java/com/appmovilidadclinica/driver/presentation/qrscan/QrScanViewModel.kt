@@ -1,10 +1,10 @@
-package com.appmovilidadclinica.driver.presentation.qrscan
+﻿package com.appmovilidadclinica.driver.presentation.qrscan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.appmovilidadclinica.driver.domain.model.AppError
-import com.appmovilidadclinica.driver.domain.model.Passenger
-import com.appmovilidadclinica.driver.domain.model.Reservation
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.model.Passenger
+import com.appmovilidadclinica.driver.shared.domain.model.Reservation
 import com.appmovilidadclinica.driver.domain.repository.BookingRepository
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,9 +97,9 @@ class QrScanViewModel(
     }
 
     private fun messageFor(error: Throwable): String = when (error) {
-        is AppError.NotFound -> "QR inválido."
+        is AppError.NotFound -> "QR invÃ¡lido."
         is AppError.Conflict -> error.message
-        is AppError.Network -> "Sin conexión a internet."
-        else -> "Ocurrió un error inesperado."
+        is AppError.Network -> "Sin conexiÃ³n a internet."
+        else -> "OcurriÃ³ un error inesperado."
     }
 }
