@@ -1,19 +1,27 @@
-package com.appmovilidadclinica.passenger.presentation.seatselection
+﻿package com.appmovilidadclinica.passenger.presentation.seatselection
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,10 +37,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.appmovilidadclinica.passenger.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +63,7 @@ fun SeatSelectionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Selección de asiento") },
+                title = { Text("SelecciÃ³n de asiento") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -68,13 +81,29 @@ fun SeatSelectionScreen(
             state.origin?.let { origin ->
                 state.destination?.let { destination ->
                     Text(
-                        "${origin.stopName} → ${destination.stopName}",
+                        "${origin.stopName} â†’ ${destination.stopName}",
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "Sale ${origin.scheduledDepartureAt.toPeruDateTime()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
-            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 12.dp))
+            Spacer(Modifier.height(16.dp))
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
@@ -91,6 +120,8 @@ fun SeatSelectionScreen(
                 }
             }
 
+            SeatLegend()
+
             if (state.errorMessage != null) {
                 Text(
                     state.errorMessage.orEmpty(),
@@ -102,9 +133,17 @@ fun SeatSelectionScreen(
             Button(
                 onClick = viewModel::confirm,
                 enabled = state.selectedSeatId != null && !state.confirming,
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp).padding(top = 16.dp),
             ) {
-                Text(if (state.confirming) "Confirmando…" else "Confirmar reserva")
+                if (state.confirming) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text("Confirmar reserva", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }
@@ -118,15 +157,65 @@ private fun SeatCell(seat: TripSeat, selected: Boolean, onClick: () -> Unit) {
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
     val textColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val stateDescription = when {
+        selected -> "seleccionado"
+        seat.isSelectable -> "disponible"
+        else -> "ocupado"
+    }
 
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(background)
-            .clickable(enabled = seat.isSelectable, onClick = onClick),
+            .then(
+                if (selected) {
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(8.dp))
+                } else {
+                    Modifier
+                }
+            )
+            .clickable(enabled = seat.isSelectable, onClick = onClick)
+            .semantics { contentDescription = "Asiento ${seat.seatLabel}, $stateDescription" },
         contentAlignment = Alignment.Center,
     ) {
-        Text(seat.seatLabel, color = textColor)
+        Text(seat.seatLabel, color = textColor, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+        if (selected) {
+            Icon(
+                Icons.Filled.Check,
+                contentDescription = null,
+                tint = textColor,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(2.dp)
+                    .size(14.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SeatLegend() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        LegendItem(color = MaterialTheme.colorScheme.primaryContainer, label = "Disponible")
+        LegendItem(color = MaterialTheme.colorScheme.primary, label = "Seleccionado")
+        LegendItem(color = MaterialTheme.colorScheme.surfaceVariant, label = "Ocupado")
+    }
+}
+
+@Composable
+private fun LegendItem(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(color),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

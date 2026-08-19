@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.passenger.data.remote.dto
+﻿package com.appmovilidadclinica.passenger.shared.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

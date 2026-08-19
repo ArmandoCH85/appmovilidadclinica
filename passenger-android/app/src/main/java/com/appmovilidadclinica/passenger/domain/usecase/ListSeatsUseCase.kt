@@ -1,16 +1,16 @@
-package com.appmovilidadclinica.passenger.domain.usecase
+﻿package com.appmovilidadclinica.passenger.domain.usecase
 
 import com.appmovilidadclinica.passenger.domain.error.AppError
 import com.appmovilidadclinica.passenger.domain.error.AppResult
-import com.appmovilidadclinica.passenger.domain.model.TripSeat
-import com.appmovilidadclinica.passenger.domain.model.TripStop
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
 import com.appmovilidadclinica.passenger.domain.repository.TripsRepository
 import javax.inject.Inject
 
 /**
- * Ver Specs #3: origen debe preceder a destino en `stop_order` — se valida
+ * Ver Specs #3: origen debe preceder a destino en `stop_order` â€” se valida
  * ACA, del lado del cliente, antes de pegarle al backend (que devolveria
- * 409 vía `sp_list_trip_seats` si se viola, pero es mejor no gastar la
+ * 409 vÃ­a `sp_list_trip_seats` si se viola, pero es mejor no gastar la
  * llamada de red en un request que ya sabemos invalido).
  */
 class ListSeatsUseCase @Inject constructor(

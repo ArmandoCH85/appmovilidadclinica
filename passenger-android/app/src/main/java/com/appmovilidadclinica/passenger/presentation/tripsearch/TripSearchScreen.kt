@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.passenger.presentation.tripsearch
+﻿package com.appmovilidadclinica.passenger.presentation.tripsearch
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,16 +11,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -29,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -37,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,9 +57,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.appmovilidadclinica.passenger.domain.model.BookingState
-import com.appmovilidadclinica.passenger.domain.model.Stop
-import com.appmovilidadclinica.passenger.domain.model.TripSearchResult
+import com.appmovilidadclinica.passenger.shared.domain.model.BookingState
+import com.appmovilidadclinica.passenger.shared.domain.model.Stop
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSearchResult
 import com.appmovilidadclinica.passenger.presentation.common.toPeruTime
 import java.time.Instant
 import java.time.LocalDate
@@ -72,8 +80,22 @@ fun TripSearchScreen(
             TopAppBar(
                 title = { Text("Buscar viaje") },
                 actions = {
-                    TextButton(onClick = onOpenReservations) { Text("Mis reservas") }
-                    TextButton(onClick = onLogout) { Text("Salir") }
+                    IconButton(onClick = onOpenReservations) {
+                        Icon(Icons.Default.ConfirmationNumber, contentDescription = "Mis reservas")
+                    }
+                    VerticalDivider(
+                        modifier = Modifier
+                            .padding(vertical = 12.dp)
+                            .height(24.dp),
+                    )
+                    IconButton(onClick = onLogout) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = "Cerrar sesiÃ³n",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
                 },
             )
         },
@@ -89,9 +111,13 @@ fun TripSearchScreen(
                     onSelected = viewModel::onOriginChange,
                 )
                 androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 8.dp))
+                val originStopType = state.stops.find { it.id == state.originStopId }?.stopType
+                val destinationOptions = state.stops.filter {
+                    it.stopType in viewModel.destinationStopTypesFor(originStopType)
+                }
                 StopDropdown(
                     label = "Destino",
-                    stops = state.stops,
+                    stops = destinationOptions,
                     selectedId = state.destinationStopId,
                     onSelected = viewModel::onDestinationChange,
                 )
@@ -106,8 +132,20 @@ fun TripSearchScreen(
 
             androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 12.dp))
 
-            Button(onClick = viewModel::search, enabled = !state.searching, modifier = Modifier.fillMaxWidth()) {
-                Text(if (state.searching) "Buscando…" else "Buscar viajes")
+            Button(
+                onClick = viewModel::search,
+                enabled = !state.searching,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                if (state.searching) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text("Buscar viajes", style = MaterialTheme.typography.labelLarge)
+                }
             }
 
             if (state.errorMessage != null) {
@@ -121,7 +159,28 @@ fun TripSearchScreen(
             androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 16.dp))
 
             if (state.hasSearched && state.results.isEmpty() && !state.searching) {
-                Text("No hay viajes para esa búsqueda.", style = MaterialTheme.typography.bodyMedium)
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        Icons.Outlined.SearchOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 8.dp))
+                    Text(
+                        "No hay viajes para esa bÃºsqueda",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "ProbÃ¡ con otra fecha u otro origen/destino.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             LazyColumn(
@@ -247,12 +306,14 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         enabled = enabled,
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Origen → Destino como titulo principal
+            // Origen â†’ Destino como titulo principal
             Text(
-                "${trip.originName} → ${trip.destinationName}",
+                "${trip.originName} â†’ ${trip.destinationName}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -290,7 +351,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
             // Vehiculo y placa
             TripInfoRow(
                 icon = Icons.Default.DirectionsBus,
-                label = "Vehículo",
+                label = "VehÃ­culo",
                 value = trip.plate,
             )
 
@@ -298,7 +359,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = when (trip.bookingState) {
-                        BookingState.NOT_OPEN -> "Reserva aún no abierta"
+                        BookingState.NOT_OPEN -> "Reserva aÃºn no abierta"
                         BookingState.CLOSED -> "Reserva cerrada"
                         else -> ""
                     },

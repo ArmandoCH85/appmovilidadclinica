@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.passenger.data.repository
+﻿package com.appmovilidadclinica.passenger.data.repository
 
 import com.appmovilidadclinica.passenger.data.mapper.toDomain
 import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
@@ -6,10 +6,10 @@ import com.appmovilidadclinica.passenger.data.remote.TripsApi
 import com.appmovilidadclinica.passenger.data.remote.safeApiCall
 import com.appmovilidadclinica.passenger.domain.error.AppResult
 import com.appmovilidadclinica.passenger.domain.error.map
-import com.appmovilidadclinica.passenger.domain.model.TripDetail
-import com.appmovilidadclinica.passenger.domain.model.TripDirection
-import com.appmovilidadclinica.passenger.domain.model.TripSearchResult
-import com.appmovilidadclinica.passenger.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDetail
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDirection
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSearchResult
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
 import com.appmovilidadclinica.passenger.domain.repository.TripsRepository
 import java.time.LocalDate
 import javax.inject.Inject

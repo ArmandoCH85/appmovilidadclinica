@@ -1,20 +1,20 @@
-package com.appmovilidadclinica.passenger.domain.model
+﻿package com.appmovilidadclinica.passenger.shared.domain.model
 
 import java.time.Instant
 import java.time.LocalDate
 
-/** Direccion de una ruta — espejo de `transport_routes.direction`. */
+/** Direccion de una ruta â€” espejo de `transport_routes.direction`. */
 enum class TripDirection { IDA, VUELTA }
 
 /**
  * Estado de apertura de reserva de un viaje, calculado por `sp_search_trips`
  * comparando `CURRENT_TIMESTAMP` contra `booking_opens_at`/`booking_closes_at`.
- * La app NO recalcula esto localmente — confia en el valor que manda el
+ * La app NO recalcula esto localmente â€” confia en el valor que manda el
  * backend en cada busqueda (evita desincronizacion de reloj cliente/servidor).
  */
 enum class BookingState { NOT_OPEN, OPEN, CLOSED }
 
-/** Un resultado de `GET /api/trips` — espejo de domain de `TripSearchResult`. */
+/** Un resultado de `GET /api/trips` â€” espejo de domain de `TripSearchResult`. */
 data class TripSearchResult(
     val tripId: Long,
     val tripCode: String,
@@ -38,13 +38,15 @@ enum class TripStopStatus { PENDING, ARRIVED, DEPARTED, SKIPPED }
 
 /** Una parada del cronograma completo de `GET /api/trips/{id}`. */
 data class TripStop(
-    /** `trip_stop_time_id` — clave que despues se usa en /seats y /reservations. */
+    /** `trip_stop_time_id` â€” clave que despues se usa en /seats y /reservations. */
     val tripStopTimeId: Long,
     val stopId: Long,
     val stopOrder: Int,
     val stopName: String,
     val scheduledArrivalAt: Instant,
     val scheduledDepartureAt: Instant,
+    val actualArrivalAt: Instant? = null,
+    val actualDepartureAt: Instant? = null,
     val status: TripStopStatus,
 )
 

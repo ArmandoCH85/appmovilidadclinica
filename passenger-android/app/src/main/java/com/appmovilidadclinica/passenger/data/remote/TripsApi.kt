@@ -1,8 +1,8 @@
-package com.appmovilidadclinica.passenger.data.remote
+﻿package com.appmovilidadclinica.passenger.data.remote
 
-import com.appmovilidadclinica.passenger.data.remote.dto.SeatResultDto
-import com.appmovilidadclinica.passenger.data.remote.dto.TripDetailResponseDto
-import com.appmovilidadclinica.passenger.data.remote.dto.TripSearchResultDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.SeatResultDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripDetailResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripSearchResultDto
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -21,7 +21,7 @@ interface TripsApi {
     @GET("trips/{id}")
     suspend fun getDetail(@Path("id") tripId: Long): Response<TripDetailResponseDto>
 
-    /** origin/destination = trip_stop_time_id (distinto del /trips de arriba — ver reporte #3). */
+    /** origin/destination = trip_stop_time_id (distinto del /trips de arriba â€” ver reporte #3). */
     @GET("trips/{id}/seats")
     suspend fun listSeats(
         @Path("id") tripId: Long,

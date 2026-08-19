@@ -1,10 +1,10 @@
-package com.appmovilidadclinica.passenger.domain.repository
+﻿package com.appmovilidadclinica.passenger.domain.repository
 
 import com.appmovilidadclinica.passenger.domain.error.AppResult
-import com.appmovilidadclinica.passenger.domain.model.TripDetail
-import com.appmovilidadclinica.passenger.domain.model.TripDirection
-import com.appmovilidadclinica.passenger.domain.model.TripSearchResult
-import com.appmovilidadclinica.passenger.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDetail
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDirection
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSearchResult
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
 import java.time.LocalDate
 
 interface TripsRepository {
@@ -16,10 +16,10 @@ interface TripsRepository {
         destinationStopId: Long,
     ): AppResult<List<TripSearchResult>>
 
-    /** GET /api/trips/{id} — cronograma completo, resuelve trip_stop_time_id de cada parada. */
+    /** GET /api/trips/{id} â€” cronograma completo, resuelve trip_stop_time_id de cada parada. */
     suspend fun getDetail(tripId: Long): AppResult<TripDetail>
 
-    /** GET /api/trips/{id}/seats?origin=&destination= (acá origin/destination = trip_stop_time_id). */
+    /** GET /api/trips/{id}/seats?origin=&destination= (acÃ¡ origin/destination = trip_stop_time_id). */
     suspend fun listSeats(
         tripId: Long,
         originTripStopTimeId: Long,

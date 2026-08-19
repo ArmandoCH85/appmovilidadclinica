@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.passenger.data.repository
+﻿package com.appmovilidadclinica.passenger.data.repository
 
 import android.util.Base64
 import com.appmovilidadclinica.passenger.data.local.SessionDataStore
@@ -7,10 +7,10 @@ import com.appmovilidadclinica.passenger.data.mapper.toDomain
 import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.passenger.data.remote.AuthApi
 import com.appmovilidadclinica.passenger.data.remote.SessionExpiredNotifier
-import com.appmovilidadclinica.passenger.data.remote.dto.LoginRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.passenger.data.remote.safeApiCall
 import com.appmovilidadclinica.passenger.domain.error.AppResult
-import com.appmovilidadclinica.passenger.domain.model.User
+import com.appmovilidadclinica.passenger.shared.domain.model.User
 import com.appmovilidadclinica.passenger.domain.repository.AuthRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -88,10 +88,10 @@ class AuthRepositoryImpl @Inject constructor(
 
     /**
      * Decodifica SOLO el payload de un JWT (base64url, sin verificar firma)
-     * — la app confia en el backend, no necesita revalidar HS256
+     * â€” la app confia en el backend, no necesita revalidar HS256
      * client-side. Se usa nada mas para leer `exp` (countdown de expiracion,
      * mismo patron que `admin/src/auth/useAuth.ts`, `decodeExp`). Unico call
-     * site — inlineado aca en vez de un objeto aparte (ver memoria
+     * site â€” inlineado aca en vez de un objeto aparte (ver memoria
      * "android-passenger-module/ponytail-audit").
      */
     private fun expiresAtEpochSeconds(token: String): Long? {

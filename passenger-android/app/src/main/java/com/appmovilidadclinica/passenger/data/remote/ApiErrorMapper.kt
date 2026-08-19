@@ -1,6 +1,6 @@
-package com.appmovilidadclinica.passenger.data.remote
+﻿package com.appmovilidadclinica.passenger.data.remote
 
-import com.appmovilidadclinica.passenger.data.remote.dto.ErrorResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ErrorResponseDto
 import com.appmovilidadclinica.passenger.domain.error.AppError
 import com.appmovilidadclinica.passenger.domain.error.AppResult
 import kotlinx.serialization.json.Json
@@ -14,7 +14,7 @@ import javax.inject.Singleton
  * Traductor unico HTTP -> AppError, reflejo Kotlin de
  * `admin/src/api/client.ts` (`extractMessage`) y del shape
  * `{"error":{"code","message"}}` que emite todo handler Go via
- * `apperror.WriteJSONError`. Ningun repository parsea un error a mano —
+ * `apperror.WriteJSONError`. Ningun repository parsea un error a mano â€”
  * todos pasan por `safeApiCall`.
  */
 @Singleton
@@ -39,15 +39,15 @@ class ApiErrorMapper @Inject constructor(private val json: Json) {
     }
 
     // Mismo texto que ERROR_BY_STATUS/ERROR_FALLBACK_DEFAULT en
-    // admin/src/messages.ts — consistencia entre el panel web y esta app.
+    // admin/src/messages.ts â€” consistencia entre el panel web y esta app.
     private fun fallbackMessage(code: Int): String = when (code) {
-        401 -> "Sesión expirada. Inicie sesión nuevamente."
-        403 -> "No tiene permisos para realizar esta acción."
+        401 -> "SesiÃ³n expirada. Inicie sesiÃ³n nuevamente."
+        403 -> "No tiene permisos para realizar esta acciÃ³n."
         404 -> "El recurso solicitado no existe."
-        409 -> "La operación entra en conflicto con datos existentes."
-        422 -> "Hay campos inválidos en el formulario."
+        409 -> "La operaciÃ³n entra en conflicto con datos existentes."
+        422 -> "Hay campos invÃ¡lidos en el formulario."
         500 -> "Error interno del servidor."
-        else -> "Ocurrió un error inesperado. Intente nuevamente."
+        else -> "OcurriÃ³ un error inesperado. Intente nuevamente."
     }
 }
 
@@ -64,7 +64,7 @@ suspend fun <T> safeApiCall(errorMapper: ApiErrorMapper, call: suspend () -> Res
     } catch (e: IOException) {
         AppResult.Failure(AppError.Network(e.message ?: "No se pudo conectar con el servidor."))
     } catch (e: Exception) {
-        AppResult.Failure(AppError.Unknown(e.message ?: "Ocurrió un error inesperado."))
+        AppResult.Failure(AppError.Unknown(e.message ?: "OcurriÃ³ un error inesperado."))
     }
 
 /** Envoltorio para requests sin body de respuesta (204, ej. cancel). */
@@ -79,5 +79,5 @@ suspend fun safeApiCallUnit(errorMapper: ApiErrorMapper, call: suspend () -> Res
     } catch (e: IOException) {
         AppResult.Failure(AppError.Network(e.message ?: "No se pudo conectar con el servidor."))
     } catch (e: Exception) {
-        AppResult.Failure(AppError.Unknown(e.message ?: "Ocurrió un error inesperado."))
+        AppResult.Failure(AppError.Unknown(e.message ?: "OcurriÃ³ un error inesperado."))
     }

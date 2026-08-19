@@ -1,16 +1,16 @@
-package com.appmovilidadclinica.passenger.data.mapper
+﻿package com.appmovilidadclinica.passenger.data.mapper
 
 import com.appmovilidadclinica.passenger.data.local.ReservationEntity
-import com.appmovilidadclinica.passenger.data.remote.dto.ReservationListItemDto
-import com.appmovilidadclinica.passenger.data.remote.dto.ReservationResponseDto
-import com.appmovilidadclinica.passenger.domain.model.Reservation
-import com.appmovilidadclinica.passenger.domain.model.ReservationStatus
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationResponseDto
+import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
+import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
 import com.appmovilidadclinica.passenger.domain.repository.ReservationTripContext
 import java.time.Instant
 import java.time.OffsetDateTime
 
 fun ReservationResponseDto.toEntity(
-    request: com.appmovilidadclinica.passenger.domain.model.ReservationRequest,
+    request: com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest,
     context: ReservationTripContext,
     confirmedAt: Instant,
 ): ReservationEntity = ReservationEntity(

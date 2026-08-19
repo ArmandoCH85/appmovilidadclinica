@@ -1,8 +1,8 @@
-package com.appmovilidadclinica.passenger.data.remote.dto
+﻿package com.appmovilidadclinica.passenger.shared.data.remote.dto
 
 import kotlinx.serialization.Serializable
 
-/** Shape exacto de `apperror.WriteJSONError` (backend Go) — `{"error":{"code","message"}}`. */
+/** Shape exacto de `apperror.WriteJSONError` (backend Go) â€” `{"error":{"code","message"}}`. */
 @Serializable
 data class ErrorResponseDto(val error: ErrorBodyDto)
 

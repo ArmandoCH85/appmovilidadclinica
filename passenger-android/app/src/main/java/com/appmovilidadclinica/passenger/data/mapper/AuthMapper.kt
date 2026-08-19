@@ -1,9 +1,9 @@
-package com.appmovilidadclinica.passenger.data.mapper
+﻿package com.appmovilidadclinica.passenger.data.mapper
 
 import com.appmovilidadclinica.passenger.data.local.StoredSession
-import com.appmovilidadclinica.passenger.data.remote.dto.UserDto
-import com.appmovilidadclinica.passenger.domain.model.User
-import com.appmovilidadclinica.passenger.domain.model.UserRole
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.UserDto
+import com.appmovilidadclinica.passenger.shared.domain.model.User
+import com.appmovilidadclinica.passenger.shared.domain.model.UserRole
 
 fun UserDto.toDomain(): User = User(
     id = id,

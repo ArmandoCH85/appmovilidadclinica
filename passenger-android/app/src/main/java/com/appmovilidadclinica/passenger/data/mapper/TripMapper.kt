@@ -1,18 +1,18 @@
-package com.appmovilidadclinica.passenger.data.mapper
+﻿package com.appmovilidadclinica.passenger.data.mapper
 
-import com.appmovilidadclinica.passenger.data.remote.dto.SeatResultDto
-import com.appmovilidadclinica.passenger.data.remote.dto.TripDetailResponseDto
-import com.appmovilidadclinica.passenger.data.remote.dto.TripSearchResultDto
-import com.appmovilidadclinica.passenger.data.remote.dto.TripStopDto
-import com.appmovilidadclinica.passenger.domain.model.BookingState
-import com.appmovilidadclinica.passenger.domain.model.SeatAvailability
-import com.appmovilidadclinica.passenger.domain.model.TripDetail
-import com.appmovilidadclinica.passenger.domain.model.TripDirection
-import com.appmovilidadclinica.passenger.domain.model.TripSearchResult
-import com.appmovilidadclinica.passenger.domain.model.TripSeat
-import com.appmovilidadclinica.passenger.domain.model.TripStatus
-import com.appmovilidadclinica.passenger.domain.model.TripStop
-import com.appmovilidadclinica.passenger.domain.model.TripStopStatus
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.SeatResultDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripDetailResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripSearchResultDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripStopDto
+import com.appmovilidadclinica.passenger.shared.domain.model.BookingState
+import com.appmovilidadclinica.passenger.shared.domain.model.SeatAvailability
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDetail
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDirection
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSearchResult
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStatus
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStopStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -28,7 +28,7 @@ private fun parseInstant(raw: String): Instant = OffsetDateTime.parse(raw).toIns
 /**
  * Parsea un campo fecha-hora del backend a LocalDate. El backend manda
  * `service_date` con hora+offset (`2026-07-14T00:00:00-05:00`), no fecha
- * pura — `LocalDate.parse()` reventaba con DateTimeParseException porque
+ * pura â€” `LocalDate.parse()` reventaba con DateTimeParseException porque
  * espera solo la parte de fecha. Aceptamos los dos formatos: si trae hora,
  * la descartamos; si es fecha pura, la usamos tal cual.
  */
@@ -74,6 +74,8 @@ fun TripStopDto.toDomain(): TripStop = TripStop(
     stopName = stopName,
     scheduledArrivalAt = parseInstant(scheduledArrivalAt),
     scheduledDepartureAt = parseInstant(scheduledDepartureAt),
+    actualArrivalAt = actualArrivalAt?.let(::parseInstant),
+    actualDepartureAt = actualDepartureAt?.let(::parseInstant),
     status = TripStopStatus.valueOf(status),
 )
 

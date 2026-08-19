@@ -1,14 +1,14 @@
-package com.appmovilidadclinica.passenger.presentation.seatselection
+﻿package com.appmovilidadclinica.passenger.presentation.seatselection
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.appmovilidadclinica.passenger.domain.error.AppResult
-import com.appmovilidadclinica.passenger.domain.model.ReservationRequest
-import com.appmovilidadclinica.passenger.domain.model.TripDetail
-import com.appmovilidadclinica.passenger.domain.model.TripSeat
-import com.appmovilidadclinica.passenger.domain.model.TripStop
+import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDetail
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
 import com.appmovilidadclinica.passenger.domain.repository.ReservationTripContext
 import com.appmovilidadclinica.passenger.domain.repository.ReservationsRepository
 import com.appmovilidadclinica.passenger.domain.repository.TripsRepository
@@ -35,8 +35,8 @@ data class SeatSelectionUiState(
 
 /**
  * `GetTripDetailUseCase`/`ConfirmReservationUseCase` se eliminaron (solo
- * delegaban) — este ViewModel inyecta `TripsRepository`/`ReservationsRepository`
- * directo. `ListSeatsUseCase` SÍ se conserva: valida que origen preceda a
+ * delegaban) â€” este ViewModel inyecta `TripsRepository`/`ReservationsRepository`
+ * directo. `ListSeatsUseCase` SÃ se conserva: valida que origen preceda a
  * destino antes de pegarle al backend (ver esa clase). Ver memoria
  * "android-passenger-module/ponytail-audit".
  */

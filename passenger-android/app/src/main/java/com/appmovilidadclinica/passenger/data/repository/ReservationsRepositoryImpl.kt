@@ -1,16 +1,16 @@
-package com.appmovilidadclinica.passenger.data.repository
+﻿package com.appmovilidadclinica.passenger.data.repository
 
 import com.appmovilidadclinica.passenger.data.local.ReservationDao
 import com.appmovilidadclinica.passenger.data.mapper.toDomain
 import com.appmovilidadclinica.passenger.data.mapper.toEntity
 import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.passenger.data.remote.ReservationsApi
-import com.appmovilidadclinica.passenger.data.remote.dto.ReservationRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationRequestDto
 import com.appmovilidadclinica.passenger.data.remote.safeApiCall
 import com.appmovilidadclinica.passenger.data.remote.safeApiCallUnit
 import com.appmovilidadclinica.passenger.domain.error.AppResult
-import com.appmovilidadclinica.passenger.domain.model.Reservation
-import com.appmovilidadclinica.passenger.domain.model.ReservationRequest
+import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
+import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
 import com.appmovilidadclinica.passenger.domain.repository.ReservationTripContext
 import com.appmovilidadclinica.passenger.domain.repository.ReservationsRepository
 import kotlinx.coroutines.flow.Flow
@@ -41,9 +41,9 @@ class ReservationsRepositoryImpl @Inject constructor(
             )
         }
         if (result is AppResult.Success) {
-            // CRITICO (ver Specs #3 y diseño técnico): persistir el qr_token
+            // CRITICO (ver Specs #3 y diseÃ±o tÃ©cnico): persistir el qr_token
             // es la PRIMERA accion tras la respuesta 201, antes de cualquier
-            // otra cosa — es la unica vez que el backend lo entrega en claro.
+            // otra cosa â€” es la unica vez que el backend lo entrega en claro.
             val entity = result.data.toEntity(request, tripContext, confirmedAt = Instant.now())
             reservationDao.upsert(entity)
             return AppResult.Success(entity.toDomain())
@@ -82,7 +82,7 @@ class ReservationsRepositoryImpl @Inject constructor(
      *
      * Estrategia que NO pisa el qrToken de reservas ya existentes:
      * 1. INSERT OR IGNORE: inserta solo las reservas NUEVAS (que no
-     *    existen en Room). Las que ya existen se ignoran — su qrToken
+     *    existen en Room). Las que ya existen se ignoran â€” su qrToken
      *    y todos sus datos locales se preservan intactos.
      * 2. UPDATE status: para las reservas que YA existen localmente,
      *    actualiza SOLO el status (por si cambi en el backend: fue

@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.passenger.data.remote.dto
+﻿package com.appmovilidadclinica.passenger.shared.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -11,7 +11,7 @@ data class ReservationRequestDto(
     @SerialName("destination_trip_stop_time_id") val destinationTripStopTimeId: Long,
 )
 
-/** POST /api/reservations — 201. `qr_token` viaja UNA sola vez, ver dominio. */
+/** POST /api/reservations â€” 201. `qr_token` viaja UNA sola vez, ver dominio. */
 @Serializable
 data class ReservationResponseDto(
     @SerialName("reservation_id") val reservationId: Long,
@@ -21,9 +21,9 @@ data class ReservationResponseDto(
 )
 
 /**
- * POST /api/reservations/{id}/self-checkin — CONTRATO NUEVO propuesto (no
- * existe en el backend hoy, ver diseño técnico). Shape especulativo,
- * simetrico al de confirmacion — a ajustar cuando el backend lo implemente.
+ * POST /api/reservations/{id}/self-checkin â€” CONTRATO NUEVO propuesto (no
+ * existe en el backend hoy, ver diseÃ±o tÃ©cnico). Shape especulativo,
+ * simetrico al de confirmacion â€” a ajustar cuando el backend lo implemente.
  */
 @Serializable
 data class SelfCheckinResponseDto(
@@ -33,7 +33,7 @@ data class SelfCheckinResponseDto(
 )
 
 /**
- * GET /api/reservations — fila enriquecida de la lista del WORKER. NO trae
+ * GET /api/reservations â€” fila enriquecida de la lista del WORKER. NO trae
  * `qr_token`: el backend no lo expone despues del confirm inicial, asi que
  * las reservas sincronizadas tendran qrToken=null en la cache local.
  */

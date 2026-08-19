@@ -35,7 +35,12 @@ class AuthInterceptor @Inject constructor(
         }
 
         val response = chain.proceed(request)
-        if (response.code == 401) {
+        // Un 401 solo significa "se vencio la sesion" si HABIA un token que
+        // mandamos y el backend lo rechazo. Si no habia token (ej. intento
+        // de login con credenciales invalidas), el 401 es simplemente
+        // "credenciales incorrectas" — no forzar el modal de sesion expirada
+        // sobre una pantalla de login donde nunca hubo sesion que expirar.
+        if (token != null && response.code == 401) {
             sessionExpiredNotifier.notifySessionExpired()
         }
         return response

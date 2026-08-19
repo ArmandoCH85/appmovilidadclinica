@@ -1,8 +1,8 @@
-package com.appmovilidadclinica.passenger.data.mapper
+﻿package com.appmovilidadclinica.passenger.data.mapper
 
-import com.appmovilidadclinica.passenger.data.remote.dto.StopDto
-import com.appmovilidadclinica.passenger.domain.model.Stop
-import com.appmovilidadclinica.passenger.domain.model.StopType
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.StopDto
+import com.appmovilidadclinica.passenger.shared.domain.model.Stop
+import com.appmovilidadclinica.passenger.shared.domain.model.StopType
 
 fun StopDto.toDomain(): Stop = Stop(
     id = id,

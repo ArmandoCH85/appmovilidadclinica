@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "passenger-android"
 include(":app")
+include(":shared")

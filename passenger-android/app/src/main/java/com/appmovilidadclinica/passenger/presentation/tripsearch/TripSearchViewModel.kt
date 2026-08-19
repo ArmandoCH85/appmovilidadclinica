@@ -1,13 +1,13 @@
-package com.appmovilidadclinica.passenger.presentation.tripsearch
+﻿package com.appmovilidadclinica.passenger.presentation.tripsearch
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.passenger.domain.error.AppError
 import com.appmovilidadclinica.passenger.domain.error.AppResult
-import com.appmovilidadclinica.passenger.domain.model.Stop
-import com.appmovilidadclinica.passenger.domain.model.StopType
-import com.appmovilidadclinica.passenger.domain.model.TripDirection
-import com.appmovilidadclinica.passenger.domain.model.TripSearchResult
+import com.appmovilidadclinica.passenger.shared.domain.model.Stop
+import com.appmovilidadclinica.passenger.shared.domain.model.StopType
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDirection
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSearchResult
 import com.appmovilidadclinica.passenger.domain.repository.StopsRepository
 import com.appmovilidadclinica.passenger.domain.repository.TripsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,11 +33,11 @@ data class TripSearchUiState(
 )
 
 /**
- * Inyecta repositories directo — ver memoria "android-passenger-module/ponytail-audit".
+ * Inyecta repositories directo â€” ver memoria "android-passenger-module/ponytail-audit".
  *
- * `direction` ya NO es input del usuario: se deriva automáticamente desde
+ * `direction` ya NO es input del usuario: se deriva automÃ¡ticamente desde
  * el `stopType` del origen y destino elegidos. La regla del negocio es
- * estricta (ver `desarrollo_pasajero.md` §2.1 y el doc de arquitectura):
+ * estricta (ver `desarrollo_pasajero.md` Â§2.1 y el doc de arquitectura):
  *   - PARADERO -> SEDE  = IDA
  *   - SEDE    -> PARADERO = VUELTA
  *   - Cualquier otra combinacion = invalida, la app la rechaza antes de
@@ -72,8 +72,35 @@ class TripSearchViewModel @Inject constructor(
     }
 
     fun onDateChange(date: LocalDate) = _uiState.update { it.copy(date = date) }
-    fun onOriginChange(stopId: Long) = _uiState.update { it.copy(originStopId = stopId) }
+
+    /**
+     * Al cambiar el origen, si el destino ya elegido dejo de ser valido para
+     * el nuevo origen (ver `destinationOptionsFor`) lo limpiamos â€” evita que
+     * quede seleccionado un paradero como destino cuando el origen paso a
+     * ser un paradero (IDA solo permite destino sede).
+     */
+    fun onOriginChange(stopId: Long) = _uiState.update { state ->
+        val origin = state.stops.find { it.id == stopId }
+        val destination = state.stops.find { it.id == state.destinationStopId }
+        val destinationStillValid = destination == null ||
+            destination.stopType in destinationStopTypesFor(origin?.stopType)
+        state.copy(
+            originStopId = stopId,
+            destinationStopId = if (destinationStillValid) state.destinationStopId else null,
+        )
+    }
+
     fun onDestinationChange(stopId: Long) = _uiState.update { it.copy(destinationStopId = stopId) }
+
+    /**
+     * Tipos de parada validos como destino segun el origen elegido:
+     *   - origen PARADERO (IDA) -> el destino SOLO puede ser SEDE (el combo
+     *     de destino no debe mostrar paraderos).
+     *   - origen SEDE o sin elegir -> el destino puede ser SEDE o PARADERO
+     *     (cubre VUELTA sede->paradero y el caso ambiguo sede->sede).
+     */
+    fun destinationStopTypesFor(originStopType: StopType?): Set<StopType> =
+        if (originStopType == StopType.PARADERO) setOf(StopType.SEDE) else setOf(StopType.SEDE, StopType.PARADERO)
 
     fun search() {
         val state = _uiState.value
@@ -91,25 +118,25 @@ class TripSearchViewModel @Inject constructor(
         val origin = state.stops.find { it.id == originId }
         val destination = state.stops.find { it.id == destinationId }
         if (origin == null || destination == null) {
-            _uiState.update { it.copy(errorMessage = "Las paradas seleccionadas no son válidas.") }
+            _uiState.update { it.copy(errorMessage = "Las paradas seleccionadas no son vÃ¡lidas.") }
             return
         }
 
         val directions = deriveDirections(origin, destination)
         if (directions.isEmpty()) {
             _uiState.update {
-                it.copy(errorMessage = "No hay viajes configurados para esa combinación de paradas.")
+                it.copy(errorMessage = "No hay viajes configurados para esa combinaciÃ³n de paradas.")
             }
             return
         }
 
         _uiState.update { it.copy(searching = true, errorMessage = null) }
         viewModelScope.launch {
-            // Para sede→sede (ambas direcciones posibles), lanzamos las
-            // dos búsquedas en paralelo y mergearos. El backend SP es la
-            // fuente de verdad: devuelve lo que exista según la
-            // configuración de rutas del admin. Para combos unívocos
-            // (paradero→sede = solo IDA, sede→paradero = solo VUELTA)
+            // Para sedeâ†’sede (ambas direcciones posibles), lanzamos las
+            // dos bÃºsquedas en paralelo y mergearos. El backend SP es la
+            // fuente de verdad: devuelve lo que exista segÃºn la
+            // configuraciÃ³n de rutas del admin. Para combos unÃ­vocos
+            // (paraderoâ†’sede = solo IDA, sedeâ†’paradero = solo VUELTA)
             // se hace una sola llamada.
             val results = directions.map { dir ->
                 async { tripsRepository.search(state.date, dir, originId, destinationId) }
@@ -122,7 +149,7 @@ class TripSearchViewModel @Inject constructor(
                 }
             }
             // Deduplicar por tripId por si el mismo viaje apareciera en
-            // ambas direcciones (no debería, pero defensivo).
+            // ambas direcciones (no deberÃ­a, pero defensivo).
             val unique = merged.distinctBy { it.tripId }
 
             _uiState.update {
@@ -132,16 +159,16 @@ class TripSearchViewModel @Inject constructor(
     }
 
     /**
-     * Devuelve las direcciones a buscar para la combinación de paradas
-     * elegida, según las reglas del negocio (ver `desarrollo_pasajero.md`
-     * §2.1):
-     *   - PARADERO → SEDE = [IDA]
-     *   - SEDE → PARADERO = [VUELTA]
-     *   - SEDE → SEDE = [IDA, VUELTA] — ambigua: el destino es sede (IDA)
-     *     y el origen también es sede (VUELTA). El admin pudo haber
-     *     configurado la ruta como cualquiera de las dos, así que
+     * Devuelve las direcciones a buscar para la combinaciÃ³n de paradas
+     * elegida, segÃºn las reglas del negocio (ver `desarrollo_pasajero.md`
+     * Â§2.1):
+     *   - PARADERO â†’ SEDE = [IDA]
+     *   - SEDE â†’ PARADERO = [VUELTA]
+     *   - SEDE â†’ SEDE = [IDA, VUELTA] â€” ambigua: el destino es sede (IDA)
+     *     y el origen tambiÃ©n es sede (VUELTA). El admin pudo haber
+     *     configurado la ruta como cualquiera de las dos, asÃ­ que
      *     buscamos ambas y el SP decide.
-     *   - PARADERO → PARADERO = [] — no válida según las reglas
+     *   - PARADERO â†’ PARADERO = [] â€” no vÃ¡lida segÃºn las reglas
      *     estrictas del negocio (subida en paradero solo en IDA, y en
      *     IDA el destino debe ser sede).
      */
@@ -156,7 +183,7 @@ class TripSearchViewModel @Inject constructor(
     }
 
     private fun errorMessageFor(error: AppError): String = when (error) {
-        is AppError.Forbidden -> "El backend todavía no expone un catálogo de paradas para pasajeros (ver diseño técnico)."
+        is AppError.Forbidden -> "El backend todavÃ­a no expone un catÃ¡logo de paradas para pasajeros (ver diseÃ±o tÃ©cnico)."
         else -> error.toString()
     }
 }

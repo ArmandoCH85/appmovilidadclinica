@@ -28,7 +28,7 @@ import javax.inject.Singleton
  * un backend de staging distinto, ahi si vale la pena volver a
  * `buildConfigField` (ver memoria "android-passenger-module/ponytail-audit").
  */
-private const val API_BASE_URL = "https://sitechfactura.site/api/"
+private const val API_BASE_URL = "https://movilidad.sitech.site/api/"
 
 @Module
 @InstallIn(SingletonComponent::class)

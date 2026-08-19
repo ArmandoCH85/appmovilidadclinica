@@ -38,7 +38,7 @@ class LoginViewModel @Inject constructor(
     fun submit() {
         val state = _uiState.value
         if (state.documentNumber.isBlank() || state.password.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Complete el documento y la contraseña.") }
+            _uiState.update { it.copy(errorMessage = "Complete el usuario y la contraseña.") }
             return
         }
         _uiState.update { it.copy(submitting = true, errorMessage = null) }
@@ -55,7 +55,7 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun messageFor(error: AppError): String = when (error) {
-        is AppError.Unauthorized -> "Documento o contraseña incorrectos."
+        is AppError.Unauthorized -> "Usuario o contraseña incorrectos."
         is AppError.Forbidden -> error.message
         is AppError.Network -> "No se pudo conectar con el servidor. Verifique su conexión."
         else -> "Ocurrió un error inesperado. Intente nuevamente."
