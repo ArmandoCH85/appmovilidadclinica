@@ -4,16 +4,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * Fuente de verdad LOCAL de las reservas del usuario — en particular del
- * `qrToken`, que el backend nunca vuelve a entregar en claro (ver dominio
- * `Reservation`, y diseño técnico). Si esta fila se pierde, el QR no se
- * puede regenerar contra el servidor.
- *
- * `qrToken` es nullable: las reservas sincronizadas desde el backend
- * (endpoint `GET /api/reservations`) vienen sin qrToken porque el server
- * NUNCA lo devuelve despues del confirm inicial. La UI distingue el caso
- * (mostrando "QR no disponible" en la pantalla de detalle) para que el
- * usuario sepa que tiene que reconfirmar si quiere ver el QR.
+ * Fuente de verdad LOCAL de las reservas del usuario.
+ * `qrToken` es la UNICA vez que el backend lo entrega en claro.
  */
 @Entity(tableName = "reservations")
 data class ReservationEntity(

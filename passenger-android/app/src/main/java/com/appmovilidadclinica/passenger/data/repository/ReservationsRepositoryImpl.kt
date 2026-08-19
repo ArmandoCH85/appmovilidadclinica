@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.passenger.data.repository
+package com.appmovilidadclinica.passenger.data.repository
 
 import com.appmovilidadclinica.passenger.data.local.ReservationDao
 import com.appmovilidadclinica.passenger.data.mapper.toDomain
@@ -10,7 +10,6 @@ import com.appmovilidadclinica.passenger.data.remote.safeApiCallUnit
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationResponseDto
-import com.appmovilidadclinica.passenger.shared.data.remote.dto.SelfCheckinResponseDto
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
@@ -66,7 +65,7 @@ class ReservationsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun selfCheckin(reservationId: Long): AppResult<Reservation> {
-        val result = safeApiCall<SelfCheckinResponseDto>(
+        val result = safeApiCall<com.appmovilidadclinica.passenger.shared.data.remote.dto.SelfCheckinResponseDto>(
             errorMapper = errorMapper,
             call = { apiClient.reservationsApi.selfCheckin(reservationId) },
             parseBody = { it.body() },
