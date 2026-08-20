@@ -59,31 +59,31 @@ INSERT INTO users (
 ) VALUES
     (
         1, 'ADM-001', '90000001',
-        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+        '$2a$10$mDVx1yOdU1bATGKx3916nOLhkORUXuVWXd17uKquAnqISGUtOQ4mK',
         'Administrador Demo', 'ADMIN', 'TI', '999000001', NULL,
         NULL, NULL, NULL, 1
     ),
     (
         2, 'CON-001', '90000002',
-        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+        '$2a$10$aB19H7suPqazCiMetk65QedII869tJtAh1QILyIlKqDfHgfrCh1pi',
         'Conductor Demo', 'DRIVER', 'Transporte', '999000002', NULL,
         'LIC-DEMO-001', 'A-IIb', DATE_ADD(CURDATE(), INTERVAL 2 YEAR), 1
     ),
     (
         3, 'TRA-001', '90000003',
-        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+        '$2a$10$aB19H7suPqazCiMetk65QedII869tJtAh1QILyIlKqDfHgfrCh1pi',
         'Trabajador Uno', 'WORKER', 'Enfermeria', '999000003', 3,
         NULL, NULL, NULL, 1
     ),
     (
         4, 'TRA-002', '90000004',
-        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+        '$2a$10$aB19H7suPqazCiMetk65QedII869tJtAh1QILyIlKqDfHgfrCh1pi',
         'Trabajador Dos', 'WORKER', 'Laboratorio', '999000004', 4,
         NULL, NULL, NULL, 1
     ),
     (
         5, 'TRA-003', '90000005',
-        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+        '$2a$10$aB19H7suPqazCiMetk65QedII869tJtAh1QILyIlKqDfHgfrCh1pi',
         'Trabajador Tres', 'WORKER', 'Administracion', '999000005', 2,
         NULL, NULL, NULL, 1
     );
