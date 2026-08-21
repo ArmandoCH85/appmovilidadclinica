@@ -1,7 +1,14 @@
-package com.appmovilidadclinica.passenger
+package com.sitech.clinica.empleados
 
 import android.app.Application
-import dagger.hilt.android.HiltAndroidApp
+import com.appmovilidadclinica.passenger.shared.platform.SharedAndroidContext
 
-@HiltAndroidApp
-class PassengerApp : Application()
+class PassengerApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        // El DI (AppModule) vive en shared y es lazy; las actual functions
+        // Android necesitan el Context para SharedPreferencesSettings y
+        // AndroidSqliteDriver.
+        SharedAndroidContext.appContext = this
+    }
+}
