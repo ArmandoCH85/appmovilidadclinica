@@ -39,3 +39,9 @@ npm-debug.log*
 
 # Go build output
 backend/backend.exe
+
+# Local asset/source archives (not part of the source tree)
+*.zip
+
+# Local assets (input only — not source)
+icono/
