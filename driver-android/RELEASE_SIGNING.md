@@ -1,4 +1,4 @@
-# Firma de bundles release — Passenger Android
+# Firma de bundles release — Driver Android
 
 ## Por qué este doc existe
 
@@ -23,7 +23,7 @@ Si perdés la upload key, Google te ayuda a resetearla. Si usáramos una sola cl
 
 ### 1. Generar la keystore de upload
 
-Desde la raíz del repo (`passenger-android/`), correr:
+Desde la raíz del repo (`driver-android/`), correr:
 
 ```bash
 keytool -genkey -v \
@@ -101,6 +101,7 @@ Subir ese fingerprint a Play Console cuando lo pida.
 | `Keystore file not set for signing config release` | `storeFile` no apunta a un archivo existente | Verificar la ruta relativa |
 | Google Play: "El bundle no está firmado con la upload key esperada" | Subiste con una keystore distinta a la que Google tiene registrada | Regenerar la upload key en Play Console y resubir |
 | `alias not found` | `keyAlias` en `keystore.properties` no coincide con el alias de la keystore | Verificar con `keytool -list -keystore app/upload-keystore.jks` |
+| "Tu aplicación no admite tamaños de página de memoria de 16 kB" | Alguna `.so` native compilada con alineamiento 4 KB | Ver `16KB_PAGES.md` o actualizar librerías con native code (CameraX 1.3.x → 1.4.x) |
 
 ## Regenerar el AAB firmado
 
