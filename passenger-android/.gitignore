@@ -4,3 +4,10 @@ local.properties
 *.iml
 captures/
 .cxx/
+
+# Release signing — NUNCA commitear keystores ni passwords
+app/keystore.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
