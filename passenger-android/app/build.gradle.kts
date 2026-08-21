@@ -15,11 +15,11 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.appmovilidadclinica.passenger"
+    namespace = "com.sitech.clinica.empleados"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.appmovilidadclinica.passenger"
+        applicationId = "com.sitech.clinica.empleados"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
