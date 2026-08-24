@@ -1,10 +1,12 @@
-package com.appmovilidadclinica.driver.presentation.profile
+package com.appmovilidadclinica.driver.shared.ui.screens.profile
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.shared.domain.model.User
 import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -23,7 +25,8 @@ data class ProfileUiState(
 class ProfileViewModel(
     private val authRepository: AuthRepository,
     private val driverRepository: DriverRepository,
-) : ViewModel() {
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState
@@ -34,7 +37,7 @@ class ProfileViewModel(
     }
 
     private fun loadUser() {
-        viewModelScope.launch {
+        scope.launch {
             authRepository.getCurrentUser().collect { user ->
                 _uiState.update { it.copy(user = user) }
             }
@@ -42,7 +45,7 @@ class ProfileViewModel(
     }
 
     private fun loadTodayTripCount() {
-        viewModelScope.launch {
+        scope.launch {
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val result = driverRepository.getTrips(today)
             result.onSuccess { trips ->
@@ -60,9 +63,13 @@ class ProfileViewModel(
     }
 
     fun confirmLogout() {
-        viewModelScope.launch {
+        scope.launch {
             authRepository.logout()
             _uiState.update { it.copy(showLogoutConfirm = false, loggedOut = true) }
         }
+    }
+
+    fun dispose() {
+        scope.cancel()
     }
 }

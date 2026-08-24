@@ -1,10 +1,12 @@
-﻿package com.appmovilidadclinica.driver.presentation.dashboard
+package com.appmovilidadclinica.driver.shared.ui.screens.dashboard
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -23,13 +25,20 @@ private fun today(): LocalDate =
 data class DashboardUiState(
     val date: LocalDate = today(),
     val trips: List<DriverTrip> = emptyList(),
+    val lastSelectedTrip: DriverTrip? = null,
     val loading: Boolean = true,
     val errorMessage: String? = null,
 )
 
+/**
+ * Dashboard ViewModel multiplatform. No extiende androidx.lifecycle.ViewModel
+ * (no es KMP-friendly); usa su propio CoroutineScope. Inyectable via Koin
+ * `koinInject<DriverRepository>()` en la Screen.
+ */
 class DashboardViewModel(
     private val driverRepository: DriverRepository,
-) : ViewModel() {
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState
@@ -52,10 +61,14 @@ class DashboardViewModel(
         loadTrips()
     }
 
+    fun onTripSelected(trip: DriverTrip) {
+        _uiState.update { it.copy(lastSelectedTrip = trip) }
+    }
+
     private fun loadTrips() {
         val date = _uiState.value.date
         _uiState.update { it.copy(loading = true, errorMessage = null) }
-        viewModelScope.launch {
+        scope.launch {
             val result = driverRepository.getTrips(date)
             result.fold(
                 onSuccess = { trips ->
@@ -72,9 +85,13 @@ class DashboardViewModel(
         }
     }
 
+    fun dispose() {
+        scope.cancel()
+    }
+
     private fun messageFor(error: Throwable): String = when (error) {
-        is AppError.Network -> "Sin conexiÃ³n a internet."
-        is AppError.Unauthorized -> "SesiÃ³n expirada."
+        is AppError.Network -> "Sin conexión a internet."
+        is AppError.Unauthorized -> "Sesión expirada."
         else -> "No se pudieron cargar los viajes."
     }
 }

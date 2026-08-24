@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.dashboard
+package com.appmovilidadclinica.driver.shared.ui.screens.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,40 +30,56 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.lifecycle.viewmodel.initializer
-import com.appmovilidadclinica.driver.di.AppModule
 import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
-import com.appmovilidadclinica.driver.presentation.common.SelectedTripHolder
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import com.appmovilidadclinica.driver.shared.ui.common.color
 import com.appmovilidadclinica.driver.shared.ui.common.label
-import com.appmovilidadclinica.driver.presentation.common.toPeruTime
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.toJavaLocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import org.koin.compose.koinInject
+
+private val SPANISH_WEEKDAYS = listOf(
+    "lun" to DayOfWeek.MONDAY,
+    "mar" to DayOfWeek.TUESDAY,
+    "mié" to DayOfWeek.WEDNESDAY,
+    "jue" to DayOfWeek.THURSDAY,
+    "vie" to DayOfWeek.FRIDAY,
+    "sáb" to DayOfWeek.SATURDAY,
+    "dom" to DayOfWeek.SUNDAY,
+)
+
+private val SPANISH_MONTHS = listOf(
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+)
+
+private fun formatShortDateEs(date: LocalDate): String {
+    val weekday = SPANISH_WEEKDAYS.first { it.second == date.dayOfWeek }.first
+    val month = SPANISH_MONTHS[date.monthNumber - 1]
+    return "$weekday ${date.dayOfMonth} de $month"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    onTripSelected: (Long) -> Unit,
-    onOpenProfile: () -> Unit,
-    viewModel: DashboardViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer { DashboardViewModel(AppModule.provideDriverRepository()) }
-        },
-    ),
+    driverRepository: DriverRepository = koinInject(),
+    onTripSelected: (Long) -> Unit = {},
+    onOpenProfile: () -> Unit = {},
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val viewModel = remember(driverRepository) { DashboardViewModel(driverRepository) }
+    DisposableEffect(viewModel) { onDispose { viewModel.dispose() } }
+
+    val state by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -132,9 +148,9 @@ fun DashboardScreen(
                     ) {
                         items(state.trips, key = { it.id }) { trip ->
                             TripCard(
-                                trip,
+                                trip = trip,
                                 onClick = {
-                                    SelectedTripHolder.trip = trip
+                                    viewModel.onTripSelected(trip)
                                     onTripSelected(trip.id)
                                 },
                             )
@@ -161,9 +177,7 @@ private fun DateSelector(
             Icon(Icons.Default.ChevronLeft, contentDescription = "Día anterior")
         }
         Text(
-            date.toJavaLocalDate()
-                .format(DateTimeFormatter.ofPattern("EEE d 'de' MMMM", Locale("es", "PE")))
-                .replaceFirstChar { it.titlecase(Locale("es", "PE")) },
+            formatShortDateEs(date).replaceFirstChar { it.titlecaseChar() },
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
         )
@@ -204,7 +218,7 @@ private fun TripCard(trip: DriverTrip, onClick: () -> Unit) {
 
             InfoRow(
                 icon = Icons.Default.Schedule,
-                text = "${trip.scheduledStartAt.toPeruTime()} – ${trip.scheduledEndAt.toPeruTime()}",
+                text = "${trip.scheduledStartAt} – ${trip.scheduledEndAt}",
             )
 
             Spacer(Modifier.height(4.dp))

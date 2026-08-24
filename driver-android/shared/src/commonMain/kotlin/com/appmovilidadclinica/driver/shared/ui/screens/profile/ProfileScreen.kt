@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.profile
+package com.appmovilidadclinica.driver.shared.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Badge
@@ -34,37 +32,43 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.lifecycle.viewmodel.initializer
-import com.appmovilidadclinica.driver.di.AppModule
+import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onBack: () -> Unit,
-    viewModel: ProfileViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer {
-                ProfileViewModel(AppModule.provideAuthRepository(), AppModule.provideDriverRepository())
-            }
-        },
-    ),
+    authRepository: AuthRepository = koinInject(),
+    driverRepository: DriverRepository = koinInject(),
+    onBack: () -> Unit = {},
+    onLoggedOut: () -> Unit = {},
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val viewModel = remember(authRepository, driverRepository) {
+        ProfileViewModel(authRepository, driverRepository)
+    }
+    DisposableEffect(viewModel) { onDispose { viewModel.dispose() } }
+
+    val state by viewModel.uiState.collectAsState()
 
     // No navegamos aca al cerrar sesion: DriverNavHost observa isLoggedIn y
-    // redirige solo. Navegar en dos lugares a la vez (aca + el LaunchedEffect
-    // de la raiz) corrompia el arbol de composicion de Nav Compose y
-    // crasheaba la app (IndexOutOfBoundsException en Composer/Stack.pop).
+    // redirige solo. Llamamos onLoggedOut() via LaunchedEffect para que la
+    // navegacion quede en manos del NavHost.
+    androidx.compose.runtime.LaunchedEffect(state.loggedOut) {
+        if (state.loggedOut) onLoggedOut()
+    }
 
     Scaffold(
         topBar = {
