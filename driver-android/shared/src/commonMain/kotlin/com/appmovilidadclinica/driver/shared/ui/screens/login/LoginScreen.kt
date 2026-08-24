@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.login
+package com.appmovilidadclinica.driver.shared.ui.screens.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +29,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,21 +47,17 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import com.appmovilidadclinica.driver.di.AppModule
+import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
+import org.koin.compose.koinInject
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer { LoginViewModel(AppModule.provideAuthRepository()) }
-        },
-    ),
+    authRepository: AuthRepository = koinInject(),
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val viewModel = remember(authRepository) { LoginViewModel(authRepository) }
+    DisposableEffect(viewModel) { onDispose { viewModel.dispose() } }
+
+    val state by viewModel.uiState.collectAsState()
     var passwordVisible by remember { mutableStateOf(false) }
 
     Scaffold(

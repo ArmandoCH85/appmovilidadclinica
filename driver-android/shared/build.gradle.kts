@@ -60,15 +60,11 @@ kotlin {
             api(compose.materialIconsExtended)
             api(compose.ui)
 
-            // Navigation + Lifecycle KMP (Fase 3) — org.jetbrains.androidx
+            // Navigation Compose KMP (Fase 3)
             api("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha10")
-            api("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.8.4")
-            api("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
-            api("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
 
-            // Koin Compose Multiplatform (Fase 4 — koinViewModel)
+            // Koin Compose Multiplatform (Fase 4 — koinInject, koinViewModel opcional)
             api("io.insert-koin:koin-compose:4.0.0")
-            api("io.insert-koin:koin-compose-viewmodel:4.0.0")
         }
 
         androidMain.dependencies {

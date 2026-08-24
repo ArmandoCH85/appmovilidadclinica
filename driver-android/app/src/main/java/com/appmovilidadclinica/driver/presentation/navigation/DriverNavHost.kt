@@ -16,10 +16,10 @@ import androidx.navigation.navArgument
 import com.appmovilidadclinica.driver.di.AppModule
 import com.appmovilidadclinica.driver.presentation.dashboard.DashboardScreen
 import com.appmovilidadclinica.driver.presentation.incident.IncidentScreen
-import com.appmovilidadclinica.driver.presentation.login.LoginScreen
 import com.appmovilidadclinica.driver.presentation.profile.ProfileScreen
 import com.appmovilidadclinica.driver.presentation.qrscan.QrScanScreen
 import com.appmovilidadclinica.driver.presentation.tripdetail.TripDetailScreen
+import com.appmovilidadclinica.driver.shared.ui.screens.login.LoginScreen
 
 private const val ROUTE_LOGIN = "login"
 private const val ROUTE_DASHBOARD = "dashboard"

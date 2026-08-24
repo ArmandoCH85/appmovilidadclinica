@@ -1,9 +1,11 @@
-package com.appmovilidadclinica.driver.presentation.login
+package com.appmovilidadclinica.driver.shared.ui.screens.login
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -16,9 +18,16 @@ data class LoginUiState(
     val errorMessage: String? = null,
 )
 
+/**
+ * Login ViewModel multiplatform. No extiende androidx.lifecycle.ViewModel
+ * (no es KMP-friendly); usa su propio CoroutineScope. Se instancia via
+ * `remember { LoginViewModel(...) }` en la Compose Screen. El State
+ * observable es [uiState] StateFlow.
+ */
 class LoginViewModel(
     private val authRepository: AuthRepository,
-) : ViewModel() {
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState
@@ -38,7 +47,7 @@ class LoginViewModel(
             return
         }
         _uiState.update { it.copy(submitting = true, errorMessage = null) }
-        viewModelScope.launch {
+        scope.launch {
             val result = authRepository.login(state.documentNumber.trim(), state.password)
             result.fold(
                 onSuccess = { authResult ->
@@ -56,6 +65,10 @@ class LoginViewModel(
                 },
             )
         }
+    }
+
+    fun dispose() {
+        scope.cancel()
     }
 
     private fun messageFor(error: Throwable): String = when (error) {
