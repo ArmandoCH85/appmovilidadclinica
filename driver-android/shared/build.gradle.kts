@@ -9,6 +9,8 @@ plugins {
     id("org.jetbrains.kotlin.multiplatform")
     id("com.android.library")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.compose")
 }
 
 kotlin {
@@ -49,6 +51,14 @@ kotlin {
 
             // DI (Fase 2)
             api("io.insert-koin:koin-core:4.0.0")
+
+            // Compose Multiplatform (Fase 3) — api para que el app Android
+            // compile contra la UI que vive aca.
+            api(compose.runtime)
+            api(compose.foundation)
+            api(compose.material3)
+            api(compose.materialIconsExtended)
+            api(compose.ui)
         }
 
         androidMain.dependencies {
