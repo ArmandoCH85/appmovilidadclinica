@@ -1,21 +1,25 @@
 package com.appmovilidadclinica.driver.shared.data.remote
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.http.encodedPath
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import okhttp3.Interceptor
-import okhttp3.Response
 
 const val NETWORK_BASE_URL: String = "https://movilidad.sitech.site/api/"
 
+/**
+ * Proveedor del token JWT actual. Multiplatform: lo implementa la capa
+ * Android-only (lee de SessionStore) o iOS (NSUserDefaults en Fase 7).
+ */
 fun interface KtorTokenProvider {
     suspend fun currentToken(): String?
 }
@@ -27,28 +31,17 @@ private val ktorToKermit: io.ktor.client.plugins.logging.Logger =
         }
     }
 
-internal class BearerTokenInterceptor(
-    private val tokenProvider: KtorTokenProvider,
-) : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val token = runBlocking { tokenProvider.currentToken() }
-        val request = if (token != null) {
-            chain.request().newBuilder()
-                .addHeader("Authorization", "Bearer $token")
-                .build()
-        } else {
-            chain.request()
-        }
-        return chain.proceed(request)
-    }
-}
-
+/**
+ * Multiplatform. Usa [httpEngineFactory] (expect/actual OkHttp/Darwin)
+ * y el plugin Auth de Ktor para inyectar Bearer token en cada request,
+ * compatible con ambos backends.
+ */
 object KtorClientFactory {
     fun create(
         baseUrl: String = NETWORK_BASE_URL,
         tokenProvider: KtorTokenProvider? = null,
         enableLogging: Boolean = true,
-    ): HttpClient = HttpClient(OkHttp) {
+    ): HttpClient = HttpClient(httpEngineFactory()) {
         expectSuccess = false
 
         install(ContentNegotiation) {
@@ -69,9 +62,17 @@ object KtorClientFactory {
             url.takeFrom(baseUrl)
         }
 
-        engine {
-            if (tokenProvider != null) {
-                addInterceptor(BearerTokenInterceptor(tokenProvider))
+        if (tokenProvider != null) {
+            install(Auth) {
+                bearer {
+                    loadTokens {
+                        tokenProvider.currentToken()?.let { BearerTokens(it, "") }
+                    }
+                    sendWithoutRequest { request ->
+                        // Solo mandar token en endpoints protegidos (no en /auth/login).
+                        !request.url.encodedPath.contains("/auth/")
+                    }
+                }
             }
         }
 
