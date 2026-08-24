@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.incident
+package com.appmovilidadclinica.driver.shared.ui.screens.incident
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,36 +28,38 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.lifecycle.viewmodel.initializer
-import com.appmovilidadclinica.driver.di.AppModule
 import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import com.appmovilidadclinica.driver.shared.ui.common.icon
 import com.appmovilidadclinica.driver.shared.ui.common.label
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncidentScreen(
     tripId: Long,
-    onBack: () -> Unit,
-    viewModel: IncidentViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer { IncidentViewModel(tripId, AppModule.provideDriverRepository()) }
-        },
-    ),
+    driverRepository: DriverRepository = koinInject(),
+    onBack: () -> Unit = {},
+    onSubmitted: () -> Unit = {},
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val viewModel = remember(tripId, driverRepository) {
+        IncidentViewModel(tripId, driverRepository)
+    }
+    DisposableEffect(viewModel) { onDispose { viewModel.dispose() } }
+
+    val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(state.submitted) {
-        if (state.submitted) onBack()
+        if (state.submitted) onSubmitted()
     }
 
     Scaffold(

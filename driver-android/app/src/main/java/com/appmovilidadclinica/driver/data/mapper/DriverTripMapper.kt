@@ -1,10 +1,10 @@
-﻿package com.appmovilidadclinica.driver.data.mapper
+package com.appmovilidadclinica.driver.data.mapper
 
 import com.appmovilidadclinica.driver.shared.data.remote.dto.DriverTripDto
 import com.appmovilidadclinica.driver.shared.domain.model.Direction
 import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
-import java.time.Instant
+import kotlinx.datetime.Instant
 
 fun DriverTripDto.toDomain(): DriverTrip = DriverTrip(
     id = id,

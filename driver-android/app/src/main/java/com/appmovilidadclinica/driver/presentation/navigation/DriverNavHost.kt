@@ -14,10 +14,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.appmovilidadclinica.driver.di.AppModule
-import com.appmovilidadclinica.driver.presentation.incident.IncidentScreen
+import com.appmovilidadclinica.driver.shared.ui.screens.incident.IncidentScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.profile.ProfileScreen
 import com.appmovilidadclinica.driver.presentation.qrscan.QrScanScreen
-import com.appmovilidadclinica.driver.presentation.tripdetail.TripDetailScreen
+import com.appmovilidadclinica.driver.shared.ui.screens.tripdetail.TripDetailScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.dashboard.DashboardScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.login.LoginScreen
 

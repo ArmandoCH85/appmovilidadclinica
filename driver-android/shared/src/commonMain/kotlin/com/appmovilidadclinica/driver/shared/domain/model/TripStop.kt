@@ -1,6 +1,6 @@
-﻿package com.appmovilidadclinica.driver.shared.domain.model
+package com.appmovilidadclinica.driver.shared.domain.model
 
-import java.time.Instant
+import kotlinx.datetime.Instant
 
 data class TripStop(
     val id: Long,

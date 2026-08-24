@@ -1,14 +1,15 @@
-package com.appmovilidadclinica.driver.presentation.tripdetail
+package com.appmovilidadclinica.driver.shared.ui.screens.tripdetail
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger
 import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
-import com.appmovilidadclinica.driver.presentation.common.SelectedTripHolder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -27,17 +28,17 @@ data class TripDetailUiState(
 
 class TripDetailViewModel(
     private val tripId: Long,
+    initialTrip: DriverTrip? = null,
     private val driverRepository: DriverRepository,
-) : ViewModel() {
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private val _uiState = MutableStateFlow(
-        TripDetailUiState(trip = SelectedTripHolder.trip?.takeIf { it.id == tripId }),
-    )
+    private val _uiState = MutableStateFlow(TripDetailUiState(trip = initialTrip?.takeIf { it.id == tripId }))
     val uiState: StateFlow<TripDetailUiState> = _uiState
 
     fun load() {
         _uiState.update { it.copy(loading = true, errorMessage = null, stopsErrorMessage = null) }
-        viewModelScope.launch {
+        scope.launch {
             // Pasajeros y paradas son independientes: si el backend de paradas
             // todavia no esta desplegado (o falla), igual mostramos la lista de
             // pasajeros en vez de tapar toda la pantalla con un error.
@@ -64,7 +65,7 @@ class TripDetailViewModel(
 
     fun startTrip() {
         _uiState.update { it.copy(pendingActionId = tripId) }
-        viewModelScope.launch {
+        scope.launch {
             val result = driverRepository.startTrip(tripId)
             result.fold(
                 onSuccess = {
@@ -85,7 +86,7 @@ class TripDetailViewModel(
 
     fun completeTrip() {
         _uiState.update { it.copy(pendingActionId = tripId) }
-        viewModelScope.launch {
+        scope.launch {
             val result = driverRepository.completeTrip(tripId)
             result.fold(
                 onSuccess = {
@@ -126,7 +127,7 @@ class TripDetailViewModel(
 
     private fun runAction(actionId: Long, successMessage: String, action: suspend () -> Result<Unit>) {
         _uiState.update { it.copy(pendingActionId = actionId) }
-        viewModelScope.launch {
+        scope.launch {
             val result = action()
             result.fold(
                 onSuccess = {
@@ -140,6 +141,10 @@ class TripDetailViewModel(
                 },
             )
         }
+    }
+
+    fun dispose() {
+        scope.cancel()
     }
 
     private fun messageFor(error: Throwable): String = when (error) {

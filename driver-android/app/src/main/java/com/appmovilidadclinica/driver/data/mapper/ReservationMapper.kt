@@ -1,9 +1,9 @@
-﻿package com.appmovilidadclinica.driver.data.mapper
+package com.appmovilidadclinica.driver.data.mapper
 
 import com.appmovilidadclinica.driver.shared.data.remote.dto.ReservationDto
 import com.appmovilidadclinica.driver.shared.domain.model.Reservation
 import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
-import java.time.Instant
+import kotlinx.datetime.Instant
 
 fun ReservationDto.toDomain(): Reservation = Reservation(
     id = id,

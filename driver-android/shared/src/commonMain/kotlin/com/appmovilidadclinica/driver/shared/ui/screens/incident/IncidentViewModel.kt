@@ -1,10 +1,12 @@
-package com.appmovilidadclinica.driver.presentation.incident
+package com.appmovilidadclinica.driver.shared.ui.screens.incident
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -24,7 +26,8 @@ data class IncidentUiState(
 class IncidentViewModel(
     private val tripId: Long,
     private val driverRepository: DriverRepository,
-) : ViewModel() {
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _uiState = MutableStateFlow(IncidentUiState())
     val uiState: StateFlow<IncidentUiState> = _uiState
@@ -60,7 +63,7 @@ class IncidentViewModel(
         val state = _uiState.value
         val type = state.incidentType ?: return
         _uiState.update { it.copy(showConfirm = false, submitting = true, errorMessage = null) }
-        viewModelScope.launch {
+        scope.launch {
             val result = driverRepository.reportIncident(tripId, type.name, state.description.trim())
             result.fold(
                 onSuccess = { _uiState.update { it.copy(submitting = false, submitted = true) } },
@@ -69,6 +72,10 @@ class IncidentViewModel(
                 },
             )
         }
+    }
+
+    fun dispose() {
+        scope.cancel()
     }
 
     private fun messageFor(error: Throwable): String = when (error) {

@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.tripdetail
+package com.appmovilidadclinica.driver.shared.ui.screens.tripdetail
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,47 +51,40 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.lifecycle.viewmodel.initializer
-import com.appmovilidadclinica.driver.di.AppModule
+import androidx.compose.runtime.collectAsState
+import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger
 import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.shared.domain.model.TripStopStatus
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import com.appmovilidadclinica.driver.shared.ui.common.color
 import com.appmovilidadclinica.driver.shared.ui.common.label
-import com.appmovilidadclinica.driver.presentation.common.toPeruTime
+import com.appmovilidadclinica.driver.shared.ui.common.toPeruTime
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripDetailScreen(
     tripId: Long,
-    onBack: () -> Unit,
-    onScanQr: (Long) -> Unit,
-    onReportIncident: (Long) -> Unit,
-    viewModel: TripDetailViewModel = viewModel(
-        factory = viewModelFactory {
-            initializer { TripDetailViewModel(tripId, AppModule.provideDriverRepository()) }
-        },
-    ),
+    initialTrip: DriverTrip? = null,
+    driverRepository: DriverRepository = koinInject(),
+    onBack: () -> Unit = {},
+    onScanQr: (Long) -> Unit = {},
+    onReportIncident: (Long) -> Unit = {},
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val viewModel = remember(tripId, initialTrip, driverRepository) {
+        TripDetailViewModel(tripId, initialTrip, driverRepository)
+    }
+    DisposableEffect(viewModel) { onDispose { viewModel.dispose() } }
+
+    val state by viewModel.uiState.collectAsState()
     var arrivalConfirmId by remember { mutableStateOf<Long?>(null) }
     var passengersExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.load()
-        }
-    }
+    LaunchedEffect(Unit) { viewModel.load() }
 
     LaunchedEffect(state.toastMessage) {
         if (state.toastMessage != null) {
