@@ -46,11 +46,17 @@ kotlin {
 
             // Multiplatform Settings (Fase 4 — DataStore replacement)
             implementation("com.russhwolf:multiplatform-settings:1.1.1")
+
+            // DI (Fase 2)
+            api("io.insert-koin:koin-core:4.0.0")
         }
 
         androidMain.dependencies {
             // Engine HTTP nativo de Android (OkHttp)
             implementation("io.ktor:ktor-client-okhttp:3.0.3")
+
+            // Koin Android (para androidContext() en platformModule)
+            implementation("io.insert-koin:koin-android:4.0.0")
         }
 
         iosMain.dependencies {

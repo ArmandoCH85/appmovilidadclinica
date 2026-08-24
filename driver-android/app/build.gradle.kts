@@ -73,6 +73,10 @@ android {
 dependencies {
     implementation(project(":shared"))
 
+    // Koin (Fase 2)
+    implementation("io.insert-koin:koin-android:4.0.0")
+    implementation("io.insert-koin:koin-androidx-compose:4.0.0")
+
     // Core Android
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")

@@ -1,9 +1,9 @@
 ﻿package com.appmovilidadclinica.driver.data.repository
 
-import com.appmovilidadclinica.driver.data.local.SessionDataStore
 import com.appmovilidadclinica.driver.data.mapper.toDomain
 import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.data.remote.KtorApiClient
+import com.appmovilidadclinica.driver.shared.data.local.SessionStore
 import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginResponseDto
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
@@ -20,7 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val apiClient: KtorApiClient,
-    private val sessionDataStore: SessionDataStore,
+    private val sessionStore: SessionStore,
     private val apiErrorMapper: ApiErrorMapper,
 ) : AuthRepository {
 
@@ -39,7 +39,7 @@ class AuthRepositoryImpl @Inject constructor(
                 val user = body.user.toDomain()
                 val userJson = json.encodeToString(User.serializer(), user)
                 val exp = parseTokenExpiration(body.token)
-                sessionDataStore.saveSession(body.token, userJson, exp)
+                sessionStore.saveSession(body.token, userJson, exp)
                 Result.success(AuthResult(token = body.token, user = user))
             } else {
                 val error = apiErrorMapper.map(response)
@@ -53,25 +53,25 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout() {
-        sessionDataStore.clearSession()
+        sessionStore.clearSession()
     }
 
     override fun isLoggedIn(): Flow<Boolean> {
-        return sessionDataStore.getToken().map { !it.isNullOrBlank() }
+        return sessionStore.getToken().map { !it.isNullOrBlank() }
     }
 
     override fun getCurrentUser(): Flow<User?> {
-        return sessionDataStore.getUser().map { jsonStr ->
+        return sessionStore.getUser().map { jsonStr ->
             jsonStr?.let { runCatching { json.decodeFromString(User.serializer(), it) }.getOrNull() }
         }
     }
 
     override fun getToken(): Flow<String?> {
-        return sessionDataStore.getToken()
+        return sessionStore.getToken()
     }
 
     override suspend fun clearSession() {
-        sessionDataStore.clearSession()
+        sessionStore.clearSession()
     }
 
     private fun parseTokenExpiration(token: String): Long {

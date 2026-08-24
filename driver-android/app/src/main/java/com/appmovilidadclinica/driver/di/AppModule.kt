@@ -1,7 +1,6 @@
 package com.appmovilidadclinica.driver.di
 
 import android.content.Context
-import com.appmovilidadclinica.driver.data.local.SessionDataStore
 import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.data.remote.KtorApiClient
 import com.appmovilidadclinica.driver.data.remote.KtorClientFactory
@@ -12,24 +11,23 @@ import com.appmovilidadclinica.driver.data.repository.DriverRepositoryImpl
 import com.appmovilidadclinica.driver.domain.repository.AuthRepository
 import com.appmovilidadclinica.driver.domain.repository.BookingRepository
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.data.local.SessionStore
 import io.ktor.client.HttpClient
 
 object AppModule {
 
     private lateinit var appContext: Context
+    private lateinit var sessionStore: SessionStore
 
-    fun initialize(context: Context) {
+    fun initialize(context: Context, sessionStore: SessionStore) {
         appContext = context.applicationContext
+        this.sessionStore = sessionStore
     }
 
     fun provideContext(): Context = appContext
 
-    private val sessionDataStore: SessionDataStore by lazy {
-        SessionDataStore(appContext)
-    }
-
     private fun provideKtorTokenProvider(): KtorTokenProvider =
-        KtorTokenProvider { sessionDataStore.currentToken() }
+        KtorTokenProvider { sessionStore.currentToken() }
 
     private fun provideHttpClient(): HttpClient =
         KtorClientFactory.create(tokenProvider = provideKtorTokenProvider())
@@ -39,7 +37,7 @@ object AppModule {
     fun provideAuthRepository(): AuthRepository =
         AuthRepositoryImpl(
             apiClient = provideKtorApiClient(),
-            sessionDataStore = sessionDataStore,
+            sessionStore = sessionStore,
             apiErrorMapper = ApiErrorMapper(),
         )
 
