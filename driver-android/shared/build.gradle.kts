@@ -83,6 +83,15 @@ kotlin {
 
             // javax.inject (anotaciones @Singleton / @Inject usadas por RepositoryImpl)
             implementation("javax.inject:javax.inject:1")
+
+            // CameraX (Fase 4.5 — CameraQrScannerContent + QrCodeAnalyzer)
+            implementation("androidx.camera:camera-core:1.4.1")
+            implementation("androidx.camera:camera-camera2:1.4.1")
+            implementation("androidx.camera:camera-lifecycle:1.4.1")
+            implementation("androidx.camera:camera-view:1.4.1")
+
+            // MLKit Barcode Scanning (Fase 4.5 — mismo)
+            implementation("com.google.mlkit:barcode-scanning:17.3.0")
         }
 
         iosMain.dependencies {

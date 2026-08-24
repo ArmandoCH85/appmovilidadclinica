@@ -60,6 +60,7 @@ import androidx.lifecycle.viewmodel.initializer
 import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
 import com.appmovilidadclinica.driver.shared.domain.repository.BookingRepository
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.platform.CameraQrScannerContent
 import com.appmovilidadclinica.driver.shared.platform.ScannerQrService
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
@@ -123,8 +124,8 @@ fun QrScanScreen(
             } else if (!hasPermission) {
                 PermissionRationale(onRequest = { permissionLauncher.launch(Manifest.permission.CAMERA) })
             } else {
-                CameraPreview(
-                    onQrDetected = viewModel::onQrDetected,
+                CameraQrScannerContent(
+                    onScanned = viewModel::onQrDetected,
                     paused = state.reservation != null || state.verifying,
                 )
 
@@ -280,50 +281,8 @@ private fun PermissionRationale(onRequest: () -> Unit) {
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
-private fun CameraPreview(onQrDetected: (String) -> Unit, paused: Boolean) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val callback = rememberUpdatedState(onQrDetected)
-    val isPaused = rememberUpdatedState(paused)
-
-    AndroidView(
-        modifier = Modifier.fillMaxSize(),
-        factory = { ctx ->
-            val previewView = PreviewView(ctx)
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-            val executor = Executors.newSingleThreadExecutor()
-
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
-
-                val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
-
-                val analysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                    .also {
-                        it.setAnalyzer(executor, QrCodeAnalyzer { token ->
-                            if (!isPaused.value) callback.value(token)
-                        })
-                    }
-
-                try {
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview,
-                        analysis,
-                    )
-                } catch (e: Exception) {
-                    // Camara no disponible en este dispositivo/emulador â€” la pantalla
-                    // queda vacia pero no crashea la app.
-                }
-            }, ContextCompat.getMainExecutor(ctx))
-
-            previewView
-        },
-    )
+private fun CameraPreviewRemovedMovedToShared() {
+    // CameraPreview + QrCodeAnalyzer fueron movidos a :shared/androidMain/ .../platform/
+    // (CameraQrScannerContent + QrCodeAnalyzer). Esto es un placeholder vacio
+    // para no dejar codigo muerto en :app.
 }
