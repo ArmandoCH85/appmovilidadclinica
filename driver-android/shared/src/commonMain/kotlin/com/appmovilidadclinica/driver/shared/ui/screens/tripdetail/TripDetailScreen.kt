@@ -52,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
+import co.touchlab.kermit.Logger
 import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger
 import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
@@ -59,6 +60,7 @@ import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.shared.domain.model.TripStopStatus
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.platform.LocationService
 import com.appmovilidadclinica.driver.shared.platform.NotificationService
 import com.appmovilidadclinica.driver.shared.ui.common.color
 import com.appmovilidadclinica.driver.shared.ui.common.label
@@ -73,6 +75,7 @@ fun TripDetailScreen(
     initialTrip: DriverTrip? = null,
     driverRepository: DriverRepository = koinInject(),
     notificationService: NotificationService = koinInject(),
+    locationService: LocationService = koinInject(),
     onBack: () -> Unit = {},
     onScanQr: (Long) -> Unit = {},
     onReportIncident: (Long) -> Unit = {},
@@ -87,6 +90,22 @@ fun TripDetailScreen(
     var passengersExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.load() }
+
+    // GPS tracking cuando el trip esta IN_PROGRESS: emite las coordenadas
+    // via [LocationService.observeLocation]. En iOS el stub retorna Flow vacio
+    // (no-op). En Android emite FusedLocation cada ~5s.
+    LaunchedEffect(state.trip?.status, locationService.isAvailable()) {
+        val shouldTrack = state.trip?.status == TripStatus.IN_PROGRESS &&
+            locationService.isAvailable()
+        if (shouldTrack) {
+            Logger.withTag("GpsTracking").i { "start observing location" }
+            locationService.observeLocation().collect { coords ->
+                Logger.withTag("GpsTracking").i {
+                    "(${coords.latitude}, ${coords.longitude}) ±${coords.accuracyMeters}m"
+                }
+            }
+        }
+    }
 
     // Side-effect multiplatform: notificar cuando el trip cambia a IN_PROGRESS
     // o COMPLETED. En Android dispara NotificationCompat; en iOS el stub loguea.
