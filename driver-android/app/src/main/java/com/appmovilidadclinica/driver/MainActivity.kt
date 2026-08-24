@@ -9,7 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.appmovilidadclinica.driver.presentation.navigation.DriverNavHost
-import com.appmovilidadclinica.driver.ui.theme.DriverAppTheme
+import com.appmovilidadclinica.driver.shared.ui.theme.DriverAppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

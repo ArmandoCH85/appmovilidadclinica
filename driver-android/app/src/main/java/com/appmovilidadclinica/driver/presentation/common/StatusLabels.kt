@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.driver.presentation.common
+package com.appmovilidadclinica.driver.presentation.common
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
@@ -12,21 +12,21 @@ import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
 import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStopStatus
-import com.appmovilidadclinica.driver.ui.theme.ReservationBoarded
-import com.appmovilidadclinica.driver.ui.theme.ReservationCancelled
-import com.appmovilidadclinica.driver.ui.theme.ReservationCompleted
-import com.appmovilidadclinica.driver.ui.theme.ReservationConfirmed
-import com.appmovilidadclinica.driver.ui.theme.ReservationNoShow
-import com.appmovilidadclinica.driver.ui.theme.StatusBoarding
-import com.appmovilidadclinica.driver.ui.theme.StatusCancelled
-import com.appmovilidadclinica.driver.ui.theme.StatusCompleted
-import com.appmovilidadclinica.driver.ui.theme.StatusDraft
-import com.appmovilidadclinica.driver.ui.theme.StatusInProgress
-import com.appmovilidadclinica.driver.ui.theme.StatusPublished
-import com.appmovilidadclinica.driver.ui.theme.StopArrived
-import com.appmovilidadclinica.driver.ui.theme.StopDeparted
-import com.appmovilidadclinica.driver.ui.theme.StopPending
-import com.appmovilidadclinica.driver.ui.theme.StopSkipped
+import com.appmovilidadclinica.driver.shared.ui.theme.ReservationBoarded
+import com.appmovilidadclinica.driver.shared.ui.theme.ReservationCancelled
+import com.appmovilidadclinica.driver.shared.ui.theme.ReservationCompleted
+import com.appmovilidadclinica.driver.shared.ui.theme.ReservationConfirmed
+import com.appmovilidadclinica.driver.shared.ui.theme.ReservationNoShow
+import com.appmovilidadclinica.driver.shared.ui.theme.StatusBoarding
+import com.appmovilidadclinica.driver.shared.ui.theme.StatusCancelled
+import com.appmovilidadclinica.driver.shared.ui.theme.StatusCompleted
+import com.appmovilidadclinica.driver.shared.ui.theme.StatusDraft
+import com.appmovilidadclinica.driver.shared.ui.theme.StatusInProgress
+import com.appmovilidadclinica.driver.shared.ui.theme.StatusPublished
+import com.appmovilidadclinica.driver.shared.ui.theme.StopArrived
+import com.appmovilidadclinica.driver.shared.ui.theme.StopDeparted
+import com.appmovilidadclinica.driver.shared.ui.theme.StopPending
+import com.appmovilidadclinica.driver.shared.ui.theme.StopSkipped
 
 fun TripStatus.label(): String = when (this) {
     TripStatus.DRAFT -> "Borrador"
@@ -54,7 +54,7 @@ fun Direction.label(): String = when (this) {
 fun ReservationStatus.label(): String = when (this) {
     ReservationStatus.CONFIRMED -> "Confirmado"
     ReservationStatus.BOARDED -> "Abordado"
-    ReservationStatus.NO_SHOW -> "No se presentÃ³"
+    ReservationStatus.NO_SHOW -> "No se presentó"
     ReservationStatus.COMPLETED -> "Completado"
     ReservationStatus.CANCELLED -> "Cancelado"
 }
@@ -69,8 +69,8 @@ fun ReservationStatus.color(): Color = when (this) {
 
 fun TripStopStatus.label(): String = when (this) {
     TripStopStatus.PENDING -> "Pendiente"
-    TripStopStatus.ARRIVED -> "LlegÃ³"
-    TripStopStatus.DEPARTED -> "PartiÃ³"
+    TripStopStatus.ARRIVED -> "Llegó"
+    TripStopStatus.DEPARTED -> "Partió"
     TripStopStatus.SKIPPED -> "Omitida"
 }
 
@@ -82,7 +82,7 @@ fun TripStopStatus.color(): Color = when (this) {
 }
 
 fun IncidentType.label(): String = when (this) {
-    IncidentType.BREAKDOWN -> "AverÃ­a"
+    IncidentType.BREAKDOWN -> "Avería"
     IncidentType.DELAY -> "Retraso"
     IncidentType.ACCIDENT -> "Accidente"
     IncidentType.OTHER -> "Otro"

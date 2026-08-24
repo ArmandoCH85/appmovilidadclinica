@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.ui.theme
+package com.appmovilidadclinica.driver.shared.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
