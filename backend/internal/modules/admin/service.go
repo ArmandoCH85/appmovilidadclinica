@@ -105,6 +105,9 @@ ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
 	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
 	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
+
+	// Reportes nuevos (migration 0005)
+	GetUserReservationActivity(ctx context.Context, role, active, department string) ([]UserReservationActivity, error)
 }
 
 // adminService es la implementacion concreta.
@@ -796,6 +799,35 @@ func (s *adminService) GetTripIncidents(ctx context.Context, routeID int64, inci
 		return nil, apperror.ValidationError{Field: "status", Reason: "status de incidente invalido"}
 	}
 	return s.repo.GetTripIncidents(ctx, routeID, incidentType, status, dateFrom, dateTo)
+}
+
+// GetUserReservationActivity devuelve el reporte #28 (actividad de reservas
+// por usuario, vista vw_user_reservation_activity de la migration 0005).
+// Los tres parametros son filtros opcionales:
+//   role       : "" | "WORKER" | "DRIVER"   ("" = ambos)
+//   active     : "" | "true" | "false"
+//   department : "" | texto exacto (case-sensitive, igual que como aparece
+//                en el SELECT de la vista)
+//
+// El servicio valida role antes de invocar al repo; active y department
+// se pasan tal cual porque la BD no tiene CHECK sobre ellos.
+func (s *adminService) GetUserReservationActivity(ctx context.Context, role, active, department string) ([]UserReservationActivity, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if role != "" && !validActivityRole(role) {
+		return nil, apperror.ValidationError{Field: "role", Reason: "debe ser WORKER o DRIVER"}
+	}
+	return s.repo.GetUserReservationActivity(ctx, role, active, department)
+}
+
+// validActivityRole acepta solo WORKER y DRIVER para el filtro del reporte
+// #28. ADMIN se rechaza a proposito: el reporte es sobre operadores de
+// reservas, y los ADMIN no estan en la vista (los excluye el WHERE de la
+// vista). Si alguien filtra role=ADMIN la query devolveria 0 filas sin
+// error, pero validamos aca para devolver 422 explicito.
+func validActivityRole(r string) bool {
+	return r == "WORKER" || r == "DRIVER"
 }
 
 // validTripStatus acepta los ENUM de trip_instances.status.

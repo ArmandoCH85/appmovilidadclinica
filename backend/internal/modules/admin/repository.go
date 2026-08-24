@@ -513,6 +513,30 @@ type TripIncidentReport struct {
 	ResolutionNotes  string     `json:"resolution_notes"`
 }
 
+// UserReservationActivity refleja una fila de vw_user_reservation_activity
+// (#28). Una fila por usuario con rol WORKER o DRIVER; resume cuantos
+// eventos de cada tipo produjo sobre sus reservas. Los conteos son
+// excluyentes por reserva (no se solapan entre si) salvo en el caso
+// confirmado_por_conductor + confirmado_por_si_mismo, donde un mismo
+// reserva puede contribuir a ambas columnas: el CONFIRMED inicial lo
+// dispara el propio usuario, y luego el BOARDED lo dispara el conductor.
+// La suma de las 5 metricas no necesariamente da total_reservations
+// porque no todas las reservas pasan por todos los estados.
+type UserReservationActivity struct {
+	UserID            int64   `json:"user_id"`
+	EmployeeCode      string  `json:"employee_code"`
+	DocumentNumber    string  `json:"document_number"`
+	FullName          string  `json:"full_name"`
+	Role              string  `json:"role"`
+	Department        *string `json:"department,omitempty"`
+	Active            bool    `json:"active"`
+	TotalReservations int     `json:"total_reservations"`
+	ConfirmedBySelf   int     `json:"confirmed_by_self"`
+	ConfirmedByDriver int     `json:"confirmed_by_driver"`
+	CancelledBySelf   int     `json:"cancelled_by_self"`
+	NotConfirmed      int     `json:"not_confirmed"`
+}
+
 type VehicleSeat struct {
 	ID          int64   `json:"id"`
 	VehicleID   int64   `json:"vehicle_id"`
@@ -709,6 +733,9 @@ type AdminRepository interface {
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
 	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
 	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
+
+	// Reportes nuevos (migration 0005)
+	GetUserReservationActivity(ctx context.Context, role, active, department string) ([]UserReservationActivity, error)
 }
 
 // adminRepository es la implementacion concreta con database/sql.
@@ -2662,6 +2689,83 @@ func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, i
 			t.ResolvedAt = &v
 		}
 		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// ----------------------------------------------------------------------------
+// Reporte #28: actividad de reservas por usuario (migration 0005)
+// ----------------------------------------------------------------------------
+
+// GetUserReservationActivity devuelve la actividad de reservas agregada por
+// usuario (WORKER + DRIVER). Cada parametro es un filtro opcional:
+//   role       : "" | "WORKER" | "DRIVER"   (ADMIN no se incluye nunca;
+//                                              la vista ya lo excluye)
+//   active     : "" | "true" | "false"      (match exacto)
+//   department : "" | texto exacto          (sin ILIKE; coincide con lo
+//                                              que la UI permite seleccionar)
+//
+// La vista vw_user_reservation_activity ya filtra u.role IN ('WORKER',
+// 'DRIVER') y precalcula las 5 metricas con COUNT(DISTINCT) para evitar
+// duplicados por el fan-out del LEFT JOIN a reservation_events. Los
+// filtros adicionales se aplican como WHERE sobre la vista, sin tocar la
+// logica de agregacion.
+func (r *adminRepository) GetUserReservationActivity(ctx context.Context, role, active, department string) ([]UserReservationActivity, error) {
+	args := []any{}
+	where := []string{}
+	if role != "" {
+		where = append(where, "role = ?")
+		args = append(args, role)
+	}
+	if active != "" {
+		// Aceptamos "true"/"false" tal como llegan del query string.
+		// MySQL evalua TINYINT(1) contra string '1'/'0' correctamente,
+		// pero pasamos bool explicito para que el plan sea estable.
+		switch active {
+		case "true":
+			where = append(where, "active = ?")
+			args = append(args, true)
+		case "false":
+			where = append(where, "active = ?")
+			args = append(args, false)
+		}
+		// cualquier otro valor se ignora silenciosamente: el servicio
+		// ya valida y rechaza con 422 antes de llegar aca.
+	}
+	if department != "" {
+		where = append(where, "department = ?")
+		args = append(args, department)
+	}
+
+	q := `SELECT user_id, employee_code, document_number, full_name, role,
+                 department, active,
+                 total_reservations, confirmed_by_self, confirmed_by_driver,
+                 cancelled_by_self, not_confirmed
+            FROM vw_user_reservation_activity`
+	if len(where) > 0 {
+		q += " WHERE " + strings.Join(where, " AND ")
+	}
+	q += `
+        ORDER BY total_reservations DESC, full_name ASC`
+
+	rows, err := r.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_user_reservation_activity: %w", err)
+	}
+	defer rows.Close()
+
+	var out []UserReservationActivity
+	for rows.Next() {
+		var u UserReservationActivity
+		var dept sql.NullString
+		if err := rows.Scan(&u.UserID, &u.EmployeeCode, &u.DocumentNumber,
+			&u.FullName, &u.Role, &dept, &u.Active,
+			&u.TotalReservations, &u.ConfirmedBySelf, &u.ConfirmedByDriver,
+			&u.CancelledBySelf, &u.NotConfirmed); err != nil {
+			return nil, fmt.Errorf("escaneando actividad de usuario: %w", err)
+		}
+		u.Department = nullableStr(dept)
+		out = append(out, u)
 	}
 	return out, rows.Err()
 }

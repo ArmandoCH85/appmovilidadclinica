@@ -375,3 +375,25 @@ export interface TripIncidentReportRow {
   resolved_at?: string | null
   resolution_notes: string
 }
+
+/**
+ * Reporte #28: actividad de reservas por usuario (migration 0005).
+ * Una fila por usuario WORKER/DRIVER con conteos de eventos de reserva.
+ * Los conteos NO son excluyentes: una misma reserva puede aportar a
+ * `confirmed_by_self` (CONFIRMED inicial) y a `confirmed_by_driver`
+ * (BOARDED posterior). Ver notas en el struct Go correspondiente.
+ */
+export interface UserReservationActivityRow {
+  user_id: number
+  employee_code: string
+  document_number: string
+  full_name: string
+  role: 'WORKER' | 'DRIVER'
+  department?: string | null
+  active: boolean
+  total_reservations: number
+  confirmed_by_self: number
+  confirmed_by_driver: number
+  cancelled_by_self: number
+  not_confirmed: number
+}

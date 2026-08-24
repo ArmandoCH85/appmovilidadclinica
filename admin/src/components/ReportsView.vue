@@ -20,6 +20,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
+import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
@@ -35,6 +36,7 @@ import type {
   DelayByRouteDayRow,
   ReservationChangeRow,
   TripIncidentReportRow,
+  UserReservationActivityRow,
 } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -649,6 +651,92 @@ const hasIncidentsFilters = computed(
 )
 
 // ---------------------------------------------------------------------------
+// Tab 10: Actividad de reservas por usuario (vw_user_reservation_activity)
+// Reporte #28 (migration 0005). Muestra conteos por usuario WORKER/DRIVER:
+//   total_reservations, confirmed_by_self, confirmed_by_driver,
+//   cancelled_by_self, not_confirmed.
+// Filtros opcionales: role (WORKER|DRIVER), active (true|false), department.
+// ---------------------------------------------------------------------------
+
+const ACTIVITY_ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'WORKER', label: 'Trabajador' },
+  { value: 'DRIVER', label: 'Conductor' },
+]
+
+const ACTIVE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'true', label: 'Activos' },
+  { value: 'false', label: 'Inactivos' },
+]
+
+const ROLE_LABELS: Record<string, string> = {
+  WORKER: 'Trabajador',
+  DRIVER: 'Conductor',
+}
+
+const activity = ref<UserReservationActivityRow[]>([])
+const activityLoading = ref(false)
+const activityError = ref('')
+const activityFilter = reactive<{
+  role: string
+  active: string
+  department: string
+}>({
+  role: '',
+  active: '',
+  department: '',
+})
+
+async function loadActivity(): Promise<void> {
+  activityLoading.value = true
+  activityError.value = ''
+  const params = new URLSearchParams()
+  if (activityFilter.role) params.set('role', activityFilter.role)
+  if (activityFilter.active) params.set('active', activityFilter.active)
+  if (activityFilter.department) params.set('department', activityFilter.department)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: UserReservationActivityRow[] }>(
+      'GET',
+      `/admin/reports/user-reservation-activity${qs ? `?${qs}` : ''}`,
+    )
+    activity.value = res.items
+  } catch (err) {
+    activityError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    activity.value = []
+  } finally {
+    activityLoading.value = false
+  }
+}
+
+function clearActivityFilters(): void {
+  activityFilter.role = ''
+  activityFilter.active = ''
+  activityFilter.department = ''
+}
+
+const hasActivityFilters = computed(
+  () => Boolean(activityFilter.role || activityFilter.active || activityFilter.department),
+)
+
+// Suma total de reservas del filtro actual, para mostrar el contador
+// debajo de la tabla sin pedir otra query.
+const activityTotals = computed(() => {
+  return activity.value.reduce(
+    (acc, row) => {
+      acc.total += row.total_reservations
+      acc.bySelf += row.confirmed_by_self
+      acc.byDriver += row.confirmed_by_driver
+      acc.cancelled += row.cancelled_by_self
+      acc.notConfirmed += row.not_confirmed
+      return acc
+    },
+    { total: 0, bySelf: 0, byDriver: 0, cancelled: 0, notConfirmed: 0 },
+  )
+})
+
+// ---------------------------------------------------------------------------
 // Tabs (lazy load: cada tab dispara su consulta al activarse por primera vez)
 // ---------------------------------------------------------------------------
 
@@ -662,6 +750,7 @@ type ReportTab =
   | 'delays'
   | 'changes'
   | 'incidents'
+  | 'activity'
 
 const activeTab = ref<ReportTab>('conflicts')
 const conflictsLoaded = ref(false)
@@ -672,6 +761,7 @@ const durationLoaded = ref(false)
 const delaysLoaded = ref(false)
 const changesLoaded = ref(false)
 const incidentsLoaded = ref(false)
+const activityLoaded = ref(false)
 
 function onTabChange(value: string | number | undefined): void {
   const tab = String(value ?? '') as ReportTab
@@ -700,6 +790,9 @@ function onTabChange(value: string | number | undefined): void {
   } else if (tab === 'incidents' && !incidentsLoaded.value) {
     incidentsLoaded.value = true
     loadIncidents()
+  } else if (tab === 'activity' && !activityLoaded.value) {
+    activityLoaded.value = true
+    loadActivity()
   }
 }
 
@@ -760,6 +853,10 @@ onMounted(() => {
         <Tab value="incidents">
           <i class="pi pi-flag tab-icon" aria-hidden="true"></i>
           Tickets / quejas
+        </Tab>
+        <Tab value="activity">
+          <i class="pi pi-users tab-icon" aria-hidden="true"></i>
+          Actividad por usuario
         </Tab>
       </TabList>
 
@@ -1386,6 +1483,97 @@ onMounted(() => {
 
           <p v-if="!incidentsLoading && !incidentsError" class="reports-total">
             {{ incidents.length }} incidente(s) reportado(s)
+          </p>
+        </TabPanel>
+
+        <!-- Tab 10: Actividad de reservas por usuario -->
+        <TabPanel value="activity">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="act-role">Rol</label>
+              <Select
+                id="act-role"
+                v-model="activityFilter.role"
+                :options="ACTIVITY_ROLE_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="act-active">Estado</label>
+              <Select
+                id="act-active"
+                v-model="activityFilter.active"
+                :options="ACTIVE_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="act-dept">Departamento</label>
+              <InputText
+                id="act-dept"
+                v-model="activityFilter.department"
+                placeholder="Ej. Logística"
+              />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="activityLoading" @click="loadActivity" />
+              <Button
+                v-if="hasActivityFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearActivityFilters"
+              />
+            </div>
+          </div>
+
+          <p v-if="activityError" role="alert" class="reports-error">
+            {{ activityError }}
+            <Button label="Reintentar" text size="small" @click="loadActivity" />
+          </p>
+
+          <DataTable :value="activity" :loading="activityLoading" paginator :rows="20" class="reports-table">
+            <template #empty>
+              <p class="reports-empty">Sin actividad para los filtros aplicados.</p>
+            </template>
+            <Column field="employee_code" header="Código" style="width: 6rem" />
+            <Column field="full_name" header="Nombre" />
+            <Column header="Rol" style="width: 8rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="ROLE_LABELS[data.role] ?? data.role"
+                  :severity="data.role === 'DRIVER' ? 'info' : 'secondary'"
+                />
+              </template>
+            </Column>
+            <Column field="department" header="Departamento" style="width: 9rem">
+              <template #body="{ data }">{{ formatCell(data.department) }}</template>
+            </Column>
+            <Column header="Activo" style="width: 5rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="data.active ? 'Sí' : 'No'"
+                  :severity="data.active ? 'success' : 'danger'"
+                />
+              </template>
+            </Column>
+            <Column field="total_reservations" header="Total" style="width: 5rem" />
+            <Column field="confirmed_by_self" header="Confirm. por sí mismo" style="width: 7rem" />
+            <Column field="confirmed_by_driver" header="Confirm. por conductor" style="width: 7rem" />
+            <Column field="cancelled_by_self" header="Canceladas" style="width: 6rem" />
+            <Column field="not_confirmed" header="No confirmadas" style="width: 6rem" />
+          </DataTable>
+
+          <p v-if="!activityLoading && !activityError && activity.length > 0" class="reports-total">
+            {{ activity.length }} usuario(s) —
+            <strong>{{ activityTotals.total }}</strong> reservas totales,
+            {{ activityTotals.bySelf }} confirmadas por sí mismo,
+            {{ activityTotals.byDriver }} por conductor,
+            {{ activityTotals.cancelled }} canceladas,
+            {{ activityTotals.notConfirmed }} pendientes
           </p>
         </TabPanel>
       </TabPanels>

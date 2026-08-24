@@ -1155,6 +1155,21 @@ func (h *AdminHandler) TripIncidentsReport(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, map[string]any{"items": orEmpty(rows, tripIncidentReportSlice)})
 }
 
+// UserReservationActivityReport maneja GET /admin/reports/user-reservation-activity.
+// Filtros opcionales: role (WORKER|DRIVER), active (true|false), department.
+// No acepta paginacion: el universo son usuarios WORKER+DRIVER (decenas o
+// pocos cientos); el frontend agrupa/filtra en memoria si hace falta.
+func (h *AdminHandler) UserReservationActivityReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	rows, err := h.svc.GetUserReservationActivity(r.Context(),
+		q.Get("role"), q.Get("active"), q.Get("department"))
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, userActivitySlice)})
+}
+
 // ----------------------------------------------------------------------------
 // Registro de rutas
 // ----------------------------------------------------------------------------
@@ -1248,6 +1263,9 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/reports/delays-by-route-day", h.DelaysByRouteDayReport)
 		r.Get("/reports/reservation-changes", h.ReservationChangesReport)
 		r.Get("/reports/incidents", h.TripIncidentsReport)
+
+		// Reportes nuevos (migration 0005)
+		r.Get("/reports/user-reservation-activity", h.UserReservationActivityReport)
 	})
 }
 
@@ -1280,6 +1298,7 @@ const (
 	delayByRouteDaySlice
 	reservationChangeSlice
 	tripIncidentReportSlice
+	userActivitySlice
 	tripInstanceSlice
 	tripIncidentSlice
 	generationRunSlice
@@ -1410,6 +1429,11 @@ func orEmpty(v any, kind sliceKind) any {
 			return s
 		}
 		return []TripIncidentReport{}
+	case userActivitySlice:
+		if s, ok := v.([]UserReservationActivity); ok && s != nil {
+			return s
+		}
+		return []UserReservationActivity{}
 	}
 	return v
 }
