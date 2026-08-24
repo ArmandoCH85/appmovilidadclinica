@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.data.mapper
+package com.appmovilidadclinica.driver.shared.data.mapper
 
 import com.appmovilidadclinica.driver.shared.data.remote.dto.PassengerDto
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger

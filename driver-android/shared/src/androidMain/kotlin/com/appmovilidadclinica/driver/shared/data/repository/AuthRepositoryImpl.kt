@@ -1,8 +1,8 @@
-package com.appmovilidadclinica.driver.data.repository
+package com.appmovilidadclinica.driver.shared.data.repository
 
-import com.appmovilidadclinica.driver.data.mapper.toDomain
-import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
-import com.appmovilidadclinica.driver.data.remote.KtorApiClient
+import com.appmovilidadclinica.driver.shared.data.mapper.toDomain
+import com.appmovilidadclinica.driver.shared.data.remote.ApiErrorMapper
+import com.appmovilidadclinica.driver.shared.data.remote.KtorApiClient
 import com.appmovilidadclinica.driver.shared.data.local.SessionStore
 import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginResponseDto

@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.data.remote
+package com.appmovilidadclinica.driver.shared.data.remote
 
 import io.ktor.client.HttpClient
 

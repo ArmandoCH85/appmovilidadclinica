@@ -13,13 +13,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.appmovilidadclinica.driver.di.AppModule
 import com.appmovilidadclinica.driver.shared.ui.screens.incident.IncidentScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.profile.ProfileScreen
 import com.appmovilidadclinica.driver.presentation.qrscan.QrScanScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.tripdetail.TripDetailScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.dashboard.DashboardScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.login.LoginScreen
+import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
+import org.koin.compose.koinInject
 
 private const val ROUTE_LOGIN = "login"
 private const val ROUTE_DASHBOARD = "dashboard"
@@ -35,9 +36,10 @@ private const val ROUTE_PROFILE = "profile"
  */
 @Composable
 fun DriverNavHost(navController: NavHostController = rememberNavController()) {
+    val authRepository: AuthRepository = koinInject()
     val sessionViewModel: SessionViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { SessionViewModel(AppModule.provideAuthRepository()) }
+            initializer { SessionViewModel(authRepository) }
         },
     )
     val isLoggedIn by sessionViewModel.isLoggedIn.collectAsStateWithLifecycle()

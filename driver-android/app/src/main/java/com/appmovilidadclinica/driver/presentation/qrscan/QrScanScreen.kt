@@ -57,8 +57,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewmodel.initializer
-import com.appmovilidadclinica.driver.di.AppModule
 import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
+import com.appmovilidadclinica.driver.shared.domain.repository.BookingRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import com.appmovilidadclinica.driver.shared.platform.ScannerQrService
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
@@ -69,14 +70,16 @@ import java.util.concurrent.Executors
 fun QrScanScreen(
     tripId: Long,
     onBack: () -> Unit,
-    viewModel: QrScanViewModel = viewModel(
+) {
+    val bookingRepository: BookingRepository = koinInject()
+    val driverRepository: DriverRepository = koinInject()
+    val viewModel: QrScanViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
-                QrScanViewModel(tripId, AppModule.provideBookingRepository(), AppModule.provideDriverRepository())
+                QrScanViewModel(tripId, bookingRepository, driverRepository)
             }
         },
-    ),
-) {
+    )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scannerQrService: ScannerQrService = koinInject()

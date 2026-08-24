@@ -79,6 +79,9 @@ kotlin {
 
             // Google Play Services Location (Fase 4 — AndroidLocationService)
             implementation("com.google.android.gms:play-services-location:21.3.0")
+
+            // javax.inject (anotaciones @Singleton / @Inject usadas por RepositoryImpl)
+            implementation("javax.inject:javax.inject:1")
         }
 
         iosMain.dependencies {
