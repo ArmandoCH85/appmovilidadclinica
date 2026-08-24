@@ -9,44 +9,125 @@ import (
 	"strings"
 )
 
-// RunMigrations aplica todos los ficheros *.up.sql del directorio migrationsDir
-// en orden alfabetico. Como el schema es idempotente (DROP IF EXISTS +
-// CREATE), ejecutar todo en cada arranque es seguro y evita una biblioteca
-// de migraciones (golang-migrate fue eliminado por ponytail-audit).
+// RunMigrations aplica las migraciones *.up.sql del directorio migrationsDir
+// que AUN no estan registradas en la tabla schema_migrations. Cada archivo
+// se ejecuta exactamente una vez: cuando se aplica con exito, su version
+// (basada en el nombre del archivo sin extension) se inserta en
+// schema_migrations. En arranques subsiguientes se salta el archivo.
 //
-// Detalle critico: los ficheros usan `DELIMITER $$` para definir stored
-// procedures. Esa directiva NO es SQL del servidor MariaDB/MySQL; es una
-// convencion del cliente mysql CLI para cambiar el separador de sentencias.
-// database/sql con multiStatements=true no la procesa, por lo que aqui se
-// trocea el contenido siguiendo los cambios de DELIMITER antes de ejecutar.
+// Antes de iterar los archivos, se asegura que schema_migrations exista.
+// La tabla es controlada por migrate.go (no por las migraciones) para
+// evitar una recursion: 0000 necesita insertar en schema_migrations, pero
+// schema_migrations no existiria al momento de correr 0000 si dependiera
+// de otra migration. Al crearla aca, antes de iterar, queda disponible
+// desde la primera migration.
+//
+// Por que este esquema reemplaza al anterior: la version vieja ejecutaba
+// todos los .up.sql en cada arranque, y 0001_schema.up.sql contiene 22
+// DROP TABLE IF EXISTS al inicio. Resultado: cada restart borraba todas
+// las tablas del usuario. El nuevo esquema aplica cada migration una
+// sola vez, asi los datos sobreviven a los restarts.
+//
+// El archivo 0000_schema_tracking.up.sql es el bootstrap: crea la tabla
+// (no-op via IF NOT EXISTS) y registra como aplicadas todas las migrations
+// que existian antes de introducir este sistema. Asi, en una BD
+// pre-existente, las migrations previas NO se vuelven a correr y los
+// datos sobreviven al primer restart.
 func RunMigrations(db *sql.DB, migrationsDir string) error {
+	// 1. Asegurar que la tabla de control exista antes de iterar archivos.
+	if err := ensureMigrationsTable(db); err != nil {
+		return fmt.Errorf("creando tabla schema_migrations: %w", err)
+	}
+
+	// 2. Leer las versiones ya aplicadas.
+	applied, err := getAppliedVersions(db)
+	if err != nil {
+		return fmt.Errorf("leyendo versiones aplicadas: %w", err)
+	}
+
+	// 3. Listar los archivos *.up.sql en orden alfabetico (0000, 0001, ...).
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		return fmt.Errorf("leyendo directorio de migraciones %s: %w", migrationsDir, err)
 	}
-
 	var files []string
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
-		if strings.HasSuffix(e.Name(), ".up.sql") {
-			files = append(files, e.Name())
+		if !strings.HasSuffix(e.Name(), ".up.sql") {
+			continue
 		}
+		files = append(files, e.Name())
 	}
 	sort.Strings(files)
 
+	// 4. Aplicar solo los archivos no registrados y marcarlos como aplicados.
 	for _, name := range files {
-		path := filepath.Join(migrationsDir, name)
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("leyendo migracion %s: %w", path, err)
+		version := strings.TrimSuffix(name, ".up.sql")
+		if _, ok := applied[version]; ok {
+			continue
 		}
-		if err := splitAndExec(db, string(content)); err != nil {
-			return fmt.Errorf("migracion %s: %w", name, err)
+		if err := applyMigration(db, migrationsDir, name); err != nil {
+			return fmt.Errorf("aplicando %s: %w", name, err)
+		}
+		// INSERT IGNORE por si dos restarts corren el mismo 0000 a la vez
+		// (carrera improbable pero defenderse en profundidad cuesta nada).
+		if _, err := db.Exec(
+			"INSERT IGNORE INTO schema_migrations (version) VALUES (?)",
+			version,
+		); err != nil {
+			return fmt.Errorf("registrando %s en schema_migrations: %w", name, err)
 		}
 	}
 	return nil
+}
+
+// ensureMigrationsTable crea la tabla de control si no existe. Idempotente
+// (IF NOT EXISTS). Se ejecuta al inicio de RunMigrations antes que cualquier
+// *.up.sql, asi las migraciones pueden insertar en ella inmediatamente (el
+// caso principal es 0000 que registra las versiones pre-existentes).
+func ensureMigrationsTable(db *sql.DB) error {
+	_, err := db.Exec(`
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version    VARCHAR(255) NOT NULL PRIMARY KEY,
+            applied_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `)
+	return err
+}
+
+// getAppliedVersions devuelve el set de versiones ya registradas. La clave
+// del map es la version (el nombre del archivo sin extension: ej
+// "0001_schema"). Devuelve un map vacio si la tabla esta vacia.
+func getAppliedVersions(db *sql.DB) (map[string]struct{}, error) {
+	rows, err := db.Query("SELECT version FROM schema_migrations")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	applied := make(map[string]struct{})
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		applied[v] = struct{}{}
+	}
+	return applied, rows.Err()
+}
+
+// applyMigration lee el archivo, lo divide respetando directivas DELIMITER
+// y ejecuta cada sentencia via db.Exec. La logica de splitting es
+// necesaria para los stored procedures con DELIMITER $$ de 0001_schema.up.sql.
+func applyMigration(db *sql.DB, migrationsDir, name string) error {
+	path := filepath.Join(migrationsDir, name)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("leyendo migracion %s: %w", name, err)
+	}
+	return splitAndExec(db, string(content))
 }
 
 // splitAndExec trocea content siguiendo las directivas DELIMITER y ejecuta
