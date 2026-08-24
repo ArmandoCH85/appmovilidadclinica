@@ -53,6 +53,11 @@ kotlin {
             implementation("io.ktor:ktor-client-okhttp:3.0.3")
         }
 
+        iosMain.dependencies {
+            // Engine HTTP nativo de iOS (Darwin)
+            implementation("io.ktor:ktor-client-darwin:3.0.3")
+        }
+
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
