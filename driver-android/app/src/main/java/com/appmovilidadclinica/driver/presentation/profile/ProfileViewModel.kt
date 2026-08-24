@@ -1,9 +1,9 @@
-﻿package com.appmovilidadclinica.driver.presentation.profile
+package com.appmovilidadclinica.driver.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.shared.domain.model.User
-import com.appmovilidadclinica.driver.domain.repository.AuthRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
 import com.appmovilidadclinica.driver.domain.repository.DriverRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

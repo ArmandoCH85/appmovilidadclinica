@@ -2,7 +2,7 @@ package com.appmovilidadclinica.driver.presentation.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.appmovilidadclinica.driver.domain.repository.AuthRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn

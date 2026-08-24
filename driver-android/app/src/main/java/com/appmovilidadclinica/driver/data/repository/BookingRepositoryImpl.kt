@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.driver.data.repository
+package com.appmovilidadclinica.driver.data.repository
 
 import com.appmovilidadclinica.driver.data.mapper.toDomain
 import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
@@ -6,7 +6,7 @@ import com.appmovilidadclinica.driver.data.remote.KtorApiClient
 import com.appmovilidadclinica.driver.shared.data.remote.dto.VerifyQrRequestDto
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.Reservation
-import com.appmovilidadclinica.driver.domain.repository.BookingRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.BookingRepository
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
 import java.io.IOException

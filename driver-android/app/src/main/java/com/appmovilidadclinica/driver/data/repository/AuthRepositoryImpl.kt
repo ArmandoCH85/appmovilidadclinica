@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.driver.data.repository
+package com.appmovilidadclinica.driver.data.repository
 
 import com.appmovilidadclinica.driver.data.mapper.toDomain
 import com.appmovilidadclinica.driver.data.remote.ApiErrorMapper
@@ -9,7 +9,7 @@ import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginResponseDto
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.AuthResult
 import com.appmovilidadclinica.driver.shared.domain.model.User
-import com.appmovilidadclinica.driver.domain.repository.AuthRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
 import io.ktor.client.call.body
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -75,7 +75,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     private fun parseTokenExpiration(token: String): Long {
-        // Stub: expira en 24h. En realidad debería decodificar el JWT
+        // Stub: expira en 24h. En realidad deber�a decodificar el JWT
         // y leer el `exp` field. Para Fase 4 alcanza.
         return System.currentTimeMillis() / 1000 + 24 * 60 * 60
     }

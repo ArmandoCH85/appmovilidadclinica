@@ -1,9 +1,9 @@
-﻿package com.appmovilidadclinica.driver.presentation.login
+package com.appmovilidadclinica.driver.presentation.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
-import com.appmovilidadclinica.driver.domain.repository.AuthRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -34,13 +34,11 @@ class LoginViewModel(
     fun submit() {
         val state = _uiState.value
         if (state.documentNumber.isBlank() || state.password.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Complete el usuario y la contraseÃ±a.") }
+            _uiState.update { it.copy(errorMessage = "Complete el usuario y la contraseña.") }
             return
         }
         _uiState.update { it.copy(submitting = true, errorMessage = null) }
         viewModelScope.launch {
-            // La sesion se actualiza sola via AuthRepository.isLoggedIn() (el NavHost
-            // reacciona al cambio) â€” este ViewModel no navega, solo reporta error.
             val result = authRepository.login(state.documentNumber.trim(), state.password)
             result.fold(
                 onSuccess = { authResult ->
@@ -61,9 +59,9 @@ class LoginViewModel(
     }
 
     private fun messageFor(error: Throwable): String = when (error) {
-        is AppError.Unauthorized -> "Usuario o contraseÃ±a incorrectos."
+        is AppError.Unauthorized -> "Usuario o contraseña incorrectos."
         is AppError.Forbidden -> error.message
-        is AppError.Network -> "No se pudo conectar con el servidor. Verifique su conexiÃ³n."
-        else -> "OcurriÃ³ un error inesperado. Intente nuevamente."
+        is AppError.Network -> "No se pudo conectar con el servidor. Verifique su conexión."
+        else -> "Ocurrió un error inesperado. Intente nuevamente."
     }
 }

@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.driver.domain.repository
+package com.appmovilidadclinica.driver.shared.domain.repository
 
 import com.appmovilidadclinica.driver.shared.domain.model.Reservation
 
