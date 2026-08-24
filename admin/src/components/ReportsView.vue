@@ -26,6 +26,7 @@ import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import { request, ApiError } from '../api/client'
 import { LABELS } from '../messages'
+import { exportRowsToExcel, timestampedFilename, type ExcelColumn } from '../utils/excel'
 import type {
   ScheduleConflict,
   RouteTimeMatrixEntry,
@@ -115,6 +116,32 @@ function clearConflictsFilters(): void {
   conflictsFilter.dateTo = null
 }
 
+// --- Export a Excel del tab Conflictos ---
+const conflictsExcelColumns: ExcelColumn[] = [
+  { key: 'resource_type',     label: 'Tipo recurso',       width: 14 },
+  { key: 'resource_id',       label: 'ID recurso',         width: 10 },
+  { key: 'first_trip_id',     label: 'Viaje 1',            width: 10 },
+  { key: 'second_trip_id',    label: 'Viaje 2',            width: 10 },
+  { key: 'first_start_at',    label: 'Inicio viaje 1',     format: 'datetime', width: 20 },
+  { key: 'first_end_at',      label: 'Fin viaje 1',        format: 'datetime', width: 20 },
+  { key: 'second_start_at',   label: 'Inicio viaje 2',     format: 'datetime', width: 20 },
+  { key: 'second_end_at',     label: 'Fin viaje 2',        format: 'datetime', width: 20 },
+]
+
+function exportConflicts(): void {
+  const parts: string[] = []
+  if (conflictsFilter.resourceType) parts.push(`Recurso=${conflictsFilter.resourceType}`)
+  if (conflictsFilter.dateFrom || conflictsFilter.dateTo) {
+    parts.push(`Rango=${ymd(conflictsFilter.dateFrom) ?? '*'} a ${ymd(conflictsFilter.dateTo) ?? '*'}`)
+  }
+  exportRowsToExcel(conflicts.value, conflictsExcelColumns, {
+    filename: timestampedFilename('reporte_conflictos_horario'),
+    sheetName: 'Conflictos de horario',
+    title: 'Reporte #1: Conflictos de horario (vehiculo o conductor)',
+    filterDescription: parts.join(', ') || undefined,
+  })
+}
+
 const hasConflictsFilters = computed(
   () => Boolean(conflictsFilter.resourceType || conflictsFilter.dateFrom || conflictsFilter.dateTo),
 )
@@ -164,6 +191,35 @@ function clearMatrixFilters(): void {
   matrixFilter.routeID = null
   matrixFilter.direction = ''
   matrixFilter.profileID = null
+}
+
+// --- Export a Excel del tab Matriz de tiempos ---
+const matrixExcelColumns: ExcelColumn[] = [
+  { key: 'route_code',     label: 'Código ruta',    width: 12 },
+  { key: 'route_name',     label: 'Nombre ruta',    width: 28 },
+  { key: 'direction',      label: 'Sentido',        width: 8 },
+  { key: 'segment_order',  label: 'Segmento #',     width: 10 },
+  { key: 'from_stop_code', label: 'Desde (código)', width: 14 },
+  { key: 'from_stop_name', label: 'Desde (nombre)', width: 24 },
+  { key: 'to_stop_code',   label: 'Hasta (código)', width: 14 },
+  { key: 'to_stop_name',   label: 'Hasta (nombre)', width: 24 },
+  { key: 'profile_code',   label: 'Perfil código',  width: 14 },
+  { key: 'profile_name',   label: 'Perfil nombre',  width: 22 },
+  { key: 'travel_minutes', label: 'Minutos',        format: 'number', width: 10 },
+  { key: 'priority',       label: 'Prioridad',      format: 'number', width: 10 },
+]
+
+function exportMatrix(): void {
+  const parts: string[] = []
+  if (matrixFilter.routeID && matrixFilter.routeID > 0) parts.push(`Ruta ID=${matrixFilter.routeID}`)
+  if (matrixFilter.direction) parts.push(`Sentido=${matrixFilter.direction}`)
+  if (matrixFilter.profileID && matrixFilter.profileID > 0) parts.push(`Perfil ID=${matrixFilter.profileID}`)
+  exportRowsToExcel(matrix.value, matrixExcelColumns, {
+    filename: timestampedFilename('reporte_matriz_tiempos'),
+    sheetName: 'Matriz de tiempos',
+    title: 'Reporte #2: Matriz de tiempos por ruta',
+    filterDescription: parts.join(', ') || undefined,
+  })
 }
 
 const hasMatrixFilters = computed(
@@ -230,6 +286,33 @@ async function searchSeats(): Promise<void> {
   }
 }
 
+// --- Export a Excel del tab Disponibilidad de asientos ---
+const seatsExcelColumns: ExcelColumn[] = [
+  { key: 'trip_code',                     label: 'Código viaje',         width: 14 },
+  { key: 'service_date',                  label: 'Fecha',                format: 'date', width: 12 },
+  { key: 'direction',                     label: 'Sentido',              width: 8 },
+  { key: 'seat_label',                    label: 'Asiento',              width: 8 },
+  { key: 'segment_order',                 label: 'Segmento #',           format: 'number', width: 10 },
+  { key: 'available_or_occupied_from',    label: 'Desde',                width: 12 },
+  { key: 'available_or_occupied_until',   label: 'Hasta',                width: 12 },
+  { key: 'state',                         label: 'Estado',               width: 12 },
+  { key: 'reservation_code',              label: 'Código de reserva',    width: 18 },
+  { key: 'reserved_at',                   label: 'Reservado en',         format: 'datetime', width: 20 },
+  { key: 'released_at',                   label: 'Liberado en',          format: 'datetime', width: 20 },
+]
+
+function exportSeats(): void {
+  const parts: string[] = []
+  if (seatFilter.tripId) parts.push(`Viaje ID=${seatFilter.tripId}`)
+  if (seatFilter.state) parts.push(`Estado=${seatFilter.state}`)
+  exportRowsToExcel(seats.value, seatsExcelColumns, {
+    filename: timestampedFilename('reporte_disponibilidad_asientos'),
+    sheetName: 'Disponibilidad asientos',
+    title: 'Reporte: Disponibilidad de asientos por viaje',
+    filterDescription: parts.join(', ') || undefined,
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Tab 4: Ocupación por ruta (#5, vw_route_occupancy)
 // ---------------------------------------------------------------------------
@@ -271,6 +354,32 @@ function clearOccupancyFilters(): void {
   occupancyFilter.routeID = null
   occupancyFilter.dateFrom = null
   occupancyFilter.dateTo = null
+}
+
+// --- Export a Excel del tab Ocupacion por ruta ---
+const occupancyExcelColumns: ExcelColumn[] = [
+  { key: 'route_code',     label: 'Código ruta',     width: 14 },
+  { key: 'route_name',     label: 'Nombre ruta',     width: 28 },
+  { key: 'direction',      label: 'Sentido',         width: 8 },
+  { key: 'service_date',   label: 'Fecha servicio',  format: 'date', width: 14 },
+  { key: 'trip_count',     label: 'Viajes',          format: 'number', width: 8 },
+  { key: 'seats_offered',  label: 'Asientos oferta.', format: 'number', width: 14 },
+  { key: 'seats_reserved', label: 'Asientos reserva.', format: 'number', width: 14 },
+  { key: 'occupancy_pct',  label: 'Ocupación %',    format: 'percent', width: 12 },
+]
+
+function exportOccupancy(): void {
+  const parts: string[] = []
+  if (occupancyFilter.routeID && occupancyFilter.routeID > 0) parts.push(`Ruta ID=${occupancyFilter.routeID}`)
+  if (occupancyFilter.dateFrom || occupancyFilter.dateTo) {
+    parts.push(`Rango=${ymd(occupancyFilter.dateFrom) ?? '*'} a ${ymd(occupancyFilter.dateTo) ?? '*'}`)
+  }
+  exportRowsToExcel(occupancy.value, occupancyExcelColumns, {
+    filename: timestampedFilename('reporte_ocupacion_ruta'),
+    sheetName: 'Ocupación por ruta',
+    title: 'Reporte #3: Ocupación por ruta',
+    filterDescription: parts.join(', ') || undefined,
+  })
 }
 
 const hasOccupancyFilters = computed(
@@ -353,6 +462,30 @@ function clearTripsStatusFilters(): void {
   tripsStatusFilter.status = ''
 }
 
+// --- Export a Excel del tab Status de viajes ---
+const tripsStatusExcelColumns: ExcelColumn[] = [
+  { key: 'service_date', label: 'Fecha',       format: 'date', width: 12 },
+  { key: 'route_code',   label: 'Código ruta', width: 14 },
+  { key: 'route_name',   label: 'Nombre ruta', width: 28 },
+  { key: 'direction',    label: 'Sentido',     width: 8 },
+  { key: 'status',       label: 'Status',      width: 14 },
+  { key: 'trip_count',   label: 'Cantidad',    format: 'number', width: 10 },
+]
+
+function exportTripsStatus(): void {
+  const parts: string[] = []
+  if (tripsStatusFilter.status) parts.push(`Status=${tripsStatusFilter.status}`)
+  if (tripsStatusFilter.dateFrom || tripsStatusFilter.dateTo) {
+    parts.push(`Rango=${ymd(tripsStatusFilter.dateFrom) ?? '*'} a ${ymd(tripsStatusFilter.dateTo) ?? '*'}`)
+  }
+  exportRowsToExcel(tripsStatus.value, tripsStatusExcelColumns, {
+    filename: timestampedFilename('reporte_status_viajes'),
+    sheetName: 'Status de viajes',
+    title: 'Reporte #4: Resumen de status de viajes',
+    filterDescription: parts.join(', ') || undefined,
+  })
+}
+
 const hasTripsStatusFilters = computed(
   () => Boolean(tripsStatusFilter.dateFrom || tripsStatusFilter.dateTo || tripsStatusFilter.status),
 )
@@ -398,6 +531,33 @@ function clearDurationFilters(): void {
   durationFilter.routeID = null
   durationFilter.dateFrom = null
   durationFilter.dateTo = null
+}
+
+// --- Export a Excel del tab Duracion real vs estimada ---
+const durationExcelColumns: ExcelColumn[] = [
+  { key: 'service_date',              label: 'Fecha',             format: 'date', width: 12 },
+  { key: 'route_code',                label: 'Código ruta',       width: 14 },
+  { key: 'route_name',                label: 'Nombre ruta',       width: 28 },
+  { key: 'direction',                 label: 'Sentido',           width: 8 },
+  { key: 'trip_code',                 label: 'Código viaje',      width: 14 },
+  { key: 'scheduled_duration_minutes', label: 'Prog. (min)',       format: 'number', width: 12 },
+  { key: 'actual_duration_minutes',    label: 'Real (min)',        format: 'number', width: 12 },
+  { key: 'delta_minutes',             label: 'Delta (min)',       format: 'number', width: 12 },
+  { key: 'delta_pct',                 label: 'Delta %',           format: 'percent', width: 10 },
+]
+
+function exportDuration(): void {
+  const parts: string[] = []
+  if (durationFilter.routeID && durationFilter.routeID > 0) parts.push(`Ruta ID=${durationFilter.routeID}`)
+  if (durationFilter.dateFrom || durationFilter.dateTo) {
+    parts.push(`Rango=${ymd(durationFilter.dateFrom) ?? '*'} a ${ymd(durationFilter.dateTo) ?? '*'}`)
+  }
+  exportRowsToExcel(duration.value, durationExcelColumns, {
+    filename: timestampedFilename('reporte_duracion_real_vs_programada'),
+    sheetName: 'Duración real vs programada',
+    title: 'Reporte #5: Duración real vs estimada',
+    filterDescription: parts.join(', ') || undefined,
+  })
 }
 
 const hasDurationFilters = computed(
@@ -458,6 +618,34 @@ function clearDelaysFilters(): void {
   delaysFilter.direction = ''
   delaysFilter.dateFrom = null
   delaysFilter.dateTo = null
+}
+
+// --- Export a Excel del tab Retrasos por ruta/dia ---
+const delaysExcelColumns: ExcelColumn[] = [
+  { key: 'service_date',       label: 'Fecha',            format: 'date', width: 12 },
+  { key: 'route_code',         label: 'Código ruta',      width: 14 },
+  { key: 'route_name',         label: 'Nombre ruta',      width: 28 },
+  { key: 'direction',          label: 'Sentido',          width: 8 },
+  { key: 'trip_count',         label: 'Viajes',           format: 'number', width: 8 },
+  { key: 'avg_delay_minutes',  label: 'Retraso prom. (min)', format: 'number', width: 18 },
+  { key: 'max_delay_minutes',  label: 'Retraso máx. (min)',  format: 'number', width: 18 },
+  { key: 'late_trip_count',    label: 'Viajes tarde',     format: 'number', width: 14 },
+  { key: 'on_time_trip_count', label: 'Viajes puntuales', format: 'number', width: 14 },
+]
+
+function exportDelays(): void {
+  const parts: string[] = []
+  if (delaysFilter.routeID && delaysFilter.routeID > 0) parts.push(`Ruta ID=${delaysFilter.routeID}`)
+  if (delaysFilter.direction) parts.push(`Sentido=${delaysFilter.direction}`)
+  if (delaysFilter.dateFrom || delaysFilter.dateTo) {
+    parts.push(`Rango=${ymd(delaysFilter.dateFrom) ?? '*'} a ${ymd(delaysFilter.dateTo) ?? '*'}`)
+  }
+  exportRowsToExcel(delays.value, delaysExcelColumns, {
+    filename: timestampedFilename('reporte_retrasos_ruta_dia'),
+    sheetName: 'Retrasos por ruta/día',
+    title: 'Reporte #6: Retrasos por ruta/día',
+    filterDescription: parts.join(', ') || undefined,
+  })
 }
 
 const hasDelaysFilters = computed(
@@ -531,6 +719,34 @@ function clearChangesFilters(): void {
   changesFilter.eventType = ''
   changesFilter.dateFrom = null
   changesFilter.dateTo = null
+}
+
+// --- Export a Excel del tab Cambios en reservas ---
+const changesExcelColumns: ExcelColumn[] = [
+  { key: 'event_at',          label: 'Fecha evento',     format: 'datetime', width: 20 },
+  { key: 'reservation_code',  label: 'Código reserva',   width: 18 },
+  { key: 'event_type',        label: 'Tipo evento',      width: 18 },
+  { key: 'worker_name',       label: 'Trabajador',       width: 24 },
+  { key: 'actor_name',        label: 'Actor',            width: 24 },
+  { key: 'trip_code',         label: 'Código viaje',     width: 14 },
+  { key: 'service_date',      label: 'Fecha servicio',   format: 'date', width: 14 },
+  { key: 'route_code',        label: 'Código ruta',      width: 14 },
+  { key: 'details',           label: 'Detalles',         width: 36 },
+]
+
+function exportChanges(): void {
+  const parts: string[] = []
+  if (changesFilter.reservationID && changesFilter.reservationID > 0) parts.push(`Reserva ID=${changesFilter.reservationID}`)
+  if (changesFilter.eventType) parts.push(`Tipo=${changesFilter.eventType}`)
+  if (changesFilter.dateFrom || changesFilter.dateTo) {
+    parts.push(`Rango=${ymd(changesFilter.dateFrom) ?? '*'} a ${ymd(changesFilter.dateTo) ?? '*'}`)
+  }
+  exportRowsToExcel(changes.value, changesExcelColumns, {
+    filename: timestampedFilename('reporte_cambios_reservas'),
+    sheetName: 'Cambios en reservas',
+    title: 'Reporte #7: Historial de cambios en reservas',
+    filterDescription: parts.join(', ') || undefined,
+  })
 }
 
 const hasChangesFilters = computed(
@@ -639,6 +855,38 @@ function clearIncidentsFilters(): void {
   incidentsFilter.dateTo = null
 }
 
+// --- Export a Excel del tab Tickets / quejas ---
+const incidentsExcelColumns: ExcelColumn[] = [
+  { key: 'reported_at',       label: 'Reportado en',     format: 'datetime', width: 20 },
+  { key: 'incident_type',     label: 'Tipo',             width: 12 },
+  { key: 'status',            label: 'Estado',           width: 12 },
+  { key: 'trip_code',         label: 'Código viaje',     width: 14 },
+  { key: 'service_date',      label: 'Fecha servicio',   format: 'date', width: 14 },
+  { key: 'route_code',        label: 'Código ruta',      width: 12 },
+  { key: 'route_name',        label: 'Nombre ruta',      width: 24 },
+  { key: 'direction',         label: 'Sentido',          width: 8 },
+  { key: 'reported_by_name',  label: 'Reportado por',    width: 24 },
+  { key: 'description',       label: 'Descripción',      width: 36 },
+  { key: 'resolved_at',       label: 'Resuelto en',      format: 'datetime', width: 20 },
+  { key: 'resolution_notes',  label: 'Notas resolución', width: 36 },
+]
+
+function exportIncidents(): void {
+  const parts: string[] = []
+  if (incidentsFilter.routeID && incidentsFilter.routeID > 0) parts.push(`Ruta ID=${incidentsFilter.routeID}`)
+  if (incidentsFilter.incidentType) parts.push(`Tipo=${incidentsFilter.incidentType}`)
+  if (incidentsFilter.status) parts.push(`Estado=${incidentsFilter.status}`)
+  if (incidentsFilter.dateFrom || incidentsFilter.dateTo) {
+    parts.push(`Rango=${ymd(incidentsFilter.dateFrom) ?? '*'} a ${ymd(incidentsFilter.dateTo) ?? '*'}`)
+  }
+  exportRowsToExcel(incidents.value, incidentsExcelColumns, {
+    filename: timestampedFilename('reporte_tickets_quejas'),
+    sheetName: 'Tickets / quejas',
+    title: 'Reporte #8: Tickets y quejas de usuarios',
+    filterDescription: parts.join(', ') || undefined,
+  })
+}
+
 const hasIncidentsFilters = computed(
   () =>
     Boolean(
@@ -724,6 +972,53 @@ function clearActivityFilters(): void {
   activityFilter.department = ''
   activityFilter.dateFrom = null
   activityFilter.dateTo = null
+}
+
+// --- Export a Excel del tab Actividad por usuario ---
+const activityExcelColumns: ExcelColumn[] = [
+  { key: 'employee_code',      label: 'Código',                  width: 10 },
+  { key: 'full_name',          label: 'Nombre',                  width: 28 },
+  { key: 'role',               label: 'Rol',                     width: 12 },
+  { key: 'department',         label: 'Departamento',            width: 18 },
+  { key: 'active',             label: 'Activo',                  width: 8 },
+  { key: 'total_reservations', label: 'Total reservas',          format: 'number', width: 14 },
+  { key: 'confirmed_by_self',  label: 'Confirm. por sí mismo',   format: 'number', width: 18 },
+  { key: 'confirmed_by_driver',label: 'Confirm. por conductor',  format: 'number', width: 20 },
+  { key: 'cancelled_by_self',  label: 'Canceladas',              format: 'number', width: 12 },
+  { key: 'not_confirmed',      label: 'No confirmadas',          format: 'number', width: 16 },
+  { key: 'last_activity_at',   label: 'Última actividad',        format: 'datetime', width: 20 },
+]
+
+function exportActivity(): void {
+  const parts: string[] = []
+  if (activityFilter.role) parts.push(`Rol=${activityFilter.role}`)
+  if (activityFilter.active) parts.push(`Activo=${activityFilter.active}`)
+  if (activityFilter.department) parts.push(`Departamento=${activityFilter.department}`)
+  if (activityFilter.dateFrom || activityFilter.dateTo) {
+    parts.push(`Rango=${ymd(activityFilter.dateFrom) ?? '*'} a ${ymd(activityFilter.dateTo) ?? '*'}`)
+  }
+  // Totales para el footer del Excel
+  const totals = {
+    total_reservations:    activityTotals.value.total,
+    confirmed_by_self:     activityTotals.value.bySelf,
+    confirmed_by_driver:   activityTotals.value.byDriver,
+    cancelled_by_self:     activityTotals.value.cancelled,
+    not_confirmed:         activityTotals.value.notConfirmed,
+    last_activity_at:      '',
+    employee_code:         '',
+    full_name:             '',
+    role:                  '',
+    department:            '',
+    active:                '',
+  }
+  exportRowsToExcel(activity.value, activityExcelColumns, {
+    filename: timestampedFilename('reporte_actividad_usuarios'),
+    sheetName: 'Actividad por usuario',
+    title: 'Reporte #9: Actividad de reservas por usuario',
+    filterDescription: parts.join(', ') || undefined,
+    totals,
+    totalsLabel: `TOTAL (${activity.value.length} usuarios)`,
+  })
 }
 
 const hasActivityFilters = computed(
@@ -952,6 +1247,13 @@ onMounted(() => {
                 text
                 @click="clearConflictsFilters"
               />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="conflicts.length === 0"
+                @click="exportConflicts"
+              />
             </div>
           </div>
 
@@ -1042,6 +1344,13 @@ onMounted(() => {
                 text
                 @click="clearMatrixFilters"
               />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="matrix.length === 0"
+                @click="exportMatrix"
+              />
             </div>
           </div>
 
@@ -1093,6 +1402,13 @@ onMounted(() => {
             </div>
             <div class="filter-actions">
               <Button type="submit" label="Buscar" icon="pi pi-search" :loading="seatsLoading" />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="seats.length === 0"
+                @click="exportSeats"
+              />
             </div>
           </form>
 
@@ -1156,6 +1472,13 @@ onMounted(() => {
                 text
                 @click="clearOccupancyFilters"
               />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="occupancy.length === 0"
+                @click="exportOccupancy"
+              />
             </div>
           </div>
 
@@ -1216,6 +1539,13 @@ onMounted(() => {
                 text
                 @click="clearTripsStatusFilters"
               />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="tripsStatus.length === 0"
+                @click="exportTripsStatus"
+              />
             </div>
           </div>
 
@@ -1272,6 +1602,13 @@ onMounted(() => {
                 severity="secondary"
                 text
                 @click="clearDurationFilters"
+              />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="duration.length === 0"
+                @click="exportDuration"
               />
             </div>
           </div>
@@ -1343,6 +1680,13 @@ onMounted(() => {
                 text
                 @click="clearDelaysFilters"
               />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="delays.length === 0"
+                @click="exportDelays"
+              />
             </div>
           </div>
 
@@ -1411,6 +1755,13 @@ onMounted(() => {
                 severity="secondary"
                 text
                 @click="clearChangesFilters"
+              />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="changes.length === 0"
+                @click="exportChanges"
               />
             </div>
           </div>
@@ -1486,6 +1837,13 @@ onMounted(() => {
                 severity="secondary"
                 text
                 @click="clearIncidentsFilters"
+              />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="incidents.length === 0"
+                @click="exportIncidents"
               />
             </div>
           </div>
@@ -1579,6 +1937,13 @@ onMounted(() => {
                 severity="secondary"
                 text
                 @click="clearActivityFilters"
+              />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="activity.length === 0"
+                @click="exportActivity"
               />
             </div>
           </div>
