@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,8 +37,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -56,7 +59,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewmodel.initializer
 import com.appmovilidadclinica.driver.di.AppModule
 import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
+import com.appmovilidadclinica.driver.shared.platform.ScannerQrService
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalGetImage::class)
@@ -74,6 +79,7 @@ fun QrScanScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scannerQrService: ScannerQrService = koinInject()
 
     var hasPermission by remember {
         mutableStateOf(
@@ -109,7 +115,9 @@ fun QrScanScreen(
         },
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (!hasPermission) {
+            if (!scannerQrService.isAvailable()) {
+                StubUnavailableContent(onBack = onBack)
+            } else if (!hasPermission) {
                 PermissionRationale(onRequest = { permissionLauncher.launch(Manifest.permission.CAMERA) })
             } else {
                 CameraPreview(
@@ -216,6 +224,39 @@ private fun statusLabel(status: ReservationStatus): String = when (status) {
     ReservationStatus.NO_SHOW -> "No se presentÃ³"
     ReservationStatus.COMPLETED -> "Completado"
     ReservationStatus.CANCELLED -> "Cancelado"
+}
+
+@Composable
+private fun StubUnavailableContent(onBack: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            Icons.Default.QrCodeScanner,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "Scanner QR no disponible",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Esta función estará disponible en iOS próximamente. En Android " +
+                "ya está operativa.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(24.dp))
+        OutlinedButton(onClick = onBack) { Text("Volver") }
+    }
 }
 
 @Composable
