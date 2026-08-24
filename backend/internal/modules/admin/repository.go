@@ -404,6 +404,115 @@ type SeatAvail struct {
 	ReleasedAt      *time.Time `json:"released_at,omitempty"`
 }
 
+// ----------------------------------------------------------------------------
+// Reportes nuevos (migration 0004_new_reports.up.sql)
+// Reflejan 1:1 las columnas SELECT de cada vista SQL.
+// ----------------------------------------------------------------------------
+
+// RouteOccupancy refleja una fila de vw_route_occupancy (#5).
+// Una fila por (ruta, dirección, fecha). occupancy_pct puede ser negativo
+// o >100 sólo si los datos están corruptos; el frontend lo muestra crudo.
+type RouteOccupancy struct {
+	RouteID       int64   `json:"route_id"`
+	RouteCode     string  `json:"route_code"`
+	RouteName     string  `json:"route_name"`
+	Direction     string  `json:"direction"`
+	ServiceDate   string  `json:"service_date"`
+	TripCount     int     `json:"trip_count"`
+	SeatsOffered  int     `json:"seats_offered"`
+	SeatsReserved int     `json:"seats_reserved"`
+	OccupancyPct  float64 `json:"occupancy_pct"`
+}
+
+// TripStatusSummary refleja una fila de vw_trips_status_summary (#11).
+// Una fila por (fecha, ruta, dirección, status). El frontend agrupa en UI
+// según el filtro aplicado.
+type TripStatusSummary struct {
+	ServiceDate string `json:"service_date"`
+	RouteCode   string `json:"route_code"`
+	RouteName   string `json:"route_name"`
+	Direction   string `json:"direction"`
+	Status      string `json:"status"`
+	TripCount   int    `json:"trip_count"`
+}
+
+// DurationDeviation refleja una fila de vw_duration_deviation (#12).
+// DeltaMinutos = real - programado. Negativo = más rápido; positivo = más
+// lento. DeltaPct es la misma diferencia expresada como porcentaje.
+type DurationDeviation struct {
+	TripID                   int64   `json:"trip_id"`
+	TripCode                 string  `json:"trip_code"`
+	ServiceDate              string  `json:"service_date"`
+	RouteID                  int64   `json:"route_id"`
+	RouteCode                string  `json:"route_code"`
+	RouteName                string  `json:"route_name"`
+	Direction                string  `json:"direction"`
+	ScheduledDurationMinutes int     `json:"scheduled_duration_minutes"`
+	ActualDurationMinutes    int     `json:"actual_duration_minutes"`
+	DeltaMinutes             int     `json:"delta_minutes"`
+	DeltaPct                 *float64 `json:"delta_pct,omitempty"`
+}
+
+// DelayByRouteDay refleja una fila de vw_delays_by_route_day (#13).
+// avg_delay_minutes puede ser negativo (salida anticipada). LateTripCount
+// cuenta viajes con retraso real, OnTimeTripCount los puntuales o anticipados.
+type DelayByRouteDay struct {
+	RouteID           int64   `json:"route_id"`
+	RouteCode         string  `json:"route_code"`
+	RouteName         string  `json:"route_name"`
+	Direction         string  `json:"direction"`
+	ServiceDate       string  `json:"service_date"`
+	TripCount         int     `json:"trip_count"`
+	AvgDelayMinutes   float64 `json:"avg_delay_minutes"`
+	MaxDelayMinutes   int     `json:"max_delay_minutes"`
+	LateTripCount     int     `json:"late_trip_count"`
+	OnTimeTripCount   int     `json:"on_time_trip_count"`
+}
+
+// ReservationChange refleja una fila de vw_reservation_changes (#26).
+// Una fila por evento del historial (CONFIRMED, BOARDED, ALIGHTED, NO_SHOW,
+// SEGMENTS_RELEASED, CANCELLED, etc.).
+type ReservationChange struct {
+	EventID         int64     `json:"event_id"`
+	ReservationID   int64     `json:"reservation_id"`
+	ReservationCode string    `json:"reservation_code"`
+	EventType       string    `json:"event_type"`
+	EventAt         time.Time `json:"event_at"`
+	ActorUserID     *int64    `json:"actor_user_id,omitempty"`
+	ActorName       string    `json:"actor_name"`
+	WorkerID        int64     `json:"worker_id"`
+	WorkerName      string    `json:"worker_name"`
+	TripID          int64     `json:"trip_id"`
+	TripCode        string    `json:"trip_code"`
+	ServiceDate     string    `json:"service_date"`
+	RouteCode       string    `json:"route_code"`
+	TripStopTimeID  *int64    `json:"trip_stop_time_id,omitempty"`
+	Details         string    `json:"details"`
+}
+
+// TripIncidentReport refleja una fila de vw_trip_incidents (#27).
+// Tickets / quejas: tipos BREAKDOWN, DELAY, ACCIDENT, OTHER; estados
+// OPEN, IN_REVIEW, RESOLVED. Se llama TripIncidentReport para no chocar
+// con el TripIncident CRUD existente (IncidentsView.vue).
+type TripIncidentReport struct {
+	IncidentID       int64      `json:"incident_id"`
+	TripID           int64      `json:"trip_id"`
+	TripCode         string     `json:"trip_code"`
+	ServiceDate      string     `json:"service_date"`
+	RouteID          int64      `json:"route_id"`
+	RouteCode        string     `json:"route_code"`
+	RouteName        string     `json:"route_name"`
+	Direction        string     `json:"direction"`
+	IncidentType     string     `json:"incident_type"`
+	Description      string     `json:"description"`
+	Status           string     `json:"status"`
+	ReportedByUserID int64      `json:"reported_by_user_id"`
+	ReportedByName   string     `json:"reported_by_name"`
+	ReportedAt       time.Time  `json:"reported_at"`
+	ResolvedAt       *time.Time `json:"resolved_at,omitempty"`
+	ResolutionNotes  string     `json:"resolution_notes"`
+}
+
 type VehicleSeat struct {
 	ID          int64   `json:"id"`
 	VehicleID   int64   `json:"vehicle_id"`
@@ -592,6 +701,14 @@ type AdminRepository interface {
 	GetScheduleConflicts(ctx context.Context, resourceType, dateFrom, dateTo string) ([]Conflict, error)
 	GetRouteTimeMatrix(ctx context.Context, routeID int64, direction string, profileID int64) ([]MatrixEntry, error)
 	GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error)
+
+	// Reportes nuevos (migration 0004)
+	GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error)
+	GetTripsStatusSummary(ctx context.Context, dateFrom, dateTo, status string) ([]TripStatusSummary, error)
+	GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error)
+	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
+	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
+	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
 }
 
 // adminRepository es la implementacion concreta con database/sql.
@@ -2232,6 +2349,321 @@ func (r *adminRepository) GetTripSeatAvailability(ctx context.Context, tripID in
 		avail = append(avail, s)
 	}
 	return avail, rows.Err()
+}
+
+// ----------------------------------------------------------------------------
+// Reportes nuevos (migration 0004_new_reports.up.sql)
+// Mismo patron que los tres reportes previos: filtros opcionales que
+// matchean 1:1 columnas de la vista SQL; 0 o '' = sin filtro.
+// ----------------------------------------------------------------------------
+
+// GetRouteOccupancy consulta vw_route_occupancy (#5) con filtros opcionales:
+// routeID (>0), dateFrom/dateTo (YYYY-MM-DD, acotan por service_date).
+func (r *adminRepository) GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error) {
+	var conds []string
+	var fargs []any
+	if routeID > 0 {
+		conds = append(conds, "route_id = ?")
+		fargs = append(fargs, routeID)
+	}
+	if dateFrom != "" {
+		conds = append(conds, "service_date >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "service_date <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT route_id, route_code, route_name, direction, service_date,
+               trip_count, seats_offered, seats_reserved, occupancy_pct
+          FROM vw_route_occupancy` + where + `
+         ORDER BY service_date DESC, route_code, direction`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_route_occupancy: %w", err)
+	}
+	defer rows.Close()
+
+	var out []RouteOccupancy
+	for rows.Next() {
+		var o RouteOccupancy
+		if err := rows.Scan(&o.RouteID, &o.RouteCode, &o.RouteName, &o.Direction,
+			&o.ServiceDate, &o.TripCount, &o.SeatsOffered, &o.SeatsReserved,
+			&o.OccupancyPct); err != nil {
+			return nil, fmt.Errorf("escaneando ocupacion de ruta: %w", err)
+		}
+		out = append(out, o)
+	}
+	return out, rows.Err()
+}
+
+// GetTripsStatusSummary consulta vw_trips_status_summary (#11). Filtros:
+// dateFrom, dateTo, status ('' = todos). Devuelve una fila por
+// (fecha, ruta, dirección, status) — el frontend puede apilar en una tabla.
+func (r *adminRepository) GetTripsStatusSummary(ctx context.Context, dateFrom, dateTo, status string) ([]TripStatusSummary, error) {
+	var conds []string
+	var fargs []any
+	if dateFrom != "" {
+		conds = append(conds, "service_date >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "service_date <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	if status != "" {
+		conds = append(conds, "status = ?")
+		fargs = append(fargs, status)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT service_date, route_code, route_name, direction, status, trip_count
+          FROM vw_trips_status_summary` + where + `
+         ORDER BY service_date DESC, route_code, direction, status`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_trips_status_summary: %w", err)
+	}
+	defer rows.Close()
+
+	var out []TripStatusSummary
+	for rows.Next() {
+		var s TripStatusSummary
+		if err := rows.Scan(&s.ServiceDate, &s.RouteCode, &s.RouteName,
+			&s.Direction, &s.Status, &s.TripCount); err != nil {
+			return nil, fmt.Errorf("escaneando resumen de status: %w", err)
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// GetDurationDeviation consulta vw_duration_deviation (#12). Filtros:
+// routeID (>0), dateFrom, dateTo (acotan por service_date).
+func (r *adminRepository) GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error) {
+	var conds []string
+	var fargs []any
+	if routeID > 0 {
+		conds = append(conds, "route_id = ?")
+		fargs = append(fargs, routeID)
+	}
+	if dateFrom != "" {
+		conds = append(conds, "service_date >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "service_date <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT trip_id, trip_code, service_date, route_id, route_code,
+               route_name, direction, scheduled_duration_minutes,
+               actual_duration_minutes, delta_minutes, delta_pct
+          FROM vw_duration_deviation` + where + `
+         ORDER BY service_date DESC, trip_code`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_duration_deviation: %w", err)
+	}
+	defer rows.Close()
+
+	var out []DurationDeviation
+	for rows.Next() {
+		var d DurationDeviation
+		var deltaPct sql.NullFloat64
+		if err := rows.Scan(&d.TripID, &d.TripCode, &d.ServiceDate, &d.RouteID,
+			&d.RouteCode, &d.RouteName, &d.Direction,
+			&d.ScheduledDurationMinutes, &d.ActualDurationMinutes,
+			&d.DeltaMinutes, &deltaPct); err != nil {
+			return nil, fmt.Errorf("escaneando desviacion de duracion: %w", err)
+		}
+		if deltaPct.Valid {
+			v := deltaPct.Float64
+			d.DeltaPct = &v
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// GetDelaysByRouteDay consulta vw_delays_by_route_day (#13). Filtros:
+// routeID (>0), direction ('' = ambos), dateFrom, dateTo.
+func (r *adminRepository) GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error) {
+	var conds []string
+	var fargs []any
+	if routeID > 0 {
+		conds = append(conds, "route_id = ?")
+		fargs = append(fargs, routeID)
+	}
+	if direction != "" {
+		conds = append(conds, "direction = ?")
+		fargs = append(fargs, direction)
+	}
+	if dateFrom != "" {
+		conds = append(conds, "service_date >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "service_date <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT route_id, route_code, route_name, direction, service_date,
+               trip_count, avg_delay_minutes, max_delay_minutes,
+               late_trip_count, on_time_trip_count
+          FROM vw_delays_by_route_day` + where + `
+         ORDER BY service_date DESC, route_code, direction`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_delays_by_route_day: %w", err)
+	}
+	defer rows.Close()
+
+	var out []DelayByRouteDay
+	for rows.Next() {
+		var d DelayByRouteDay
+		if err := rows.Scan(&d.RouteID, &d.RouteCode, &d.RouteName, &d.Direction,
+			&d.ServiceDate, &d.TripCount, &d.AvgDelayMinutes,
+			&d.MaxDelayMinutes, &d.LateTripCount, &d.OnTimeTripCount); err != nil {
+			return nil, fmt.Errorf("escaneando retrasos por ruta/dia: %w", err)
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// GetReservationChanges consulta vw_reservation_changes (#26). Filtros:
+// reservationID (>0), eventType ('' = todos), dateFrom, dateTo (acotan por
+// event_at). Sirve como historial de auditoría de cada reserva.
+func (r *adminRepository) GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error) {
+	var conds []string
+	var fargs []any
+	if reservationID > 0 {
+		conds = append(conds, "reservation_id = ?")
+		fargs = append(fargs, reservationID)
+	}
+	if eventType != "" {
+		conds = append(conds, "event_type = ?")
+		fargs = append(fargs, eventType)
+	}
+	if dateFrom != "" {
+		conds = append(conds, "DATE(event_at) >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "DATE(event_at) <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT event_id, reservation_id, reservation_code, event_type, event_at,
+               actor_user_id, actor_name, worker_id, worker_name, trip_id,
+               trip_code, service_date, route_code, trip_stop_time_id, details
+          FROM vw_reservation_changes` + where + `
+         ORDER BY event_at DESC, event_id DESC`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_reservation_changes: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ReservationChange
+	for rows.Next() {
+		var c ReservationChange
+		var actorID, stopID sql.NullInt64
+		if err := rows.Scan(&c.EventID, &c.ReservationID, &c.ReservationCode,
+			&c.EventType, &c.EventAt, &actorID, &c.ActorName,
+			&c.WorkerID, &c.WorkerName, &c.TripID, &c.TripCode,
+			&c.ServiceDate, &c.RouteCode, &stopID, &c.Details); err != nil {
+			return nil, fmt.Errorf("escaneando cambio de reserva: %w", err)
+		}
+		if actorID.Valid {
+			v := actorID.Int64
+			c.ActorUserID = &v
+		}
+		if stopID.Valid {
+			v := stopID.Int64
+			c.TripStopTimeID = &v
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// GetTripIncidents consulta vw_trip_incidents (#27) — tickets / quejas.
+// Filtros: routeID (>0), incidentType ('' = todos), status ('' = todos),
+// dateFrom, dateTo (acotan por reported_at).
+func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error) {
+	var conds []string
+	var fargs []any
+	if routeID > 0 {
+		conds = append(conds, "route_id = ?")
+		fargs = append(fargs, routeID)
+	}
+	if incidentType != "" {
+		conds = append(conds, "incident_type = ?")
+		fargs = append(fargs, incidentType)
+	}
+	if status != "" {
+		conds = append(conds, "status = ?")
+		fargs = append(fargs, status)
+	}
+	if dateFrom != "" {
+		conds = append(conds, "DATE(reported_at) >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "DATE(reported_at) <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT incident_id, trip_id, trip_code, service_date, route_id,
+               route_code, route_name, direction, incident_type, description,
+               status, reported_by_user_id, reported_by_name, reported_at,
+               resolved_at, resolution_notes
+          FROM vw_trip_incidents` + where + `
+         ORDER BY reported_at DESC, incident_id DESC`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_trip_incidents: %w", err)
+	}
+	defer rows.Close()
+
+	var out []TripIncidentReport
+	for rows.Next() {
+		var t TripIncidentReport
+		var resolved sql.NullTime
+		if err := rows.Scan(&t.IncidentID, &t.TripID, &t.TripCode, &t.ServiceDate,
+			&t.RouteID, &t.RouteCode, &t.RouteName, &t.Direction,
+			&t.IncidentType, &t.Description, &t.Status,
+			&t.ReportedByUserID, &t.ReportedByName, &t.ReportedAt,
+			&resolved, &t.ResolutionNotes); err != nil {
+			return nil, fmt.Errorf("escaneando incidente de viaje: %w", err)
+		}
+		if resolved.Valid {
+			v := resolved.Time
+			t.ResolvedAt = &v
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
 }
 
 // ----------------------------------------------------------------------------

@@ -272,3 +272,106 @@ export interface TripSeatAvailability {
   reserved_at?: string | null
   released_at?: string | null
 }
+
+// ============================================================================
+// Reportes nuevos (migration 0004)
+// Columnas reflejadas 1:1 de cada vista SQL nueva (ver
+// `backend/migrations/0004_new_reports.up.sql`). Sin inventar campos.
+// ============================================================================
+
+/** vw_route_occupancy — GET /admin/reports/occupancy-by-route (#5).
+ * Filtros opcionales: route_id, date_from, date_to. */
+export interface RouteOccupancyRow {
+  route_id: number
+  route_code: string
+  route_name: string
+  direction: 'IDA' | 'VUELTA'
+  service_date: string
+  trip_count: number
+  seats_offered: number
+  seats_reserved: number
+  occupancy_pct: number
+}
+
+/** vw_trips_status_summary — GET /admin/reports/trips-status-summary (#11).
+ * Filtros opcionales: date_from, date_to, status. */
+export interface TripStatusSummaryRow {
+  service_date: string
+  route_code: string
+  route_name: string
+  direction: 'IDA' | 'VUELTA'
+  status: string
+  trip_count: number
+}
+
+/** vw_duration_deviation — GET /admin/reports/duration-deviation (#12).
+ * Filtros opcionales: route_id, date_from, date_to. */
+export interface DurationDeviationRow {
+  trip_id: number
+  trip_code: string
+  service_date: string
+  route_id: number
+  route_code: string
+  route_name: string
+  direction: 'IDA' | 'VUELTA'
+  scheduled_duration_minutes: number
+  actual_duration_minutes: number
+  delta_minutes: number
+  delta_pct?: number | null
+}
+
+/** vw_delays_by_route_day — GET /admin/reports/delays-by-route-day (#13).
+ * Filtros opcionales: route_id, direction, date_from, date_to. */
+export interface DelayByRouteDayRow {
+  route_id: number
+  route_code: string
+  route_name: string
+  direction: 'IDA' | 'VUELTA'
+  service_date: string
+  trip_count: number
+  avg_delay_minutes: number
+  max_delay_minutes: number
+  late_trip_count: number
+  on_time_trip_count: number
+}
+
+/** vw_reservation_changes — GET /admin/reports/reservation-changes (#26).
+ * Filtros opcionales: reservation_id, event_type, date_from, date_to. */
+export interface ReservationChangeRow {
+  event_id: number
+  reservation_id: number
+  reservation_code: string
+  event_type: string
+  event_at: string
+  actor_user_id?: number | null
+  actor_name: string
+  worker_id: number
+  worker_name: string
+  trip_id: number
+  trip_code: string
+  service_date: string
+  route_code: string
+  trip_stop_time_id?: number | null
+  details: string
+}
+
+/** vw_trip_incidents — GET /admin/reports/incidents (#27) — tickets / quejas.
+ * Filtros opcionales: route_id, incident_type, status, date_from, date_to. */
+export interface TripIncidentReportRow {
+  incident_id: number
+  trip_id: number
+  trip_code: string
+  service_date: string
+  route_id: number
+  route_code: string
+  route_name: string
+  direction: 'IDA' | 'VUELTA'
+  incident_type: string
+  description: string
+  status: string
+  reported_by_user_id: number
+  reported_by_name: string
+  reported_at: string
+  resolved_at?: string | null
+  resolution_notes: string
+}

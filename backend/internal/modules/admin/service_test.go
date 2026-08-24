@@ -165,6 +165,24 @@ func (m *mockAdminRepo) GetRouteTimeMatrix(_ context.Context, _ int64, _ string,
 func (m *mockAdminRepo) GetTripSeatAvailability(_ context.Context, _ int64, _ string) ([]SeatAvail, error) {
 	return nil, nil
 }
+func (m *mockAdminRepo) GetRouteOccupancy(_ context.Context, _ int64, _, _ string) ([]RouteOccupancy, error) {
+	return nil, nil
+}
+func (m *mockAdminRepo) GetTripsStatusSummary(_ context.Context, _, _, _ string) ([]TripStatusSummary, error) {
+	return nil, nil
+}
+func (m *mockAdminRepo) GetDurationDeviation(_ context.Context, _ int64, _, _ string) ([]DurationDeviation, error) {
+	return nil, nil
+}
+func (m *mockAdminRepo) GetDelaysByRouteDay(_ context.Context, _ int64, _, _, _ string) ([]DelayByRouteDay, error) {
+	return nil, nil
+}
+func (m *mockAdminRepo) GetReservationChanges(_ context.Context, _ int64, _, _, _ string) ([]ReservationChange, error) {
+	return nil, nil
+}
+func (m *mockAdminRepo) GetTripIncidents(_ context.Context, _ int64, _, _, _, _ string) ([]TripIncidentReport, error) {
+	return nil, nil
+}
 func (m *mockAdminRepo) ListVehicleSeats(_ context.Context, _ int64, _ types.PaginationParams) ([]VehicleSeat, int, error) {
 	return nil, 0, nil
 }

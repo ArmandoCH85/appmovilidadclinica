@@ -1060,6 +1060,102 @@ func (h *AdminHandler) SeatAvailabilityReport(w http.ResponseWriter, r *http.Req
 }
 
 // ----------------------------------------------------------------------------
+// Reportes nuevos (migration 0004)
+// ----------------------------------------------------------------------------
+
+// OccupancyByRouteReport maneja GET /admin/reports/occupancy-by-route.
+// Filtros opcionales: route_id, date_from, date_to (YYYY-MM-DD).
+func (h *AdminHandler) OccupancyByRouteReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	routeID, _ := strconv.ParseInt(q.Get("route_id"), 10, 64)
+	if routeID < 0 {
+		routeID = 0
+	}
+	rows, err := h.svc.GetRouteOccupancy(r.Context(), routeID, q.Get("date_from"), q.Get("date_to"))
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, routeOccupancySlice)})
+}
+
+// TripsStatusSummaryReport maneja GET /admin/reports/trips-status-summary.
+// Filtros opcionales: date_from, date_to, status.
+func (h *AdminHandler) TripsStatusSummaryReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	rows, err := h.svc.GetTripsStatusSummary(r.Context(), q.Get("date_from"), q.Get("date_to"), q.Get("status"))
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, tripsStatusSummarySlice)})
+}
+
+// DurationDeviationReport maneja GET /admin/reports/duration-deviation.
+// Filtros opcionales: route_id, date_from, date_to.
+func (h *AdminHandler) DurationDeviationReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	routeID, _ := strconv.ParseInt(q.Get("route_id"), 10, 64)
+	if routeID < 0 {
+		routeID = 0
+	}
+	rows, err := h.svc.GetDurationDeviation(r.Context(), routeID, q.Get("date_from"), q.Get("date_to"))
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, durationDeviationSlice)})
+}
+
+// DelaysByRouteDayReport maneja GET /admin/reports/delays-by-route-day.
+// Filtros opcionales: route_id, direction, date_from, date_to.
+func (h *AdminHandler) DelaysByRouteDayReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	routeID, _ := strconv.ParseInt(q.Get("route_id"), 10, 64)
+	if routeID < 0 {
+		routeID = 0
+	}
+	rows, err := h.svc.GetDelaysByRouteDay(r.Context(), routeID, q.Get("direction"), q.Get("date_from"), q.Get("date_to"))
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, delayByRouteDaySlice)})
+}
+
+// ReservationChangesReport maneja GET /admin/reports/reservation-changes.
+// Filtros opcionales: reservation_id, event_type, date_from, date_to.
+func (h *AdminHandler) ReservationChangesReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	resID, _ := strconv.ParseInt(q.Get("reservation_id"), 10, 64)
+	if resID < 0 {
+		resID = 0
+	}
+	rows, err := h.svc.GetReservationChanges(r.Context(), resID, q.Get("event_type"), q.Get("date_from"), q.Get("date_to"))
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, reservationChangeSlice)})
+}
+
+// TripIncidentsReport maneja GET /admin/reports/incidents.
+// Filtros opcionales: route_id, incident_type, status, date_from, date_to.
+func (h *AdminHandler) TripIncidentsReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	routeID, _ := strconv.ParseInt(q.Get("route_id"), 10, 64)
+	if routeID < 0 {
+		routeID = 0
+	}
+	rows, err := h.svc.GetTripIncidents(r.Context(), routeID, q.Get("incident_type"), q.Get("status"), q.Get("date_from"), q.Get("date_to"))
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, tripIncidentReportSlice)})
+}
+
+// ----------------------------------------------------------------------------
 // Registro de rutas
 // ----------------------------------------------------------------------------
 
@@ -1144,6 +1240,14 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/reports/conflicts", h.ConflictsReport)
 		r.Get("/reports/time-matrix", h.TimeMatrixReport)
 		r.Get("/reports/seat-availability", h.SeatAvailabilityReport)
+
+		// Reportes nuevos (migration 0004)
+		r.Get("/reports/occupancy-by-route", h.OccupancyByRouteReport)
+		r.Get("/reports/trips-status-summary", h.TripsStatusSummaryReport)
+		r.Get("/reports/duration-deviation", h.DurationDeviationReport)
+		r.Get("/reports/delays-by-route-day", h.DelaysByRouteDayReport)
+		r.Get("/reports/reservation-changes", h.ReservationChangesReport)
+		r.Get("/reports/incidents", h.TripIncidentsReport)
 	})
 }
 
@@ -1170,6 +1274,12 @@ const (
 	seatAvailSlice
 	vehicleSeatSlice
 	calendarExceptionSlice
+	routeOccupancySlice
+	tripsStatusSummarySlice
+	durationDeviationSlice
+	delayByRouteDaySlice
+	reservationChangeSlice
+	tripIncidentReportSlice
 	tripInstanceSlice
 	tripIncidentSlice
 	generationRunSlice
@@ -1270,6 +1380,36 @@ func orEmpty(v any, kind sliceKind) any {
 			return s
 		}
 		return []GenerationRun{}
+	case routeOccupancySlice:
+		if s, ok := v.([]RouteOccupancy); ok && s != nil {
+			return s
+		}
+		return []RouteOccupancy{}
+	case tripsStatusSummarySlice:
+		if s, ok := v.([]TripStatusSummary); ok && s != nil {
+			return s
+		}
+		return []TripStatusSummary{}
+	case durationDeviationSlice:
+		if s, ok := v.([]DurationDeviation); ok && s != nil {
+			return s
+		}
+		return []DurationDeviation{}
+	case delayByRouteDaySlice:
+		if s, ok := v.([]DelayByRouteDay); ok && s != nil {
+			return s
+		}
+		return []DelayByRouteDay{}
+	case reservationChangeSlice:
+		if s, ok := v.([]ReservationChange); ok && s != nil {
+			return s
+		}
+		return []ReservationChange{}
+	case tripIncidentReportSlice:
+		if s, ok := v.([]TripIncidentReport); ok && s != nil {
+			return s
+		}
+		return []TripIncidentReport{}
 	}
 	return v
 }

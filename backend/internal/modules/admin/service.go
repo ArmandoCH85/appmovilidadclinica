@@ -97,6 +97,14 @@ ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string
 	GetScheduleConflicts(ctx context.Context, resourceType, dateFrom, dateTo string) ([]Conflict, error)
 	GetRouteTimeMatrix(ctx context.Context, routeID int64, direction string, profileID int64) ([]MatrixEntry, error)
 	GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error)
+
+	// Reportes nuevos (migration 0004)
+	GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error)
+	GetTripsStatusSummary(ctx context.Context, dateFrom, dateTo, status string) ([]TripStatusSummary, error)
+	GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error)
+	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
+	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
+	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
 }
 
 // adminService es la implementacion concreta.
@@ -720,6 +728,101 @@ func (s *adminService) GetTripSeatAvailability(ctx context.Context, tripID int64
 		return nil, err
 	}
 	return s.repo.GetTripSeatAvailability(ctx, tripID, state)
+}
+
+// ----------------------------------------------------------------------------
+// Reportes nuevos (migration 0004)
+// Cada metodo exige rol ADMIN y delega 1:1 al repositorio.
+// ----------------------------------------------------------------------------
+
+// GetRouteOccupancy devuelve ocupacion por ruta (#5). routeID=0 = todas;
+// dateFrom/dateTo ('') = sin acotar.
+func (s *adminService) GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	return s.repo.GetRouteOccupancy(ctx, routeID, dateFrom, dateTo)
+}
+
+// GetTripsStatusSummary devuelve conteo de viajes por status (#11).
+// dateFrom/dateTo/status opcionales.
+func (s *adminService) GetTripsStatusSummary(ctx context.Context, dateFrom, dateTo, status string) ([]TripStatusSummary, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if status != "" && !validTripStatus(status) {
+		return nil, apperror.ValidationError{Field: "status", Reason: "status de viaje invalido"}
+	}
+	return s.repo.GetTripsStatusSummary(ctx, dateFrom, dateTo, status)
+}
+
+// GetDurationDeviation compara duracion real vs estimada (#12).
+// routeID=0 = todas; fechas '' = sin acotar.
+func (s *adminService) GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	return s.repo.GetDurationDeviation(ctx, routeID, dateFrom, dateTo)
+}
+
+// GetDelaysByRouteDay agrega retraso de salida por ruta/dia (#13).
+func (s *adminService) GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if direction != "" && direction != "IDA" && direction != "VUELTA" {
+		return nil, apperror.ValidationError{Field: "direction", Reason: "debe ser IDA o VUELTA"}
+	}
+	return s.repo.GetDelaysByRouteDay(ctx, routeID, direction, dateFrom, dateTo)
+}
+
+// GetReservationChanges lista el historial de eventos por reserva (#26).
+func (s *adminService) GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	return s.repo.GetReservationChanges(ctx, reservationID, eventType, dateFrom, dateTo)
+}
+
+// GetTripIncidents lista tickets/quejas de viaje (#27).
+func (s *adminService) GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if incidentType != "" && !validIncidentType(incidentType) {
+		return nil, apperror.ValidationError{Field: "incident_type", Reason: "tipo de incidente invalido"}
+	}
+	if status != "" && !validIncidentStatus(status) {
+		return nil, apperror.ValidationError{Field: "status", Reason: "status de incidente invalido"}
+	}
+	return s.repo.GetTripIncidents(ctx, routeID, incidentType, status, dateFrom, dateTo)
+}
+
+// validTripStatus acepta los ENUM de trip_instances.status.
+func validTripStatus(s string) bool {
+	switch s {
+	case "DRAFT", "PUBLISHED", "BOARDING", "IN_PROGRESS", "COMPLETED", "CANCELLED":
+		return true
+	}
+	return false
+}
+
+// validIncidentType acepta los ENUM de trip_incidents.incident_type.
+func validIncidentType(s string) bool {
+	switch s {
+	case "BREAKDOWN", "DELAY", "ACCIDENT", "OTHER":
+		return true
+	}
+	return false
+}
+
+// validIncidentStatus acepta los ENUM de trip_incidents.status.
+func validIncidentStatus(s string) bool {
+	switch s {
+	case "OPEN", "IN_REVIEW", "RESOLVED":
+		return true
+	}
+	return false
 }
 
 // compile-time guard.

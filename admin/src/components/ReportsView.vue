@@ -25,7 +25,17 @@ import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import { request, ApiError } from '../api/client'
 import { LABELS } from '../messages'
-import type { ScheduleConflict, RouteTimeMatrixEntry, TripSeatAvailability } from '../types'
+import type {
+  ScheduleConflict,
+  RouteTimeMatrixEntry,
+  TripSeatAvailability,
+  RouteOccupancyRow,
+  TripStatusSummaryRow,
+  DurationDeviationRow,
+  DelayByRouteDayRow,
+  ReservationChangeRow,
+  TripIncidentReportRow,
+} from '../types'
 
 // ---------------------------------------------------------------------------
 // Helpers de formato
@@ -219,22 +229,477 @@ async function searchSeats(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Tab 4: Ocupación por ruta (#5, vw_route_occupancy)
+// ---------------------------------------------------------------------------
+
+const occupancy = ref<RouteOccupancyRow[]>([])
+const occupancyLoading = ref(false)
+const occupancyError = ref('')
+const occupancyFilter = reactive<{ routeID: number | null; dateFrom: Date | null; dateTo: Date | null }>({
+  routeID: null,
+  dateFrom: null,
+  dateTo: null,
+})
+
+async function loadOccupancy(): Promise<void> {
+  occupancyLoading.value = true
+  occupancyError.value = ''
+  const params = new URLSearchParams()
+  if (occupancyFilter.routeID && occupancyFilter.routeID > 0) params.set('route_id', String(occupancyFilter.routeID))
+  const fromStr = ymd(occupancyFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(occupancyFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: RouteOccupancyRow[] }>(
+      'GET',
+      `/admin/reports/occupancy-by-route${qs ? `?${qs}` : ''}`,
+    )
+    occupancy.value = res.items
+  } catch (err) {
+    occupancyError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    occupancy.value = []
+  } finally {
+    occupancyLoading.value = false
+  }
+}
+
+function clearOccupancyFilters(): void {
+  occupancyFilter.routeID = null
+  occupancyFilter.dateFrom = null
+  occupancyFilter.dateTo = null
+}
+
+const hasOccupancyFilters = computed(
+  () =>
+    Boolean(
+      (occupancyFilter.routeID && occupancyFilter.routeID > 0) ||
+        occupancyFilter.dateFrom ||
+        occupancyFilter.dateTo,
+    ),
+)
+
+// ---------------------------------------------------------------------------
+// Tab 5: Resumen de status de viajes (#11, vw_trips_status_summary)
+// ---------------------------------------------------------------------------
+
+const TRIP_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'DRAFT', label: 'Borrador' },
+  { value: 'PUBLISHED', label: 'Publicado' },
+  { value: 'BOARDING', label: 'Embarcando' },
+  { value: 'IN_PROGRESS', label: 'En curso' },
+  { value: 'COMPLETED', label: 'Completado' },
+  { value: 'CANCELLED', label: 'Cancelado' },
+]
+
+const TRIP_STATUS_SEVERITIES: Record<string, 'success' | 'danger' | 'info' | 'warn' | 'secondary'> = {
+  DRAFT: 'secondary',
+  PUBLISHED: 'info',
+  BOARDING: 'warn',
+  IN_PROGRESS: 'warn',
+  COMPLETED: 'success',
+  CANCELLED: 'danger',
+}
+
+const TRIP_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Borrador',
+  PUBLISHED: 'Publicado',
+  BOARDING: 'Embarcando',
+  IN_PROGRESS: 'En curso',
+  COMPLETED: 'Completado',
+  CANCELLED: 'Cancelado',
+}
+
+const tripsStatus = ref<TripStatusSummaryRow[]>([])
+const tripsStatusLoading = ref(false)
+const tripsStatusError = ref('')
+const tripsStatusFilter = reactive<{ dateFrom: Date | null; dateTo: Date | null; status: string }>({
+  dateFrom: null,
+  dateTo: null,
+  status: '',
+})
+
+async function loadTripsStatus(): Promise<void> {
+  tripsStatusLoading.value = true
+  tripsStatusError.value = ''
+  const params = new URLSearchParams()
+  const fromStr = ymd(tripsStatusFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(tripsStatusFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
+  if (tripsStatusFilter.status) params.set('status', tripsStatusFilter.status)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: TripStatusSummaryRow[] }>(
+      'GET',
+      `/admin/reports/trips-status-summary${qs ? `?${qs}` : ''}`,
+    )
+    tripsStatus.value = res.items
+  } catch (err) {
+    tripsStatusError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    tripsStatus.value = []
+  } finally {
+    tripsStatusLoading.value = false
+  }
+}
+
+function clearTripsStatusFilters(): void {
+  tripsStatusFilter.dateFrom = null
+  tripsStatusFilter.dateTo = null
+  tripsStatusFilter.status = ''
+}
+
+const hasTripsStatusFilters = computed(
+  () => Boolean(tripsStatusFilter.dateFrom || tripsStatusFilter.dateTo || tripsStatusFilter.status),
+)
+
+// ---------------------------------------------------------------------------
+// Tab 6: Duración real vs estimada (#12, vw_duration_deviation)
+// ---------------------------------------------------------------------------
+
+const duration = ref<DurationDeviationRow[]>([])
+const durationLoading = ref(false)
+const durationError = ref('')
+const durationFilter = reactive<{ routeID: number | null; dateFrom: Date | null; dateTo: Date | null }>({
+  routeID: null,
+  dateFrom: null,
+  dateTo: null,
+})
+
+async function loadDuration(): Promise<void> {
+  durationLoading.value = true
+  durationError.value = ''
+  const params = new URLSearchParams()
+  if (durationFilter.routeID && durationFilter.routeID > 0) params.set('route_id', String(durationFilter.routeID))
+  const fromStr = ymd(durationFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(durationFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: DurationDeviationRow[] }>(
+      'GET',
+      `/admin/reports/duration-deviation${qs ? `?${qs}` : ''}`,
+    )
+    duration.value = res.items
+  } catch (err) {
+    durationError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    duration.value = []
+  } finally {
+    durationLoading.value = false
+  }
+}
+
+function clearDurationFilters(): void {
+  durationFilter.routeID = null
+  durationFilter.dateFrom = null
+  durationFilter.dateTo = null
+}
+
+const hasDurationFilters = computed(
+  () =>
+    Boolean(
+      (durationFilter.routeID && durationFilter.routeID > 0) ||
+        durationFilter.dateFrom ||
+        durationFilter.dateTo,
+    ),
+)
+
+// ---------------------------------------------------------------------------
+// Tab 7: Retrasos por ruta/día (#13, vw_delays_by_route_day)
+// ---------------------------------------------------------------------------
+
+const delays = ref<DelayByRouteDayRow[]>([])
+const delaysLoading = ref(false)
+const delaysError = ref('')
+const delaysFilter = reactive<{
+  routeID: number | null
+  direction: string
+  dateFrom: Date | null
+  dateTo: Date | null
+}>({
+  routeID: null,
+  direction: '',
+  dateFrom: null,
+  dateTo: null,
+})
+
+async function loadDelays(): Promise<void> {
+  delaysLoading.value = true
+  delaysError.value = ''
+  const params = new URLSearchParams()
+  if (delaysFilter.routeID && delaysFilter.routeID > 0) params.set('route_id', String(delaysFilter.routeID))
+  if (delaysFilter.direction) params.set('direction', delaysFilter.direction)
+  const fromStr = ymd(delaysFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(delaysFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: DelayByRouteDayRow[] }>(
+      'GET',
+      `/admin/reports/delays-by-route-day${qs ? `?${qs}` : ''}`,
+    )
+    delays.value = res.items
+  } catch (err) {
+    delaysError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    delays.value = []
+  } finally {
+    delaysLoading.value = false
+  }
+}
+
+function clearDelaysFilters(): void {
+  delaysFilter.routeID = null
+  delaysFilter.direction = ''
+  delaysFilter.dateFrom = null
+  delaysFilter.dateTo = null
+}
+
+const hasDelaysFilters = computed(
+  () =>
+    Boolean(
+      (delaysFilter.routeID && delaysFilter.routeID > 0) ||
+        delaysFilter.direction ||
+        delaysFilter.dateFrom ||
+        delaysFilter.dateTo,
+    ),
+)
+
+// ---------------------------------------------------------------------------
+// Tab 8: Cambios en reservas (#26, vw_reservation_changes)
+// ---------------------------------------------------------------------------
+
+const RES_EVENT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'CONFIRMED', label: 'Confirmada' },
+  { value: 'BOARDED', label: 'Abordó' },
+  { value: 'ALIGHTED', label: 'Bajó' },
+  { value: 'NO_SHOW', label: 'No show' },
+  { value: 'SEGMENTS_RELEASED', label: 'Segmentos liberados' },
+  { value: 'CANCELLED', label: 'Cancelada' },
+]
+
+const changes = ref<ReservationChangeRow[]>([])
+const changesLoading = ref(false)
+const changesError = ref('')
+const changesFilter = reactive<{
+  reservationID: number | null
+  eventType: string
+  dateFrom: Date | null
+  dateTo: Date | null
+}>({
+  reservationID: null,
+  eventType: '',
+  dateFrom: null,
+  dateTo: null,
+})
+
+async function loadChanges(): Promise<void> {
+  changesLoading.value = true
+  changesError.value = ''
+  const params = new URLSearchParams()
+  if (changesFilter.reservationID && changesFilter.reservationID > 0) {
+    params.set('reservation_id', String(changesFilter.reservationID))
+  }
+  if (changesFilter.eventType) params.set('event_type', changesFilter.eventType)
+  const fromStr = ymd(changesFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(changesFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: ReservationChangeRow[] }>(
+      'GET',
+      `/admin/reports/reservation-changes${qs ? `?${qs}` : ''}`,
+    )
+    changes.value = res.items
+  } catch (err) {
+    changesError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    changes.value = []
+  } finally {
+    changesLoading.value = false
+  }
+}
+
+function clearChangesFilters(): void {
+  changesFilter.reservationID = null
+  changesFilter.eventType = ''
+  changesFilter.dateFrom = null
+  changesFilter.dateTo = null
+}
+
+const hasChangesFilters = computed(
+  () =>
+    Boolean(
+      (changesFilter.reservationID && changesFilter.reservationID > 0) ||
+        changesFilter.eventType ||
+        changesFilter.dateFrom ||
+        changesFilter.dateTo,
+    ),
+)
+
+// ---------------------------------------------------------------------------
+// Tab 9: Tickets / quejas (#27, vw_trip_incidents)
+// ---------------------------------------------------------------------------
+
+const INCIDENT_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'BREAKDOWN', label: 'Avería' },
+  { value: 'DELAY', label: 'Retraso' },
+  { value: 'ACCIDENT', label: 'Accidente' },
+  { value: 'OTHER', label: 'Otro' },
+]
+
+const INCIDENT_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'OPEN', label: 'Abierto' },
+  { value: 'IN_REVIEW', label: 'En revisión' },
+  { value: 'RESOLVED', label: 'Resuelto' },
+]
+
+const INCIDENT_STATUS_SEVERITIES: Record<string, 'danger' | 'warn' | 'success'> = {
+  OPEN: 'danger',
+  IN_REVIEW: 'warn',
+  RESOLVED: 'success',
+}
+
+const INCIDENT_TYPE_SEVERITIES: Record<string, 'danger' | 'warn' | 'info'> = {
+  BREAKDOWN: 'warn',
+  DELAY: 'warn',
+  ACCIDENT: 'danger',
+  OTHER: 'info',
+}
+
+const INCIDENT_TYPE_LABELS: Record<string, string> = {
+  BREAKDOWN: 'Avería',
+  DELAY: 'Retraso',
+  ACCIDENT: 'Accidente',
+  OTHER: 'Otro',
+}
+
+const INCIDENT_STATUS_LABELS: Record<string, string> = {
+  OPEN: 'Abierto',
+  IN_REVIEW: 'En revisión',
+  RESOLVED: 'Resuelto',
+}
+
+const incidents = ref<TripIncidentReportRow[]>([])
+const incidentsLoading = ref(false)
+const incidentsError = ref('')
+const incidentsFilter = reactive<{
+  routeID: number | null
+  incidentType: string
+  status: string
+  dateFrom: Date | null
+  dateTo: Date | null
+}>({
+  routeID: null,
+  incidentType: '',
+  status: '',
+  dateFrom: null,
+  dateTo: null,
+})
+
+async function loadIncidents(): Promise<void> {
+  incidentsLoading.value = true
+  incidentsError.value = ''
+  const params = new URLSearchParams()
+  if (incidentsFilter.routeID && incidentsFilter.routeID > 0) params.set('route_id', String(incidentsFilter.routeID))
+  if (incidentsFilter.incidentType) params.set('incident_type', incidentsFilter.incidentType)
+  if (incidentsFilter.status) params.set('status', incidentsFilter.status)
+  const fromStr = ymd(incidentsFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(incidentsFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: TripIncidentReportRow[] }>(
+      'GET',
+      `/admin/reports/incidents${qs ? `?${qs}` : ''}`,
+    )
+    incidents.value = res.items
+  } catch (err) {
+    incidentsError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    incidents.value = []
+  } finally {
+    incidentsLoading.value = false
+  }
+}
+
+function clearIncidentsFilters(): void {
+  incidentsFilter.routeID = null
+  incidentsFilter.incidentType = ''
+  incidentsFilter.status = ''
+  incidentsFilter.dateFrom = null
+  incidentsFilter.dateTo = null
+}
+
+const hasIncidentsFilters = computed(
+  () =>
+    Boolean(
+      (incidentsFilter.routeID && incidentsFilter.routeID > 0) ||
+        incidentsFilter.incidentType ||
+        incidentsFilter.status ||
+        incidentsFilter.dateFrom ||
+        incidentsFilter.dateTo,
+    ),
+)
+
+// ---------------------------------------------------------------------------
 // Tabs (lazy load: cada tab dispara su consulta al activarse por primera vez)
 // ---------------------------------------------------------------------------
 
-const activeTab = ref<'conflicts' | 'matrix' | 'seats'>('conflicts')
+type ReportTab =
+  | 'conflicts'
+  | 'matrix'
+  | 'seats'
+  | 'occupancy'
+  | 'tripsStatus'
+  | 'duration'
+  | 'delays'
+  | 'changes'
+  | 'incidents'
+
+const activeTab = ref<ReportTab>('conflicts')
 const conflictsLoaded = ref(false)
 const matrixLoaded = ref(false)
+const occupancyLoaded = ref(false)
+const tripsStatusLoaded = ref(false)
+const durationLoaded = ref(false)
+const delaysLoaded = ref(false)
+const changesLoaded = ref(false)
+const incidentsLoaded = ref(false)
 
 function onTabChange(value: string | number | undefined): void {
-  const tab = String(value ?? '')
-  activeTab.value = tab as typeof activeTab.value
+  const tab = String(value ?? '') as ReportTab
+  activeTab.value = tab
   if (tab === 'conflicts' && !conflictsLoaded.value) {
     conflictsLoaded.value = true
     loadConflicts()
   } else if (tab === 'matrix' && !matrixLoaded.value) {
     matrixLoaded.value = true
     loadMatrix()
+  } else if (tab === 'occupancy' && !occupancyLoaded.value) {
+    occupancyLoaded.value = true
+    loadOccupancy()
+  } else if (tab === 'tripsStatus' && !tripsStatusLoaded.value) {
+    tripsStatusLoaded.value = true
+    loadTripsStatus()
+  } else if (tab === 'duration' && !durationLoaded.value) {
+    durationLoaded.value = true
+    loadDuration()
+  } else if (tab === 'delays' && !delaysLoaded.value) {
+    delaysLoaded.value = true
+    loadDelays()
+  } else if (tab === 'changes' && !changesLoaded.value) {
+    changesLoaded.value = true
+    loadChanges()
+  } else if (tab === 'incidents' && !incidentsLoaded.value) {
+    incidentsLoaded.value = true
+    loadIncidents()
   }
 }
 
@@ -271,6 +736,30 @@ onMounted(() => {
         <Tab value="seats">
           <i class="pi pi-th-large tab-icon" aria-hidden="true"></i>
           Disponibilidad de asientos
+        </Tab>
+        <Tab value="occupancy">
+          <i class="pi pi-chart-line tab-icon" aria-hidden="true"></i>
+          Ocupación por ruta
+        </Tab>
+        <Tab value="tripsStatus">
+          <i class="pi pi-list-check tab-icon" aria-hidden="true"></i>
+          Status de viajes
+        </Tab>
+        <Tab value="duration">
+          <i class="pi pi-clock tab-icon" aria-hidden="true"></i>
+          Duración real vs estimada
+        </Tab>
+        <Tab value="delays">
+          <i class="pi pi-hourglass tab-icon" aria-hidden="true"></i>
+          Retrasos por ruta/día
+        </Tab>
+        <Tab value="changes">
+          <i class="pi pi-history tab-icon" aria-hidden="true"></i>
+          Cambios en reservas
+        </Tab>
+        <Tab value="incidents">
+          <i class="pi pi-flag tab-icon" aria-hidden="true"></i>
+          Tickets / quejas
         </Tab>
       </TabList>
 
@@ -498,6 +987,406 @@ onMounted(() => {
             </Column>
           </DataTable>
           <p v-else class="reports-hint">Ingresá un ID de viaje para ver la disponibilidad de sus asientos.</p>
+        </TabPanel>
+
+        <!-- Tab 4: Ocupación por ruta (#5) -->
+        <TabPanel value="occupancy">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="occ-route">ID de ruta</label>
+              <InputNumber inputId="occ-route" v-model="occupancyFilter.routeID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="occ-from">Desde</label>
+              <DatePicker id="occ-from" v-model="occupancyFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="occ-to">Hasta</label>
+              <DatePicker id="occ-to" v-model="occupancyFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="occupancyLoading" @click="loadOccupancy" />
+              <Button
+                v-if="hasOccupancyFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearOccupancyFilters"
+              />
+            </div>
+          </div>
+
+          <p v-if="occupancyError" role="alert" class="reports-error">
+            {{ occupancyError }}
+            <Button label="Reintentar" text size="small" @click="loadOccupancy" />
+          </p>
+
+          <DataTable :value="occupancy" :loading="occupancyLoading" paginator :rows="15" class="reports-table">
+            <template #empty>
+              <p class="reports-empty">Sin datos de ocupación para los filtros aplicados.</p>
+            </template>
+            <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column field="route_name" header="Nombre" />
+            <Column field="direction" header="Sentido" style="width: 5rem" />
+            <Column field="service_date" header="Fecha" style="width: 7rem" />
+            <Column field="trip_count" header="Viajes" style="width: 5rem" />
+            <Column field="seats_offered" header="Ofrecidos" style="width: 6rem" />
+            <Column field="seats_reserved" header="Reservados" style="width: 6rem" />
+            <Column header="% Ocupación" style="width: 7rem">
+              <template #body="{ data }">{{ data.occupancy_pct.toFixed(1) }}%</template>
+            </Column>
+          </DataTable>
+
+          <p v-if="!occupancyLoading && !occupancyError" class="reports-total">
+            {{ occupancy.length }} fila(s) de ocupación
+          </p>
+        </TabPanel>
+
+        <!-- Tab 5: Resumen status viajes (#11) -->
+        <TabPanel value="tripsStatus">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="ts-from">Desde</label>
+              <DatePicker id="ts-from" v-model="tripsStatusFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="ts-to">Hasta</label>
+              <DatePicker id="ts-to" v-model="tripsStatusFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="ts-status">Status</label>
+              <Select
+                id="ts-status"
+                v-model="tripsStatusFilter.status"
+                :options="TRIP_STATUS_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="tripsStatusLoading" @click="loadTripsStatus" />
+              <Button
+                v-if="hasTripsStatusFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearTripsStatusFilters"
+              />
+            </div>
+          </div>
+
+          <p v-if="tripsStatusError" role="alert" class="reports-error">
+            {{ tripsStatusError }}
+            <Button label="Reintentar" text size="small" @click="loadTripsStatus" />
+          </p>
+
+          <DataTable :value="tripsStatus" :loading="tripsStatusLoading" paginator :rows="15" class="reports-table">
+            <template #empty>
+              <p class="reports-empty">Sin viajes para los filtros aplicados.</p>
+            </template>
+            <Column field="service_date" header="Fecha" style="width: 7rem" />
+            <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column field="route_name" header="Nombre" />
+            <Column field="direction" header="Sentido" style="width: 5rem" />
+            <Column header="Status" style="width: 8rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="TRIP_STATUS_LABELS[data.status] ?? data.status"
+                  :severity="TRIP_STATUS_SEVERITIES[data.status] ?? 'secondary'"
+                />
+              </template>
+            </Column>
+            <Column field="trip_count" header="Cantidad" style="width: 5rem" />
+          </DataTable>
+
+          <p v-if="!tripsStatusLoading && !tripsStatusError" class="reports-total">
+            {{ tripsStatus.length }} fila(s) de status
+          </p>
+        </TabPanel>
+
+        <!-- Tab 6: Duración real vs estimada (#12) -->
+        <TabPanel value="duration">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="dur-route">ID de ruta</label>
+              <InputNumber inputId="dur-route" v-model="durationFilter.routeID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="dur-from">Desde</label>
+              <DatePicker id="dur-from" v-model="durationFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="dur-to">Hasta</label>
+              <DatePicker id="dur-to" v-model="durationFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="durationLoading" @click="loadDuration" />
+              <Button
+                v-if="hasDurationFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearDurationFilters"
+              />
+            </div>
+          </div>
+
+          <p v-if="durationError" role="alert" class="reports-error">
+            {{ durationError }}
+            <Button label="Reintentar" text size="small" @click="loadDuration" />
+          </p>
+
+          <DataTable :value="duration" :loading="durationLoading" paginator :rows="15" class="reports-table">
+            <template #empty>
+              <p class="reports-empty">Sin desvíos de duración para los filtros aplicados.</p>
+            </template>
+            <Column field="trip_code" header="Viaje" style="width: 10rem" />
+            <Column field="service_date" header="Fecha" style="width: 7rem" />
+            <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column field="scheduled_duration_minutes" header="Programado (min)" style="width: 7rem" />
+            <Column field="actual_duration_minutes" header="Real (min)" style="width: 6rem" />
+            <Column header="Δ (min)" style="width: 6rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="(data.delta_minutes >= 0 ? '+' : '') + data.delta_minutes"
+                  :severity="data.delta_minutes > 5 ? 'danger' : data.delta_minutes < -5 ? 'success' : 'info'"
+                />
+              </template>
+            </Column>
+            <Column header="Δ %" style="width: 5rem">
+              <template #body="{ data }">{{ data.delta_pct != null ? data.delta_pct.toFixed(1) + '%' : '—' }}</template>
+            </Column>
+          </DataTable>
+
+          <p v-if="!durationLoading && !durationError" class="reports-total">
+            {{ duration.length }} viaje(s) cerrados
+          </p>
+        </TabPanel>
+
+        <!-- Tab 7: Retrasos por ruta/día (#13) -->
+        <TabPanel value="delays">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="dly-route">ID de ruta</label>
+              <InputNumber inputId="dly-route" v-model="delaysFilter.routeID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="dly-direction">Sentido</label>
+              <Select
+                id="dly-direction"
+                v-model="delaysFilter.direction"
+                :options="DIRECTION_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="dly-from">Desde</label>
+              <DatePicker id="dly-from" v-model="delaysFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="dly-to">Hasta</label>
+              <DatePicker id="dly-to" v-model="delaysFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="delaysLoading" @click="loadDelays" />
+              <Button
+                v-if="hasDelaysFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearDelaysFilters"
+              />
+            </div>
+          </div>
+
+          <p v-if="delaysError" role="alert" class="reports-error">
+            {{ delaysError }}
+            <Button label="Reintentar" text size="small" @click="loadDelays" />
+          </p>
+
+          <DataTable :value="delays" :loading="delaysLoading" paginator :rows="15" class="reports-table">
+            <template #empty>
+              <p class="reports-empty">Sin datos de retraso para los filtros aplicados.</p>
+            </template>
+            <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column field="direction" header="Sentido" style="width: 5rem" />
+            <Column field="service_date" header="Fecha" style="width: 7rem" />
+            <Column field="trip_count" header="Viajes" style="width: 5rem" />
+            <Column header="Δ promedio (min)" style="width: 8rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="(data.avg_delay_minutes >= 0 ? '+' : '') + data.avg_delay_minutes.toFixed(1)"
+                  :severity="data.avg_delay_minutes > 5 ? 'danger' : data.avg_delay_minutes < -1 ? 'success' : 'info'"
+                />
+              </template>
+            </Column>
+            <Column field="max_delay_minutes" header="Δ máx (min)" style="width: 7rem" />
+            <Column field="late_trip_count" header="Tarde" style="width: 5rem" />
+            <Column field="on_time_trip_count" header="En hora" style="width: 5rem" />
+          </DataTable>
+
+          <p v-if="!delaysLoading && !delaysError" class="reports-total">
+            {{ delays.length }} día(s) / ruta con datos
+          </p>
+        </TabPanel>
+
+        <!-- Tab 8: Cambios en reservas (#26) -->
+        <TabPanel value="changes">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="ch-res">ID de reserva</label>
+              <InputNumber inputId="ch-res" v-model="changesFilter.reservationID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="ch-type">Tipo de evento</label>
+              <Select
+                id="ch-type"
+                v-model="changesFilter.eventType"
+                :options="RES_EVENT_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="ch-from">Desde</label>
+              <DatePicker id="ch-from" v-model="changesFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="ch-to">Hasta</label>
+              <DatePicker id="ch-to" v-model="changesFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="changesLoading" @click="loadChanges" />
+              <Button
+                v-if="hasChangesFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearChangesFilters"
+              />
+            </div>
+          </div>
+
+          <p v-if="changesError" role="alert" class="reports-error">
+            {{ changesError }}
+            <Button label="Reintentar" text size="small" @click="loadChanges" />
+          </p>
+
+          <DataTable :value="changes" :loading="changesLoading" paginator :rows="15" class="reports-table">
+            <template #empty>
+              <p class="reports-empty">Sin cambios registrados para los filtros aplicados.</p>
+            </template>
+            <Column field="event_at" header="Fecha y hora" style="width: 9rem" />
+            <Column field="reservation_code" header="Reserva" style="width: 11rem" />
+            <Column field="event_type" header="Evento" style="width: 8rem" />
+            <Column field="worker_name" header="Trabajador" />
+            <Column field="actor_name" header="Actor" />
+            <Column field="trip_code" header="Viaje" style="width: 10rem" />
+            <Column field="service_date" header="Servicio" style="width: 7rem" />
+            <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column header="Detalle">
+              <template #body="{ data }">{{ data.details || '—' }}</template>
+            </Column>
+          </DataTable>
+
+          <p v-if="!changesLoading && !changesError" class="reports-total">
+            {{ changes.length }} evento(s) en el historial
+          </p>
+        </TabPanel>
+
+        <!-- Tab 9: Tickets / quejas (#27) -->
+        <TabPanel value="incidents">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="inc-route">ID de ruta</label>
+              <InputNumber inputId="inc-route" v-model="incidentsFilter.routeID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="inc-type">Tipo</label>
+              <Select
+                id="inc-type"
+                v-model="incidentsFilter.incidentType"
+                :options="INCIDENT_TYPE_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="inc-status">Estado</label>
+              <Select
+                id="inc-status"
+                v-model="incidentsFilter.status"
+                :options="INCIDENT_STATUS_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="inc-from">Desde</label>
+              <DatePicker id="inc-from" v-model="incidentsFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="inc-to">Hasta</label>
+              <DatePicker id="inc-to" v-model="incidentsFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="incidentsLoading" @click="loadIncidents" />
+              <Button
+                v-if="hasIncidentsFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearIncidentsFilters"
+              />
+            </div>
+          </div>
+
+          <p v-if="incidentsError" role="alert" class="reports-error">
+            {{ incidentsError }}
+            <Button label="Reintentar" text size="small" @click="loadIncidents" />
+          </p>
+
+          <DataTable :value="incidents" :loading="incidentsLoading" paginator :rows="15" class="reports-table">
+            <template #empty>
+              <p class="reports-empty">Sin tickets/quejas para los filtros aplicados.</p>
+            </template>
+            <Column field="reported_at" header="Reportado" style="width: 9rem" />
+            <Column header="Tipo" style="width: 7rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="INCIDENT_TYPE_LABELS[data.incident_type] ?? data.incident_type"
+                  :severity="INCIDENT_TYPE_SEVERITIES[data.incident_type] ?? 'info'"
+                />
+              </template>
+            </Column>
+            <Column header="Estado" style="width: 7rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="INCIDENT_STATUS_LABELS[data.status] ?? data.status"
+                  :severity="INCIDENT_STATUS_SEVERITIES[data.status] ?? 'secondary'"
+                />
+              </template>
+            </Column>
+            <Column field="trip_code" header="Viaje" style="width: 10rem" />
+            <Column field="service_date" header="Fecha" style="width: 7rem" />
+            <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column field="reported_by_name" header="Reportado por" />
+            <Column header="Descripción">
+              <template #body="{ data }">{{ data.description }}</template>
+            </Column>
+            <Column field="resolved_at" header="Resuelto" style="width: 9rem" />
+          </DataTable>
+
+          <p v-if="!incidentsLoading && !incidentsError" class="reports-total">
+            {{ incidents.length }} incidente(s) reportado(s)
+          </p>
         </TabPanel>
       </TabPanels>
     </Tabs>
