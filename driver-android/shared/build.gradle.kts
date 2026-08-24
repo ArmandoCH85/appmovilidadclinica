@@ -76,6 +76,9 @@ kotlin {
 
             // Koin Android (para androidContext() en platformModule)
             implementation("io.insert-koin:koin-android:4.0.0")
+
+            // Google Play Services Location (Fase 4 — AndroidLocationService)
+            implementation("com.google.android.gms:play-services-location:21.3.0")
         }
 
         iosMain.dependencies {

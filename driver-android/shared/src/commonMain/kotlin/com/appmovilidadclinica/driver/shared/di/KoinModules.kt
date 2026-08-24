@@ -17,6 +17,7 @@ val storageModule: Module = module {
 
 /**
  * Modulo cargado en cada target. androidMain/iosMain proveen las
- * implementaciones platform-specific (Settings, engine Ktor, etc.).
+ * implementaciones platform-specific (Settings, ScannerQr, Location,
+ * Notification, etc.) registradas con su interface como binding.
  */
 expect val platformModule: Module
