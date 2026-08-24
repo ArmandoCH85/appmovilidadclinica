@@ -4,26 +4,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
-import com.appmovilidadclinica.driver.presentation.navigation.DriverNavHost
-import com.appmovilidadclinica.driver.shared.ui.theme.DriverAppTheme
+import com.appmovilidadclinica.driver.presentation.qrscan.QrScanScreen
+import com.appmovilidadclinica.driver.shared.ui.navigation.DriverNavGraph
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            DriverAppTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    DriverNavHost()
-                }
-            }
+            // DriverNavGraph ya envuelve en DriverAppTheme internamente.
+            DriverNavGraph(
+                qrScanContent = { tripId, onBack ->
+                    QrScanScreen(tripId = tripId, onBack = onBack)
+                },
+            )
         }
     }
 }
