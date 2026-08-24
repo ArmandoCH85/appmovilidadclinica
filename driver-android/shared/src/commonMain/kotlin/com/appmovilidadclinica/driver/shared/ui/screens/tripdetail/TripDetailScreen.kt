@@ -59,6 +59,7 @@ import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.shared.domain.model.TripStopStatus
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.platform.NotificationService
 import com.appmovilidadclinica.driver.shared.ui.common.color
 import com.appmovilidadclinica.driver.shared.ui.common.label
 import com.appmovilidadclinica.driver.shared.ui.common.toPeruTime
@@ -71,6 +72,7 @@ fun TripDetailScreen(
     tripId: Long,
     initialTrip: DriverTrip? = null,
     driverRepository: DriverRepository = koinInject(),
+    notificationService: NotificationService = koinInject(),
     onBack: () -> Unit = {},
     onScanQr: (Long) -> Unit = {},
     onReportIncident: (Long) -> Unit = {},
@@ -85,6 +87,16 @@ fun TripDetailScreen(
     var passengersExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.load() }
+
+    // Side-effect multiplatform: notificar cuando el trip cambia a IN_PROGRESS
+    // o COMPLETED. En Android dispara NotificationCompat; en iOS el stub loguea.
+    LaunchedEffect(state.trip?.status) {
+        when (state.trip?.status) {
+            TripStatus.IN_PROGRESS -> notificationService.notifyTripStarted(tripId.toString())
+            TripStatus.COMPLETED -> notificationService.notifyTripStarted(tripId.toString())
+            else -> Unit
+        }
+    }
 
     LaunchedEffect(state.toastMessage) {
         if (state.toastMessage != null) {
