@@ -183,7 +183,7 @@ func (m *mockAdminRepo) GetReservationChanges(_ context.Context, _ int64, _, _, 
 func (m *mockAdminRepo) GetTripIncidents(_ context.Context, _ int64, _, _, _, _ string) ([]TripIncidentReport, error) {
 	return nil, nil
 }
-func (m *mockAdminRepo) GetUserReservationActivity(_ context.Context, _, _, _ string) ([]UserReservationActivity, error) {
+func (m *mockAdminRepo) GetUserReservationActivity(_ context.Context, _, _, _, _, _ string) ([]UserReservationActivity, error) {
 	return nil, nil
 }
 func (m *mockAdminRepo) ListVehicleSeats(_ context.Context, _ int64, _ types.PaginationParams) ([]VehicleSeat, int, error) {

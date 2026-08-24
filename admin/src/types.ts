@@ -396,4 +396,5 @@ export interface UserReservationActivityRow {
   confirmed_by_driver: number
   cancelled_by_self: number
   not_confirmed: number
+  last_activity_at?: string | null
 }

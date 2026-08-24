@@ -1156,13 +1156,16 @@ func (h *AdminHandler) TripIncidentsReport(w http.ResponseWriter, r *http.Reques
 }
 
 // UserReservationActivityReport maneja GET /admin/reports/user-reservation-activity.
-// Filtros opcionales: role (WORKER|DRIVER), active (true|false), department.
+// Filtros opcionales: role (WORKER|DRIVER), active (true|false), department,
+// date_from (YYYY-MM-DD), date_to (YYYY-MM-DD). El servicio valida formatos
+// y devuelve 422 si date_from > date_to.
 // No acepta paginacion: el universo son usuarios WORKER+DRIVER (decenas o
 // pocos cientos); el frontend agrupa/filtra en memoria si hace falta.
 func (h *AdminHandler) UserReservationActivityReport(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	rows, err := h.svc.GetUserReservationActivity(r.Context(),
-		q.Get("role"), q.Get("active"), q.Get("department"))
+		q.Get("role"), q.Get("active"), q.Get("department"),
+		q.Get("date_from"), q.Get("date_to"))
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return

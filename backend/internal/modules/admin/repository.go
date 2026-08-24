@@ -514,27 +514,34 @@ type TripIncidentReport struct {
 }
 
 // UserReservationActivity refleja una fila de vw_user_reservation_activity
-// (#28). Una fila por usuario con rol WORKER o DRIVER; resume cuantos
-// eventos de cada tipo produjo sobre sus reservas. Los conteos son
-// excluyentes por reserva (no se solapan entre si) salvo en el caso
-// confirmado_por_conductor + confirmado_por_si_mismo, donde un mismo
-// reserva puede contribuir a ambas columnas: el CONFIRMED inicial lo
-// dispara el propio usuario, y luego el BOARDED lo dispara el conductor.
-// La suma de las 5 metricas no necesariamente da total_reservations
+// (#28, ampliado en #28b con last_activity_at). Una fila por usuario con
+// rol WORKER o DRIVER; resume cuantos eventos de cada tipo produjo sobre
+// sus reservas. Los conteos son excluyentes por reserva (no se solapan
+// entre si) salvo en el caso confirmado_por_conductor + confirmado_por_si_mismo,
+// donde un mismo reserva puede contribuir a ambas columnas: el CONFIRMED
+// inicial lo dispara el propio usuario, y luego el BOARDED lo dispara el
+// conductor. La suma de las 5 metricas no necesariamente da total_reservations
 // porque no todas las reservas pasan por todos los estados.
+//
+// LastActivityAt es el MAX(event_at) sobre todos los eventos del usuario
+// en cualquier reserva. Nullable: los usuarios sin reservas (o sin
+// eventos generados, raro) tienen nil. Cuando el endpoint recibe filtros
+// de fecha, el repositorio pre-filtra las reservas por service_date antes
+// de agregar, asi que LastActivityAt refleja la actividad en ese rango.
 type UserReservationActivity struct {
-	UserID            int64   `json:"user_id"`
-	EmployeeCode      string  `json:"employee_code"`
-	DocumentNumber    string  `json:"document_number"`
-	FullName          string  `json:"full_name"`
-	Role              string  `json:"role"`
-	Department        *string `json:"department,omitempty"`
-	Active            bool    `json:"active"`
-	TotalReservations int     `json:"total_reservations"`
-	ConfirmedBySelf   int     `json:"confirmed_by_self"`
-	ConfirmedByDriver int     `json:"confirmed_by_driver"`
-	CancelledBySelf   int     `json:"cancelled_by_self"`
-	NotConfirmed      int     `json:"not_confirmed"`
+	UserID            int64      `json:"user_id"`
+	EmployeeCode      string     `json:"employee_code"`
+	DocumentNumber    string     `json:"document_number"`
+	FullName          string     `json:"full_name"`
+	Role              string     `json:"role"`
+	Department        *string    `json:"department,omitempty"`
+	Active            bool       `json:"active"`
+	TotalReservations int        `json:"total_reservations"`
+	ConfirmedBySelf   int        `json:"confirmed_by_self"`
+	ConfirmedByDriver int        `json:"confirmed_by_driver"`
+	CancelledBySelf   int        `json:"cancelled_by_self"`
+	NotConfirmed      int        `json:"not_confirmed"`
+	LastActivityAt    *time.Time `json:"last_activity_at,omitempty"`
 }
 
 type VehicleSeat struct {
@@ -734,8 +741,8 @@ type AdminRepository interface {
 	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
 	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
 
-	// Reportes nuevos (migration 0005)
-	GetUserReservationActivity(ctx context.Context, role, active, department string) ([]UserReservationActivity, error)
+	// Reportes nuevos (migration 0005/0006)
+	GetUserReservationActivity(ctx context.Context, role, active, department, dateFrom, dateTo string) ([]UserReservationActivity, error)
 }
 
 // adminRepository es la implementacion concreta con database/sql.
@@ -2694,7 +2701,7 @@ func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, i
 }
 
 // ----------------------------------------------------------------------------
-// Reporte #28: actividad de reservas por usuario (migration 0005)
+// Reporte #28: actividad de reservas por usuario (migration 0005 + filtros 0006)
 // ----------------------------------------------------------------------------
 
 // GetUserReservationActivity devuelve la actividad de reservas agregada por
@@ -2704,53 +2711,98 @@ func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, i
 //   active     : "" | "true" | "false"      (match exacto)
 //   department : "" | texto exacto          (sin ILIKE; coincide con lo
 //                                              que la UI permite seleccionar)
+//   dateFrom   : "" | "YYYY-MM-DD"          (filtra reservas cuyo
+//                                              trip.service_date >= dateFrom)
+//   dateTo     : "" | "YYYY-MM-DD"          (filtra reservas cuyo
+//                                              trip.service_date <= dateTo)
 //
-// La vista vw_user_reservation_activity ya filtra u.role IN ('WORKER',
-// 'DRIVER') y precalcula las 5 metricas con COUNT(DISTINCT) para evitar
-// duplicados por el fan-out del LEFT JOIN a reservation_events. Los
-// filtros adicionales se aplican como WHERE sobre la vista, sin tocar la
-// logica de agregacion.
-func (r *adminRepository) GetUserReservationActivity(ctx context.Context, role, active, department string) ([]UserReservationActivity, error) {
+// Los filtros de fecha se aplican en una subquery que pre-filtra las
+// reservas por trip.service_date ANTES del JOIN con reservation_events.
+// Esto es importante porque las metricas se computan con COUNT(DISTINCT
+// CASE WHEN) sobre el fan-out del JOIN: si filtraramos despues de
+// agregar (via la vista), los counts incluirian reservas fuera del rango.
+// Usamos LEFT JOIN para que los usuarios sin reservas en el rango sigan
+// apareciendo con counts en 0.
+//
+// last_activity_at es MAX(re.event_at) — tambien acotado al rango
+// porque el JOIN a events pasa por la subquery de reservations ya filtrada.
+func (r *adminRepository) GetUserReservationActivity(ctx context.Context, role, active, department, dateFrom, dateTo string) ([]UserReservationActivity, error) {
 	args := []any{}
-	where := []string{}
+
+	// WHERE de la subquery de reservations: pre-filtra por service_date.
+	rsvWhere := []string{}
+	if dateFrom != "" {
+		rsvWhere = append(rsvWhere, "trip.service_date >= ?")
+		args = append(args, dateFrom)
+	}
+	if dateTo != "" {
+		rsvWhere = append(rsvWhere, "trip.service_date <= ?")
+		args = append(args, dateTo)
+	}
+	rsvJoin := "JOIN trip_instances trip ON trip.id = r.trip_id"
+	if len(rsvWhere) > 0 {
+		rsvJoin += " WHERE " + strings.Join(rsvWhere, " AND ")
+	}
+
+	// WHERE de usuarios (filtros no relacionados a fecha).
+	userWhere := []string{"u.role IN ('WORKER', 'DRIVER')"}
 	if role != "" {
-		where = append(where, "role = ?")
+		userWhere = append(userWhere, "u.role = ?")
 		args = append(args, role)
 	}
 	if active != "" {
-		// Aceptamos "true"/"false" tal como llegan del query string.
-		// MySQL evalua TINYINT(1) contra string '1'/'0' correctamente,
-		// pero pasamos bool explicito para que el plan sea estable.
 		switch active {
 		case "true":
-			where = append(where, "active = ?")
+			userWhere = append(userWhere, "u.active = ?")
 			args = append(args, true)
 		case "false":
-			where = append(where, "active = ?")
+			userWhere = append(userWhere, "u.active = ?")
 			args = append(args, false)
 		}
-		// cualquier otro valor se ignora silenciosamente: el servicio
-		// ya valida y rechaza con 422 antes de llegar aca.
+		// cualquier otro valor: el servicio ya valido con 422
 	}
 	if department != "" {
-		where = append(where, "department = ?")
+		userWhere = append(userWhere, "u.department = ?")
 		args = append(args, department)
 	}
 
-	q := `SELECT user_id, employee_code, document_number, full_name, role,
-                 department, active,
-                 total_reservations, confirmed_by_self, confirmed_by_driver,
-                 cancelled_by_self, not_confirmed
-            FROM vw_user_reservation_activity`
-	if len(where) > 0 {
-		q += " WHERE " + strings.Join(where, " AND ")
-	}
-	q += `
-        ORDER BY total_reservations DESC, full_name ASC`
+	q := fmt.Sprintf(`
+        SELECT u.id                              AS user_id,
+               u.employee_code                   AS employee_code,
+               u.document_number                 AS document_number,
+               u.full_name                       AS full_name,
+               u.role                            AS role,
+               u.department                      AS department,
+               u.active                          AS active,
+               COUNT(DISTINCT r.id)              AS total_reservations,
+               COUNT(DISTINCT CASE WHEN re.event_type = 'CONFIRMED' AND re.actor_user_id = u.id
+                                  THEN r.id END) AS confirmed_by_self,
+               COUNT(DISTINCT CASE WHEN re.event_type = 'BOARDED'
+                                   AND actor_u.role = 'DRIVER'
+                                   AND re.actor_user_id = trip.driver_id
+                                  THEN r.id END) AS confirmed_by_driver,
+               COUNT(DISTINCT CASE WHEN re.event_type = 'CANCELLED' AND re.actor_user_id = u.id
+                                  THEN r.id END) AS cancelled_by_self,
+               COUNT(DISTINCT CASE WHEN r.status = 'CONFIRMED' AND trip.service_date >= CURDATE()
+                                  THEN r.id END) AS not_confirmed,
+               MAX(re.event_at)                  AS last_activity_at
+          FROM users u
+          LEFT JOIN (
+              SELECT r.* FROM reservations r
+              %s
+          ) r ON r.worker_id = u.id
+          LEFT JOIN trip_instances trip ON trip.id = r.trip_id
+          LEFT JOIN reservation_events re ON re.reservation_id = r.id
+          LEFT JOIN users actor_u ON actor_u.id = re.actor_user_id
+         WHERE %s
+         GROUP BY u.id, u.employee_code, u.document_number, u.full_name, u.role,
+                  u.department, u.active
+         ORDER BY total_reservations DESC, u.full_name ASC`,
+		rsvJoin, strings.Join(userWhere, " AND "))
 
 	rows, err := r.db.QueryContext(ctx, q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("consultando vw_user_reservation_activity: %w", err)
+		return nil, fmt.Errorf("consultando actividad de reservas: %w", err)
 	}
 	defer rows.Close()
 
@@ -2758,13 +2810,15 @@ func (r *adminRepository) GetUserReservationActivity(ctx context.Context, role, 
 	for rows.Next() {
 		var u UserReservationActivity
 		var dept sql.NullString
+		var lastAct sql.NullTime
 		if err := rows.Scan(&u.UserID, &u.EmployeeCode, &u.DocumentNumber,
 			&u.FullName, &u.Role, &dept, &u.Active,
 			&u.TotalReservations, &u.ConfirmedBySelf, &u.ConfirmedByDriver,
-			&u.CancelledBySelf, &u.NotConfirmed); err != nil {
+			&u.CancelledBySelf, &u.NotConfirmed, &lastAct); err != nil {
 			return nil, fmt.Errorf("escaneando actividad de usuario: %w", err)
 		}
 		u.Department = nullableStr(dept)
+		u.LastActivityAt = nullableTime(lastAct)
 		out = append(out, u)
 	}
 	return out, rows.Err()

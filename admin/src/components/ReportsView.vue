@@ -682,10 +682,14 @@ const activityFilter = reactive<{
   role: string
   active: string
   department: string
+  dateFrom: Date | null
+  dateTo: Date | null
 }>({
   role: '',
   active: '',
   department: '',
+  dateFrom: null,
+  dateTo: null,
 })
 
 async function loadActivity(): Promise<void> {
@@ -695,6 +699,10 @@ async function loadActivity(): Promise<void> {
   if (activityFilter.role) params.set('role', activityFilter.role)
   if (activityFilter.active) params.set('active', activityFilter.active)
   if (activityFilter.department) params.set('department', activityFilter.department)
+  const fromStr = ymd(activityFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(activityFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
   const qs = params.toString()
   try {
     const res = await request<{ items: UserReservationActivityRow[] }>(
@@ -714,11 +722,48 @@ function clearActivityFilters(): void {
   activityFilter.role = ''
   activityFilter.active = ''
   activityFilter.department = ''
+  activityFilter.dateFrom = null
+  activityFilter.dateTo = null
 }
 
 const hasActivityFilters = computed(
-  () => Boolean(activityFilter.role || activityFilter.active || activityFilter.department),
+  () =>
+    Boolean(
+      activityFilter.role ||
+        activityFilter.active ||
+        activityFilter.department ||
+        activityFilter.dateFrom ||
+        activityFilter.dateTo,
+    ),
 )
+
+// Etiqueta legible del rango activo, para el footer del reporte.
+const activityDateRangeLabel = computed(() => {
+  const from = ymd(activityFilter.dateFrom)
+  const to = ymd(activityFilter.dateTo)
+  if (from && to) return `${from} a ${to}`
+  if (from) return `desde ${from}`
+  if (to) return `hasta ${to}`
+  return 'sin filtro de fechas'
+})
+
+// Convierte el ISO string del backend a un Date para formatear de forma
+// consistente con el resto del front. Devuelve null si el string es invalido
+// (la API envia null cuando el usuario nunca tuvo actividad).
+function parseLastActivity(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function formatLastActivity(value: string | null | undefined): string {
+  const d = parseLastActivity(value)
+  if (!d) return '—'
+  // YYYY-MM-DD HH:MM en timezone local (la BD guarda UTC; Date lo convierte
+  // al timezone del navegador, que para el operador peruano es GMT-5).
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 // Suma total de reservas del filtro actual, para mostrar el contador
 // debajo de la tabla sin pedir otra query.
@@ -1517,6 +1562,14 @@ onMounted(() => {
                 placeholder="Ej. Logística"
               />
             </div>
+            <div class="filter">
+              <label for="act-from">Desde</label>
+              <DatePicker id="act-from" v-model="activityFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="act-to">Hasta</label>
+              <DatePicker id="act-to" v-model="activityFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
             <div class="filter-actions">
               <Button label="Aplicar" icon="pi pi-search" :loading="activityLoading" @click="loadActivity" />
               <Button
@@ -1565,11 +1618,15 @@ onMounted(() => {
             <Column field="confirmed_by_driver" header="Confirm. por conductor" style="width: 7rem" />
             <Column field="cancelled_by_self" header="Canceladas" style="width: 6rem" />
             <Column field="not_confirmed" header="No confirmadas" style="width: 6rem" />
+            <Column header="Última actividad" style="width: 12rem">
+              <template #body="{ data }">{{ formatLastActivity(data.last_activity_at) }}</template>
+            </Column>
           </DataTable>
 
           <p v-if="!activityLoading && !activityError && activity.length > 0" class="reports-total">
-            {{ activity.length }} usuario(s) —
-            <strong>{{ activityTotals.total }}</strong> reservas totales,
+            {{ activity.length }} usuario(s) en rango
+            <strong>{{ activityDateRangeLabel }}</strong>
+            — {{ activityTotals.total }} reservas totales,
             {{ activityTotals.bySelf }} confirmadas por sí mismo,
             {{ activityTotals.byDriver }} por conductor,
             {{ activityTotals.cancelled }} canceladas,

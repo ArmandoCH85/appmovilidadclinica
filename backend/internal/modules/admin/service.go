@@ -106,8 +106,8 @@ ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string
 	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
 	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
 
-	// Reportes nuevos (migration 0005)
-	GetUserReservationActivity(ctx context.Context, role, active, department string) ([]UserReservationActivity, error)
+	// Reportes nuevos (migration 0005/0006)
+	GetUserReservationActivity(ctx context.Context, role, active, department, dateFrom, dateTo string) ([]UserReservationActivity, error)
 }
 
 // adminService es la implementacion concreta.
@@ -802,23 +802,43 @@ func (s *adminService) GetTripIncidents(ctx context.Context, routeID int64, inci
 }
 
 // GetUserReservationActivity devuelve el reporte #28 (actividad de reservas
-// por usuario, vista vw_user_reservation_activity de la migration 0005).
-// Los tres parametros son filtros opcionales:
+// por usuario, vista vw_user_reservation_activity de la migration 0005,
+// ampliada con last_activity_at y filtros de fecha en 0006).
+//
+// Parametros (todos opcionales):
 //   role       : "" | "WORKER" | "DRIVER"   ("" = ambos)
 //   active     : "" | "true" | "false"
 //   department : "" | texto exacto (case-sensitive, igual que como aparece
 //                en el SELECT de la vista)
+//   dateFrom   : "" | "YYYY-MM-DD"          (filtra reservas cuyo
+//                                              trip.service_date >= dateFrom)
+//   dateTo     : "" | "YYYY-MM-DD"          (filtra reservas cuyo
+//                                              trip.service_date <= dateTo)
 //
-// El servicio valida role antes de invocar al repo; active y department
-// se pasan tal cual porque la BD no tiene CHECK sobre ellos.
-func (s *adminService) GetUserReservationActivity(ctx context.Context, role, active, department string) ([]UserReservationActivity, error) {
+// Si dateFrom > dateTo, el resultado va a estar vacio (la BD no tiene
+// forma de detectarlo). Validamos formato + orden aca para devolver 422
+// explicito en lugar de un 200 vacio que confunde al operador.
+func (s *adminService) GetUserReservationActivity(ctx context.Context, role, active, department, dateFrom, dateTo string) ([]UserReservationActivity, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	if role != "" && !validActivityRole(role) {
 		return nil, apperror.ValidationError{Field: "role", Reason: "debe ser WORKER o DRIVER"}
 	}
-	return s.repo.GetUserReservationActivity(ctx, role, active, department)
+	if dateFrom != "" {
+		if _, err := time.Parse("2006-01-02", dateFrom); err != nil {
+			return nil, apperror.ValidationError{Field: "date_from", Reason: "formato invalido, use YYYY-MM-DD"}
+		}
+	}
+	if dateTo != "" {
+		if _, err := time.Parse("2006-01-02", dateTo); err != nil {
+			return nil, apperror.ValidationError{Field: "date_to", Reason: "formato invalido, use YYYY-MM-DD"}
+		}
+	}
+	if dateFrom != "" && dateTo != "" && dateFrom > dateTo {
+		return nil, apperror.ValidationError{Field: "date_to", Reason: "debe ser igual o posterior a date_from"}
+	}
+	return s.repo.GetUserReservationActivity(ctx, role, active, department, dateFrom, dateTo)
 }
 
 // validActivityRole acepta solo WORKER y DRIVER para el filtro del reporte
