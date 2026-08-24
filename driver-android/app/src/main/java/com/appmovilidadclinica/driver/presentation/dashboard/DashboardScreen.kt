@@ -47,8 +47,9 @@ import com.appmovilidadclinica.driver.presentation.common.SelectedTripHolder
 import com.appmovilidadclinica.driver.shared.ui.common.color
 import com.appmovilidadclinica.driver.shared.ui.common.label
 import com.appmovilidadclinica.driver.presentation.common.toPeruTime
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toJavaLocalDate
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -147,7 +148,7 @@ fun DashboardScreen(
 
 @Composable
 private fun DateSelector(
-    date: java.time.LocalDate,
+    date: LocalDate,
     onPreviousDay: () -> Unit,
     onNextDay: () -> Unit,
 ) {
@@ -160,7 +161,8 @@ private fun DateSelector(
             Icon(Icons.Default.ChevronLeft, contentDescription = "Día anterior")
         }
         Text(
-            date.format(DateTimeFormatter.ofPattern("EEE d 'de' MMMM", Locale("es", "PE")))
+            date.toJavaLocalDate()
+                .format(DateTimeFormatter.ofPattern("EEE d 'de' MMMM", Locale("es", "PE")))
                 .replaceFirstChar { it.titlecase(Locale("es", "PE")) },
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,

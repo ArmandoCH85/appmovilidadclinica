@@ -6,7 +6,7 @@ import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger
 import com.appmovilidadclinica.driver.shared.domain.model.Reservation
 import com.appmovilidadclinica.driver.shared.domain.repository.BookingRepository
-import com.appmovilidadclinica.driver.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update

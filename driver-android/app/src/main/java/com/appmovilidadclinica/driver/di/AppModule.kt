@@ -10,7 +10,7 @@ import com.appmovilidadclinica.driver.data.repository.BookingRepositoryImpl
 import com.appmovilidadclinica.driver.data.repository.DriverRepositoryImpl
 import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
 import com.appmovilidadclinica.driver.shared.domain.repository.BookingRepository
-import com.appmovilidadclinica.driver.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import com.appmovilidadclinica.driver.shared.data.local.SessionStore
 import io.ktor.client.HttpClient
 

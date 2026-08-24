@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.appmovilidadclinica.driver.shared.domain.model.User
 import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
-import com.appmovilidadclinica.driver.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 data class ProfileUiState(
     val user: User? = null,
@@ -41,7 +43,8 @@ class ProfileViewModel(
 
     private fun loadTodayTripCount() {
         viewModelScope.launch {
-            val result = driverRepository.getTrips(LocalDate.now())
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val result = driverRepository.getTrips(today)
             result.onSuccess { trips ->
                 _uiState.update { it.copy(todayTripCount = trips.size) }
             }

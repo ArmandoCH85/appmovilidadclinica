@@ -6,11 +6,14 @@ import com.appmovilidadclinica.driver.data.remote.KtorApiClient
 import com.appmovilidadclinica.driver.data.remote.KtorClientFactory
 import com.appmovilidadclinica.driver.data.remote.KtorTokenProvider
 import com.appmovilidadclinica.driver.data.repository.AuthRepositoryImpl
+import com.appmovilidadclinica.driver.data.repository.BookingRepositoryImpl
+import com.appmovilidadclinica.driver.data.repository.DriverRepositoryImpl
 import com.appmovilidadclinica.driver.shared.data.local.SessionStore
 import com.appmovilidadclinica.driver.shared.di.platformModule
 import com.appmovilidadclinica.driver.shared.di.storageModule
 import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
-import org.koin.android.ext.android.inject
+import com.appmovilidadclinica.driver.shared.domain.repository.BookingRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
@@ -33,10 +36,10 @@ class DriverApp : Application() {
 
 /**
  * Modulo Android-only: bindings que dependen de OkHttp engine y
- * wrapper API HTTP. Se carga en :app. Koin provee [AuthRepository]
- * como `single { AuthRepositoryImpl(get(), get(), get()) }` para
- * que LoginScreen en :shared (multiplatform) pueda inyectarlo via
- * `koinInject<AuthRepository>()`.
+ * wrapper API HTTP. Se carga en :app. Koin provee [AuthRepository],
+ * [DriverRepository], [BookingRepository] como `single { ... }`
+ * para que las screens en :shared (multiplatform) puedan inyectarlas
+ * via `koinInject<T>()`.
  */
 val appModule = module {
     single {
@@ -55,4 +58,17 @@ val appModule = module {
             apiErrorMapper = get(),
         )
     }
+    single<DriverRepository> {
+        DriverRepositoryImpl(
+            apiClient = get(),
+            apiErrorMapper = get(),
+        )
+    }
+    single<BookingRepository> {
+        BookingRepositoryImpl(
+            apiClient = get(),
+            apiErrorMapper = get(),
+        )
+    }
 }
+

@@ -60,6 +60,9 @@ kotlin {
             api(compose.materialIconsExtended)
             api(compose.ui)
 
+            // kotlinx-datetime (Fase 4.5 — reemplazo multiplatform de java.time.LocalDate)
+            api("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+
             // Navigation Compose KMP (Fase 3)
             api("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha10")
 

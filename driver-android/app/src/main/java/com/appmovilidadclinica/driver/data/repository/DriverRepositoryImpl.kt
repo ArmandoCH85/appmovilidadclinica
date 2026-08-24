@@ -10,12 +10,11 @@ import com.appmovilidadclinica.driver.shared.domain.model.Incident
 import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
-import com.appmovilidadclinica.driver.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
 import java.io.IOException
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -55,7 +54,7 @@ class DriverRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getTrips(date: LocalDate): Result<List<DriverTrip>> {
-        val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val dateStr = date.toString()
         return safeCall(
             call = { apiClient.driverApi.getTrips(dateStr) },
             parseBody = { response -> response.body<List<com.appmovilidadclinica.driver.shared.data.remote.dto.DriverTripDto>>().map { it.toDomain() } },
