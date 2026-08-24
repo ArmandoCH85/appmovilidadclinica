@@ -62,6 +62,7 @@ import com.appmovilidadclinica.driver.shared.domain.model.TripStopStatus
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import com.appmovilidadclinica.driver.shared.platform.LocationService
 import com.appmovilidadclinica.driver.shared.platform.NotificationService
+import com.appmovilidadclinica.driver.shared.trip.TripLocationController
 import com.appmovilidadclinica.driver.shared.ui.common.color
 import com.appmovilidadclinica.driver.shared.ui.common.label
 import com.appmovilidadclinica.driver.shared.ui.common.toPeruTime
@@ -76,6 +77,7 @@ fun TripDetailScreen(
     driverRepository: DriverRepository = koinInject(),
     notificationService: NotificationService = koinInject(),
     locationService: LocationService = koinInject(),
+    tripLocationController: TripLocationController = koinInject(),
     onBack: () -> Unit = {},
     onScanQr: (Long) -> Unit = {},
     onReportIncident: (Long) -> Unit = {},
@@ -91,9 +93,7 @@ fun TripDetailScreen(
 
     LaunchedEffect(Unit) { viewModel.load() }
 
-    // GPS tracking cuando el trip esta IN_PROGRESS: emite las coordenadas
-    // via [LocationService.observeLocation]. En iOS el stub retorna Flow vacio
-    // (no-op). En Android emite FusedLocation cada ~5s.
+    // GPS tracking en primer plano (Flow) cuando IN_PROGRESS.
     LaunchedEffect(state.trip?.status, locationService.isAvailable()) {
         val shouldTrack = state.trip?.status == TripStatus.IN_PROGRESS &&
             locationService.isAvailable()
@@ -104,6 +104,16 @@ fun TripDetailScreen(
                     "(${coords.latitude}, ${coords.longitude}) ±${coords.accuracyMeters}m"
                 }
             }
+        }
+    }
+
+    // GPS tracking en background via Foreground Service (Android) — el
+    // service sigue emitiendo aunque la app este minimizada. iOS no-op.
+    LaunchedEffect(state.trip?.status) {
+        when (state.trip?.status) {
+            TripStatus.IN_PROGRESS -> tripLocationController.startTracking()
+            TripStatus.COMPLETED, TripStatus.CANCELLED -> tripLocationController.stopTracking()
+            else -> Unit
         }
     }
 

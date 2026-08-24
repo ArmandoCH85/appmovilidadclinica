@@ -77,6 +77,9 @@ dependencies {
     implementation("io.insert-koin:koin-android:4.0.0")
     implementation("io.insert-koin:koin-androidx-compose:4.0.0")
 
+    // Google Play Services Location (Fase 4 — necesario para TripLocationService)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     // Core Android
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
