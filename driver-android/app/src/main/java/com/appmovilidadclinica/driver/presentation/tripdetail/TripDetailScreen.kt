@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.driver.presentation.tripdetail
+package com.appmovilidadclinica.driver.presentation.tripdetail
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -63,8 +63,8 @@ import com.appmovilidadclinica.driver.shared.domain.model.ReservationStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.shared.domain.model.TripStopStatus
-import com.appmovilidadclinica.driver.presentation.common.color
-import com.appmovilidadclinica.driver.presentation.common.label
+import com.appmovilidadclinica.driver.shared.ui.common.color
+import com.appmovilidadclinica.driver.shared.ui.common.label
 import com.appmovilidadclinica.driver.presentation.common.toPeruTime
 import kotlinx.coroutines.delay
 
@@ -166,7 +166,7 @@ fun TripDetailScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    "  ${trip.scheduledStartAt.toPeruTime()} â€“ ${trip.scheduledEndAt.toPeruTime()}",
+                                    "  ${trip.scheduledStartAt.toPeruTime()} – ${trip.scheduledEndAt.toPeruTime()}",
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
@@ -179,7 +179,7 @@ fun TripDetailScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    "  VehÃ­culo ${trip.plate}",
+                                    "  Vehículo ${trip.plate}",
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
@@ -196,7 +196,7 @@ fun TripDetailScreen(
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(if (state.pendingActionId == tripId) "Iniciandoâ€¦" else "Iniciar viaje")
+                            Text(if (state.pendingActionId == tripId) "Iniciando…" else "Iniciar viaje")
                         }
                     }
                 } else if (trip.status == TripStatus.IN_PROGRESS) {
@@ -208,7 +208,7 @@ fun TripDetailScreen(
                         ) {
                             Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(if (state.pendingActionId == tripId) "Finalizandoâ€¦" else "Finalizar viaje")
+                            Text(if (state.pendingActionId == tripId) "Finalizando…" else "Finalizar viaje")
                         }
                     }
                 }
@@ -349,7 +349,7 @@ fun TripDetailScreen(
         AlertDialog(
             onDismissRequest = { arrivalConfirmId = null },
             title = { Text("Marcar llegada") },
-            text = { Text("Â¿Confirma la llegada a esta parada?") },
+            text = { Text("¿Confirma la llegada a esta parada?") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.markArrival(arrivalConfirmId!!)
@@ -394,7 +394,7 @@ private fun PassengerCard(
             Spacer(Modifier.height(4.dp))
 
             Text(
-                "Asiento ${passenger.seatLabel} Â· ${passenger.originStopName} â†’ ${passenger.destinationStopName}",
+                "Asiento ${passenger.seatLabel} · ${passenger.originStopName} → ${passenger.destinationStopName}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -405,7 +405,7 @@ private fun PassengerCard(
                     when (passenger.status) {
                         ReservationStatus.CONFIRMED -> {
                             Button(onClick = onBoard, enabled = !pending) {
-                                Text(if (pending) "â€¦" else "Abordar")
+                                Text(if (pending) "…" else "Abordar")
                             }
                             OutlinedButton(onClick = onNoShow, enabled = !pending) {
                                 Text("No presentado")
@@ -413,7 +413,7 @@ private fun PassengerCard(
                         }
                         ReservationStatus.BOARDED -> {
                             OutlinedButton(onClick = onAlight, enabled = !pending) {
-                                Text(if (pending) "â€¦" else "Bajar")
+                                Text(if (pending) "…" else "Bajar")
                             }
                         }
                         else -> {}
@@ -446,22 +446,22 @@ private fun StopRow(
                     )
                     val timeText = stop.actualArrivalAt?.toPeruTime()
                         ?: stop.scheduledArrivalAt?.toPeruTime()
-                        ?: "â€”"
+                        ?: "—"
                     Text(
-                        "${stop.status.label()} Â· $timeText",
+                        "${stop.status.label()} · $timeText",
                         style = MaterialTheme.typography.bodySmall,
                         color = stop.status.color(),
                     )
                 }
                 if (stop.status == TripStopStatus.PENDING) {
                     Button(onClick = onMarkArrival, enabled = !pending && tripInProgress) {
-                        Text(if (pending) "â€¦" else "Marcar llegada")
+                        Text(if (pending) "…" else "Marcar llegada")
                     }
                 }
             }
             if (stop.status == TripStopStatus.PENDING && !tripInProgress) {
                 Text(
-                    "IniciÃ¡ el viaje para marcar llegadas",
+                    "Iniciá el viaje para marcar llegadas",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),

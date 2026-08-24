@@ -1,4 +1,4 @@
-package com.appmovilidadclinica.driver.presentation.common
+package com.appmovilidadclinica.driver.shared.ui.common
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
