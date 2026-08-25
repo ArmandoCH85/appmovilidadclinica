@@ -514,14 +514,20 @@ type TripIncidentReport struct {
 }
 
 // UserReservationActivity refleja una fila de vw_user_reservation_activity
-// (#28, ampliado en #28b con last_activity_at). Una fila por usuario con
-// rol WORKER o DRIVER; resume cuantos eventos de cada tipo produjo sobre
-// sus reservas. Los conteos son excluyentes por reserva (no se solapan
-// entre si) salvo en el caso confirmado_por_conductor + confirmado_por_si_mismo,
-// donde un mismo reserva puede contribuir a ambas columnas: el CONFIRMED
-// inicial lo dispara el propio usuario, y luego el BOARDED lo dispara el
-// conductor. La suma de las 5 metricas no necesariamente da total_reservations
-// porque no todas las reservas pasan por todos los estados.
+// (migration 0005 + 0006 + 0007). Una fila por usuario con rol WORKER o
+// DRIVER. Las columnas se dividen en dos grupos:
+//
+// ESTADO FINAL (mutuamente excluyentes, suman al total):
+//   - TotalReservations
+//   - Completadas       (status='COMPLETED')
+//   - Pendientes        (status='CONFIRMED' AND trip.service_date >= CURDATE())
+//   - Canceladas        (status='CANCELLED')
+//   - NoShow            (status='NO_SHOW')
+//
+// ACCIONES (pueden solaparse — una reserva tiene varios eventos):
+//   - ConfirmedBySelf   (event CONFIRMED disparado por el usuario)
+//   - ConfirmedByDriver (event BOARDED disparado por el trip.driver_id)
+//   - CancelledBySelf   (event CANCELLED disparado por el usuario)
 //
 // LastActivityAt es el MAX(event_at) sobre todos los eventos del usuario
 // en cualquier reserva. Nullable: los usuarios sin reservas (o sin
@@ -536,12 +542,20 @@ type UserReservationActivity struct {
 	Role              string     `json:"role"`
 	Department        *string    `json:"department,omitempty"`
 	Active            bool       `json:"active"`
-	TotalReservations int        `json:"total_reservations"`
-	ConfirmedBySelf   int        `json:"confirmed_by_self"`
-	ConfirmedByDriver int        `json:"confirmed_by_driver"`
-	CancelledBySelf   int        `json:"cancelled_by_self"`
-	NotConfirmed      int        `json:"not_confirmed"`
-	LastActivityAt    *time.Time `json:"last_activity_at,omitempty"`
+
+	// Estado final (mutuamente excluyentes, suman al total)
+	TotalReservations int  `json:"total_reservations"`
+	Completadas       int  `json:"completadas"`
+	Pendientes        int  `json:"pendientes"`
+	Canceladas        int  `json:"canceladas"`
+	NoShow            int  `json:"no_show"`
+
+	// Acciones (pueden solaparse entre si)
+	ConfirmedBySelf   int  `json:"confirmed_by_self"`
+	ConfirmedByDriver int  `json:"confirmed_by_driver"`
+	CancelledBySelf   int  `json:"cancelled_by_self"`
+
+	LastActivityAt *time.Time `json:"last_activity_at,omitempty"`
 }
 
 type VehicleSeat struct {
@@ -2775,6 +2789,17 @@ func (r *adminRepository) GetUserReservationActivity(ctx context.Context, role, 
                u.department                      AS department,
                u.active                          AS active,
                COUNT(DISTINCT r.id)              AS total_reservations,
+               -- Estado final (mutuamente excluyentes)
+               COUNT(DISTINCT CASE WHEN r.status = 'COMPLETED'
+                                  THEN r.id END) AS completadas,
+               COUNT(DISTINCT CASE WHEN r.status = 'CONFIRMED'
+                                   AND trip.service_date >= CURDATE()
+                                  THEN r.id END) AS pendientes,
+               COUNT(DISTINCT CASE WHEN r.status = 'CANCELLED'
+                                  THEN r.id END) AS canceladas,
+               COUNT(DISTINCT CASE WHEN r.status = 'NO_SHOW'
+                                  THEN r.id END) AS no_show,
+               -- Acciones (pueden solaparse)
                COUNT(DISTINCT CASE WHEN re.event_type = 'CONFIRMED' AND re.actor_user_id = u.id
                                   THEN r.id END) AS confirmed_by_self,
                COUNT(DISTINCT CASE WHEN re.event_type = 'BOARDED'
@@ -2783,8 +2808,6 @@ func (r *adminRepository) GetUserReservationActivity(ctx context.Context, role, 
                                   THEN r.id END) AS confirmed_by_driver,
                COUNT(DISTINCT CASE WHEN re.event_type = 'CANCELLED' AND re.actor_user_id = u.id
                                   THEN r.id END) AS cancelled_by_self,
-               COUNT(DISTINCT CASE WHEN r.status = 'CONFIRMED' AND trip.service_date >= CURDATE()
-                                  THEN r.id END) AS not_confirmed,
                MAX(re.event_at)                  AS last_activity_at
           FROM users u
           LEFT JOIN (
@@ -2813,8 +2836,10 @@ func (r *adminRepository) GetUserReservationActivity(ctx context.Context, role, 
 		var lastAct sql.NullTime
 		if err := rows.Scan(&u.UserID, &u.EmployeeCode, &u.DocumentNumber,
 			&u.FullName, &u.Role, &dept, &u.Active,
-			&u.TotalReservations, &u.ConfirmedBySelf, &u.ConfirmedByDriver,
-			&u.CancelledBySelf, &u.NotConfirmed, &lastAct); err != nil {
+			&u.TotalReservations,
+			&u.Completadas, &u.Pendientes, &u.Canceladas, &u.NoShow,
+			&u.ConfirmedBySelf, &u.ConfirmedByDriver, &u.CancelledBySelf,
+			&lastAct); err != nil {
 			return nil, fmt.Errorf("escaneando actividad de usuario: %w", err)
 		}
 		u.Department = nullableStr(dept)

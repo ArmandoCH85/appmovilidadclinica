@@ -377,11 +377,16 @@ export interface TripIncidentReportRow {
 }
 
 /**
- * Reporte #28: actividad de reservas por usuario (migration 0005).
- * Una fila por usuario WORKER/DRIVER con conteos de eventos de reserva.
- * Los conteos NO son excluyentes: una misma reserva puede aportar a
- * `confirmed_by_self` (CONFIRMED inicial) y a `confirmed_by_driver`
- * (BOARDED posterior). Ver notas en el struct Go correspondiente.
+ * Reporte #28: actividad de reservas por usuario (migration 0005 + 0006 + 0007).
+ * Una fila por usuario WORKER/DRIVER.
+ *
+ * El reporte se divide en dos sub-secciones en la UI:
+ *   1. ESTADO FINAL — campos mutuamente excluyentes que SI suman al total:
+ *      total_reservations, completadas, pendientes, canceladas, no_show.
+ *   2. ACCIONES — campos que pueden solaparse (una reserva tiene varios eventos):
+ *      confirmed_by_self, confirmed_by_driver, cancelled_by_self.
+ *
+ * Ver notas en el struct Go (UserReservationActivity) para la logica SQL exacta.
  */
 export interface UserReservationActivityRow {
   user_id: number
@@ -391,10 +396,18 @@ export interface UserReservationActivityRow {
   role: 'WORKER' | 'DRIVER'
   department?: string | null
   active: boolean
+
+  // Estado final (mutuamente excluyentes)
   total_reservations: number
+  completadas: number
+  pendientes: number
+  canceladas: number
+  no_show: number
+
+  // Acciones (pueden solaparse)
   confirmed_by_self: number
   confirmed_by_driver: number
   cancelled_by_self: number
-  not_confirmed: number
+
   last_activity_at?: string | null
 }

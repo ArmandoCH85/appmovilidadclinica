@@ -975,17 +975,25 @@ function clearActivityFilters(): void {
 }
 
 // --- Export a Excel del tab Actividad por usuario ---
+// Las columnas estan agrupadas en el mismo orden que la UI: primero
+// estado final (mutuamente excluyente) y despues acciones.
 const activityExcelColumns: ExcelColumn[] = [
   { key: 'employee_code',      label: 'Código',                  width: 10 },
   { key: 'full_name',          label: 'Nombre',                  width: 28 },
   { key: 'role',               label: 'Rol',                     width: 12 },
   { key: 'department',         label: 'Departamento',            width: 18 },
   { key: 'active',             label: 'Activo',                  width: 8 },
+  // Estado final
   { key: 'total_reservations', label: 'Total reservas',          format: 'number', width: 14 },
-  { key: 'confirmed_by_self',  label: 'Confirm. por sí mismo',   format: 'number', width: 18 },
-  { key: 'confirmed_by_driver',label: 'Confirm. por conductor',  format: 'number', width: 20 },
-  { key: 'cancelled_by_self',  label: 'Canceladas',              format: 'number', width: 12 },
-  { key: 'not_confirmed',      label: 'No confirmadas',          format: 'number', width: 16 },
+  { key: 'completadas',        label: 'Completadas',            format: 'number', width: 12 },
+  { key: 'pendientes',         label: 'Pendientes',             format: 'number', width: 12 },
+  { key: 'canceladas',         label: 'Canceladas',             format: 'number', width: 12 },
+  { key: 'no_show',            label: 'No show',                format: 'number', width: 10 },
+  // Acciones
+  { key: 'confirmed_by_self',  label: 'Bookeadas por sí mismo',  format: 'number', width: 22 },
+  { key: 'confirmed_by_driver',label: 'Boardings por conductor', format: 'number', width: 24 },
+  { key: 'cancelled_by_self',  label: 'Canc. por sí mismo',     format: 'number', width: 20 },
+  // Metadata
   { key: 'last_activity_at',   label: 'Última actividad',        format: 'datetime', width: 20 },
 ]
 
@@ -997,13 +1005,17 @@ function exportActivity(): void {
   if (activityFilter.dateFrom || activityFilter.dateTo) {
     parts.push(`Rango=${ymd(activityFilter.dateFrom) ?? '*'} a ${ymd(activityFilter.dateTo) ?? '*'}`)
   }
-  // Totales para el footer del Excel
+  // Totales para el footer del Excel — incluye estado final + acciones.
+  // Los campos que no aplican a totales quedan como string vacio.
   const totals = {
-    total_reservations:    activityTotals.value.total,
-    confirmed_by_self:     activityTotals.value.bySelf,
-    confirmed_by_driver:   activityTotals.value.byDriver,
-    cancelled_by_self:     activityTotals.value.cancelled,
-    not_confirmed:         activityTotals.value.notConfirmed,
+    total_reservations:    activityStatusTotals.value.total,
+    completadas:           activityStatusTotals.value.completadas,
+    pendientes:            activityStatusTotals.value.pendientes,
+    canceladas:            activityStatusTotals.value.canceladas,
+    no_show:               activityStatusTotals.value.no_show,
+    confirmed_by_self:     activityActionTotals.value.bySelf,
+    confirmed_by_driver:   activityActionTotals.value.byDriver,
+    cancelled_by_self:     activityActionTotals.value.cancelledBySelf,
     last_activity_at:      '',
     employee_code:         '',
     full_name:             '',
@@ -1062,17 +1074,32 @@ function formatLastActivity(value: string | null | undefined): string {
 
 // Suma total de reservas del filtro actual, para mostrar el contador
 // debajo de la tabla sin pedir otra query.
-const activityTotals = computed(() => {
+// Las dos secciones (estado final + acciones) tienen totales independientes
+// para que el footer sea claro.
+const activityStatusTotals = computed(() => {
   return activity.value.reduce(
     (acc, row) => {
       acc.total += row.total_reservations
-      acc.bySelf += row.confirmed_by_self
-      acc.byDriver += row.confirmed_by_driver
-      acc.cancelled += row.cancelled_by_self
-      acc.notConfirmed += row.not_confirmed
+      acc.completadas += row.completadas
+      acc.pendientes  += row.pendientes
+      acc.canceladas  += row.canceladas
+      acc.no_show     += row.no_show
       return acc
     },
-    { total: 0, bySelf: 0, byDriver: 0, cancelled: 0, notConfirmed: 0 },
+    { total: 0, completadas: 0, pendientes: 0, canceladas: 0, no_show: 0 },
+  )
+})
+
+const activityActionTotals = computed(() => {
+  return activity.value.reduce(
+    (acc, row) => {
+      acc.total          += row.total_reservations
+      acc.bySelf         += row.confirmed_by_self
+      acc.byDriver       += row.confirmed_by_driver
+      acc.cancelledBySelf += row.cancelled_by_self
+      return acc
+    },
+    { total: 0, bySelf: 0, byDriver: 0, cancelledBySelf: 0 },
   )
 })
 
@@ -1953,50 +1980,110 @@ onMounted(() => {
             <Button label="Reintentar" text size="small" @click="loadActivity" />
           </p>
 
-          <DataTable :value="activity" :loading="activityLoading" paginator :rows="20" class="reports-table">
-            <template #empty>
-              <p class="reports-empty">Sin actividad para los filtros aplicados.</p>
-            </template>
-            <Column field="employee_code" header="Código" style="width: 6rem" />
-            <Column field="full_name" header="Nombre" />
-            <Column header="Rol" style="width: 8rem">
-              <template #body="{ data }">
-                <Tag
-                  :value="ROLE_LABELS[data.role] ?? data.role"
-                  :severity="data.role === 'DRIVER' ? 'info' : 'secondary'"
-                />
-              </template>
-            </Column>
-            <Column field="department" header="Departamento" style="width: 9rem">
-              <template #body="{ data }">{{ formatCell(data.department) }}</template>
-            </Column>
-            <Column header="Activo" style="width: 5rem">
-              <template #body="{ data }">
-                <Tag
-                  :value="data.active ? 'Sí' : 'No'"
-                  :severity="data.active ? 'success' : 'danger'"
-                />
-              </template>
-            </Column>
-            <Column field="total_reservations" header="Total" style="width: 5rem" />
-            <Column field="confirmed_by_self" header="Confirm. por sí mismo" style="width: 7rem" />
-            <Column field="confirmed_by_driver" header="Confirm. por conductor" style="width: 7rem" />
-            <Column field="cancelled_by_self" header="Canceladas" style="width: 6rem" />
-            <Column field="not_confirmed" header="No confirmadas" style="width: 6rem" />
-            <Column header="Última actividad" style="width: 12rem">
-              <template #body="{ data }">{{ formatLastActivity(data.last_activity_at) }}</template>
-            </Column>
-          </DataTable>
+          <!-- ============================================================== -->
+          <!-- Seccion 1: ESTADO FINAL (mutuamente excluyentes, suman al total) -->
+          <!-- ============================================================== -->
+          <section class="activity-section">
+            <header class="activity-section-header">
+              <h3>Estado final de sus reservas</h3>
+              <p class="activity-section-hint">
+                Cada reserva termina en <strong>exactamente un</strong> estado. Las 4 columnas suman al total.
+              </p>
+            </header>
 
-          <p v-if="!activityLoading && !activityError && activity.length > 0" class="reports-total">
-            {{ activity.length }} usuario(s) en rango
-            <strong>{{ activityDateRangeLabel }}</strong>
-            — {{ activityTotals.total }} reservas totales,
-            {{ activityTotals.bySelf }} confirmadas por sí mismo,
-            {{ activityTotals.byDriver }} por conductor,
-            {{ activityTotals.cancelled }} canceladas,
-            {{ activityTotals.notConfirmed }} pendientes
-          </p>
+            <DataTable :value="activity" :loading="activityLoading" paginator :rows="20" class="reports-table">
+              <template #empty>
+                <p class="reports-empty">Sin actividad para los filtros aplicados.</p>
+              </template>
+              <Column field="employee_code" header="Código" style="width: 6rem" />
+              <Column field="full_name" header="Nombre" />
+              <Column header="Rol" style="width: 8rem">
+                <template #body="{ data }">
+                  <Tag
+                    :value="ROLE_LABELS[data.role] ?? data.role"
+                    :severity="data.role === 'DRIVER' ? 'info' : 'secondary'"
+                  />
+                </template>
+              </Column>
+              <Column field="department" header="Departamento" style="width: 9rem">
+                <template #body="{ data }">{{ formatCell(data.department) }}</template>
+              </Column>
+              <Column field="total_reservations" header="Total" style="width: 5rem">
+                <template #body="{ data }">
+                  <strong>{{ data.total_reservations }}</strong>
+                </template>
+              </Column>
+              <Column field="completadas" header="Completadas" style="width: 7rem">
+                <template #body="{ data }">
+                  <span :class="data.completadas > 0 ? 'count-pos' : 'count-zero'">{{ data.completadas }}</span>
+                </template>
+              </Column>
+              <Column field="pendientes" header="Pendientes" style="width: 7rem">
+                <template #body="{ data }">
+                  <span :class="data.pendientes > 0 ? 'count-pending' : 'count-zero'">{{ data.pendientes }}</span>
+                </template>
+              </Column>
+              <Column field="canceladas" header="Canceladas" style="width: 7rem">
+                <template #body="{ data }">
+                  <span :class="data.canceladas > 0 ? 'count-neg' : 'count-zero'">{{ data.canceladas }}</span>
+                </template>
+              </Column>
+              <Column field="no_show" header="No show" style="width: 6rem">
+                <template #body="{ data }">
+                  <span :class="data.no_show > 0 ? 'count-neg' : 'count-zero'">{{ data.no_show }}</span>
+                </template>
+              </Column>
+              <Column header="Última actividad" style="width: 12rem">
+                <template #body="{ data }">{{ formatLastActivity(data.last_activity_at) }}</template>
+              </Column>
+            </DataTable>
+
+            <p v-if="!activityLoading && !activityError && activity.length > 0" class="reports-total">
+              <strong>{{ activity.length }} usuario(s)</strong> en rango {{ activityDateRangeLabel }} —
+              <strong>{{ activityStatusTotals.total }}</strong> reservas totales:
+              <span class="legend-pos">✓ {{ activityStatusTotals.completadas }} completadas</span>,
+              <span class="legend-pending">⏳ {{ activityStatusTotals.pendientes }} pendientes</span>,
+              <span class="legend-neg">✗ {{ activityStatusTotals.canceladas }} canceladas</span>,
+              <span class="legend-neg">⚠ {{ activityStatusTotals.no_show }} no show</span>
+            </p>
+          </section>
+
+          <!-- ============================================================== -->
+          <!-- Seccion 2: ACCIONES REGISTRADAS (pueden solaparse)            -->
+          <!-- ============================================================== -->
+          <section class="activity-section">
+            <header class="activity-section-header">
+              <h3>Acciones registradas</h3>
+              <p class="activity-section-hint">
+                Quién disparó cada evento. <strong>Pueden solaparse</strong> (una reserva tiene varios eventos): no suman al total.
+              </p>
+            </header>
+
+            <DataTable :value="activity" :loading="activityLoading" paginator :rows="20" class="reports-table">
+              <template #empty>
+                <p class="reports-empty">Sin acciones para los filtros aplicados.</p>
+              </template>
+              <Column field="employee_code" header="Código" style="width: 6rem" />
+              <Column field="full_name" header="Nombre" />
+              <Column field="confirmed_by_self" header="Bookeadas por sí mismo" style="width: 9rem">
+                <template #body="{ data }">{{ data.confirmed_by_self }}</template>
+              </Column>
+              <Column field="confirmed_by_driver" header="Boardings por conductor" style="width: 9rem">
+                <template #body="{ data }">{{ data.confirmed_by_driver }}</template>
+              </Column>
+              <Column field="cancelled_by_self" header="Canc. por sí mismo" style="width: 8rem">
+                <template #body="{ data }">
+                  <span :class="data.cancelled_by_self > 0 ? 'count-neg' : 'count-zero'">{{ data.cancelled_by_self }}</span>
+                </template>
+              </Column>
+            </DataTable>
+
+            <p v-if="!activityLoading && !activityError && activity.length > 0" class="reports-total">
+              <strong>{{ activityActionTotals.bySelf }}</strong> bookings hechos por el pasajero,
+              <strong>{{ activityActionTotals.byDriver }}</strong> boardings confirmados por el conductor,
+              <strong>{{ activityActionTotals.cancelledBySelf }}</strong> cancelaciones hechas por el pasajero
+            </p>
+          </section>
         </TabPanel>
       </TabPanels>
     </Tabs>
@@ -2097,5 +2184,50 @@ onMounted(() => {
   .filter label {
     color: #a1a1aa;
   }
+}
+
+/* === Secciones del reporte Actividad por usuario (Opcion C) === */
+.activity-section {
+  margin-top: 1.5rem;
+}
+.activity-section-header {
+  margin-bottom: 0.5rem;
+}
+.activity-section-header h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  color: #18181b;
+}
+.activity-section-hint {
+  margin: 0 0 0.5rem;
+  color: #71717a;
+  font-size: 0.85rem;
+}
+.activity-section-hint strong {
+  color: #52525b;
+}
+.count-pos {
+  color: #15803d;
+  font-weight: 600;
+}
+.count-pending {
+  color: #b45309;
+  font-weight: 600;
+}
+.count-neg {
+  color: #b91c1c;
+  font-weight: 600;
+}
+.count-zero {
+  color: #a1a1aa;
+}
+.reports-total .legend-pos {
+  color: #15803d;
+}
+.reports-total .legend-pending {
+  color: #b45309;
+}
+.reports-total .legend-neg {
+  color: #b91c1c;
 }
 </style>
