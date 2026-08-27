@@ -157,7 +157,7 @@ class SeatSelectionViewModel @Inject constructor(
         else -> "No se pudo confirmar la reserva. Intente nuevamente."
     }
 
-    /** Consumido por el Snackbar del Screen; los productores se agregan en Task 5. */
+    /** Consumido por el Snackbar del Screen después de mostrar el mensaje, para evitar re-displays. */
     fun consumeUserMessage() {
         _uiState.update { it.copy(userMessage = null) }
     }
