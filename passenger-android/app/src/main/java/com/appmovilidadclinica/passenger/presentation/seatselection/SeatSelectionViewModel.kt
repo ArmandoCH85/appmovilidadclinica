@@ -63,7 +63,7 @@ class SeatSelectionViewModel @Inject constructor(
         viewModelScope.launch {
             when (val detailResult = tripsRepository.getDetail(route.tripId)) {
                 is AppResult.Failure -> {
-                    Log.e(TAG, "getDetail failed", detailResult.error)
+                    Log.e(TAG, "getDetail failed: ${detailResult.error}")
                     _uiState.update { it.copy(loading = false, errorMessage = "No se pudo cargar el viaje.") }
                     return@launch
                 }
@@ -83,7 +83,7 @@ class SeatSelectionViewModel @Inject constructor(
                     when (val seatsResult = listSeatsUseCase(route.tripId, origin, destination)) {
                         is AppResult.Success -> _uiState.update { it.copy(loading = false, seats = seatsResult.data) }
                         is AppResult.Failure -> {
-                            Log.e(TAG, "listSeats failed", seatsResult.error)
+                            Log.e(TAG, "listSeats failed: ${seatsResult.error}")
                             _uiState.update {
                                 it.copy(loading = false, errorMessage = "No se pudieron cargar los asientos.")
                             }
@@ -127,8 +127,11 @@ class SeatSelectionViewModel @Inject constructor(
                 is AppResult.Success -> _uiState.update {
                     it.copy(confirming = false, confirmedReservationId = result.data.reservationId)
                 }
-                is AppResult.Failure -> _uiState.update {
-                    it.copy(confirming = false, errorMessage = messageFor(result.error))
+                is AppResult.Failure -> {
+                    Log.e(TAG, "confirm failed: ${result.error}")
+                    _uiState.update {
+                        it.copy(confirming = false, errorMessage = messageFor(result.error))
+                    }
                 }
             }
         }
@@ -139,6 +142,7 @@ class SeatSelectionViewModel @Inject constructor(
         else -> "No se pudo confirmar la reserva. Intente nuevamente."
     }
 
+    /** Consumido por el Snackbar del Screen; los productores se agregan en Task 5. */
     fun consumeUserMessage() {
         _uiState.update { it.copy(userMessage = null) }
     }
