@@ -64,7 +64,13 @@ class SeatSelectionViewModel @Inject constructor(
             when (val detailResult = tripsRepository.getDetail(route.tripId)) {
                 is AppResult.Failure -> {
                     Log.e(TAG, "getDetail failed: ${detailResult.error}")
-                    _uiState.update { it.copy(loading = false, errorMessage = "No se pudo cargar el viaje.") }
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            errorMessage = "No se pudo cargar el viaje.",
+                            userMessage = "No se pudo cargar el viaje.",
+                        )
+                    }
                     return@launch
                 }
                 is AppResult.Success -> {
@@ -74,7 +80,11 @@ class SeatSelectionViewModel @Inject constructor(
                     if (origin == null || destination == null) {
                         Log.e(TAG, "Origin or destination not in trip stops: originStopId=${route.originStopId} destinationStopId=${route.destinationStopId}")
                         _uiState.update {
-                            it.copy(loading = false, errorMessage = "Las paradas elegidas no pertenecen a este viaje.")
+                            it.copy(
+                                loading = false,
+                                errorMessage = "Las paradas elegidas no pertenecen a este viaje.",
+                                userMessage = "Las paradas elegidas no pertenecen a este viaje.",
+                            )
                         }
                         return@launch
                     }
@@ -85,7 +95,11 @@ class SeatSelectionViewModel @Inject constructor(
                         is AppResult.Failure -> {
                             Log.e(TAG, "listSeats failed: ${seatsResult.error}")
                             _uiState.update {
-                                it.copy(loading = false, errorMessage = "No se pudieron cargar los asientos.")
+                                it.copy(
+                                    loading = false,
+                                    errorMessage = "No se pudieron cargar los asientos.",
+                                    userMessage = "No se pudieron cargar los asientos.",
+                                )
                             }
                         }
                     }
@@ -129,8 +143,9 @@ class SeatSelectionViewModel @Inject constructor(
                 }
                 is AppResult.Failure -> {
                     Log.e(TAG, "confirm failed: ${result.error}")
+                    val msg = messageFor(result.error)
                     _uiState.update {
-                        it.copy(confirming = false, errorMessage = messageFor(result.error))
+                        it.copy(confirming = false, errorMessage = msg, userMessage = msg)
                     }
                 }
             }
