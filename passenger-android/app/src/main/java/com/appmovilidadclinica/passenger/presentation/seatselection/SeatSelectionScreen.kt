@@ -29,11 +29,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +59,14 @@ fun SeatSelectionScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(state.userMessage) {
+        state.userMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.consumeUserMessage()
+        }
+    }
+
     LaunchedEffect(state.confirmedReservationId) {
         state.confirmedReservationId?.let(onReservationConfirmed)
     }
@@ -71,6 +82,7 @@ fun SeatSelectionScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp)) {
             if (state.loading) {
@@ -122,13 +134,9 @@ fun SeatSelectionScreen(
 
             SeatLegend()
 
-            if (state.errorMessage != null) {
-                Text(
-                    state.errorMessage.orEmpty(),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
+            val selectedLabel = state.seats
+                .find { it.tripSeatId == state.selectedSeatId }
+                ?.seatLabel
 
             Button(
                 onClick = viewModel::confirm,
@@ -142,7 +150,11 @@ fun SeatSelectionScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text("Confirmar reserva", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = if (selectedLabel != null) "Confirmar asiento $selectedLabel"
+                               else "Seleccione un asiento",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                 }
             }
         }
