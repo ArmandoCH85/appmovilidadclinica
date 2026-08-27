@@ -1,5 +1,6 @@
 ﻿package com.appmovilidadclinica.passenger.presentation.seatselection
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,6 +31,7 @@ data class SeatSelectionUiState(
     val selectedSeatId: Long? = null,
     val confirming: Boolean = false,
     val errorMessage: String? = null,
+    val userMessage: String? = null,
     val confirmedReservationId: Long? = null,
 )
 
@@ -61,6 +63,7 @@ class SeatSelectionViewModel @Inject constructor(
         viewModelScope.launch {
             when (val detailResult = tripsRepository.getDetail(route.tripId)) {
                 is AppResult.Failure -> {
+                    Log.e(TAG, "getDetail failed", detailResult.error)
                     _uiState.update { it.copy(loading = false, errorMessage = "No se pudo cargar el viaje.") }
                     return@launch
                 }
@@ -69,6 +72,7 @@ class SeatSelectionViewModel @Inject constructor(
                     val origin = detail.stops.find { it.stopId == route.originStopId }
                     val destination = detail.stops.find { it.stopId == route.destinationStopId }
                     if (origin == null || destination == null) {
+                        Log.e(TAG, "Origin or destination not in trip stops: originStopId=${route.originStopId} destinationStopId=${route.destinationStopId}")
                         _uiState.update {
                             it.copy(loading = false, errorMessage = "Las paradas elegidas no pertenecen a este viaje.")
                         }
@@ -78,8 +82,11 @@ class SeatSelectionViewModel @Inject constructor(
 
                     when (val seatsResult = listSeatsUseCase(route.tripId, origin, destination)) {
                         is AppResult.Success -> _uiState.update { it.copy(loading = false, seats = seatsResult.data) }
-                        is AppResult.Failure -> _uiState.update {
-                            it.copy(loading = false, errorMessage = "No se pudieron cargar los asientos.")
+                        is AppResult.Failure -> {
+                            Log.e(TAG, "listSeats failed", seatsResult.error)
+                            _uiState.update {
+                                it.copy(loading = false, errorMessage = "No se pudieron cargar los asientos.")
+                            }
                         }
                     }
                 }
@@ -88,6 +95,7 @@ class SeatSelectionViewModel @Inject constructor(
     }
 
     fun selectSeat(tripSeatId: Long) {
+        Log.d(TAG, "selectSeat($tripSeatId) current=${_uiState.value.selectedSeatId}")
         _uiState.update { it.copy(selectedSeatId = tripSeatId, errorMessage = null) }
     }
 
@@ -129,5 +137,13 @@ class SeatSelectionViewModel @Inject constructor(
     private fun messageFor(error: com.appmovilidadclinica.passenger.shared.domain.error.AppError): String = when (error) {
         is com.appmovilidadclinica.passenger.shared.domain.error.AppError.Conflict -> error.message
         else -> "No se pudo confirmar la reserva. Intente nuevamente."
+    }
+
+    fun consumeUserMessage() {
+        _uiState.update { it.copy(userMessage = null) }
+    }
+
+    private companion object {
+        const val TAG = "SeatSelectionVM"
     }
 }
