@@ -83,5 +83,15 @@ fun SeatResultDto.toDomain(): TripSeat = TripSeat(
     tripSeatId = tripSeatId,
     seatNumber = seatNumber,
     seatLabel = seatLabel,
-    availability = SeatAvailability.valueOf(availability),
+    availability = parseSeatAvailability(availability),
 )
+
+/**
+ * Parsea un valor de disponibilidad de asiento del backend a SeatAvailability.
+ * Si el backend manda un string desconocido (ej. `OCCUPIED` en lugar de
+ * `OCCUPIED_IN_REQUESTED_RANGE`), cae a `OCCUPIED_IN_REQUESTED_RANGE` para
+ * que el asiento se renderice como no-seleccionable sin romper la lista entera.
+ */
+private fun parseSeatAvailability(raw: String): SeatAvailability =
+    runCatching { SeatAvailability.valueOf(raw) }
+        .getOrElse { SeatAvailability.OCCUPIED_IN_REQUESTED_RANGE }
