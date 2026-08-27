@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -109,13 +109,13 @@ fun SeatSelectionScreen(
                 columns = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f, fill = false),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 280.dp, max = 480.dp),
             ) {
                 items(state.seats, key = { it.tripSeatId }) { seat ->
                     SeatCell(
                         seat = seat,
                         selected = seat.tripSeatId == state.selectedSeatId,
-                        onClick = { if (seat.isSelectable) viewModel.selectSeat(seat.tripSeatId) },
+                        onClick = { viewModel.selectSeat(seat.tripSeatId) },
                     )
                 }
             }
@@ -165,7 +165,8 @@ private fun SeatCell(seat: TripSeat, selected: Boolean, onClick: () -> Unit) {
 
     Box(
         modifier = Modifier
-            .aspectRatio(1f)
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(background)
             .then(
