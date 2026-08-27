@@ -3,9 +3,9 @@ package com.appmovilidadclinica.passenger.di
 import com.appmovilidadclinica.passenger.data.local.SessionDataStore
 import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.passenger.data.remote.KtorApiClient
-import com.appmovilidadclinica.passenger.data.remote.KtorClientFactory
 import com.appmovilidadclinica.passenger.data.remote.KtorTokenProvider
 import com.appmovilidadclinica.passenger.data.remote.SessionExpiredNotifier
+import com.appmovilidadclinica.passenger.data.remote.createHttpClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,7 +38,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideHttpClient(tokenProvider: KtorTokenProvider): HttpClient =
-        KtorClientFactory.create(tokenProvider = tokenProvider)
+        createHttpClient(tokenProvider = tokenProvider)
 
     @Provides
     @Singleton
