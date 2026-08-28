@@ -122,6 +122,48 @@ func TestMarkArrival_DriverAssigned_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestMarkDeparture_DriverAssigned_Success(t *testing.T) {
+	// El conductor 77 marca salida de la parada 500. El repositorio resuelve:
+	//   - stopTime 500 pertenece al viaje 10
+	//   - viaje 10 tiene asignado al conductor 77 (coincide con el contexto)
+	// MarkDeparture delega al SP sin error.
+	repo := &mockDriverRepo{
+		stopTimeTripID: 10,
+		tripDriverID:   77,
+	}
+	svc := NewService(repo)
+
+	err := svc.MarkDeparture(ctxWithDriver(t, 77), 500)
+	require.NoError(t, err)
+}
+
+func TestMarkDeparture_DriverNotAssigned_ReturnsForbidden(t *testing.T) {
+	// El conductor 77 marca salida en el viaje 10, pero ese viaje esta
+	// asignado al conductor 999. El servicio valida asignacion antes de
+	// delegar al SP y corta con ForbiddenError (403).
+	repo := &mockDriverRepo{
+		stopTimeTripID: 10,
+		tripDriverID:   999,
+	}
+	svc := NewService(repo)
+
+	err := svc.MarkDeparture(ctxWithDriver(t, 77), 500)
+	require.Error(t, err)
+	var fe apperror.ForbiddenError
+	require.True(t, errors.As(err, &fe), "conductor no asignado debe mapear a ForbiddenError")
+}
+
+func TestMarkDeparture_NotDriver_Unauthorized(t *testing.T) {
+	// Sin JWT de conductor: requireDriver corta con UnauthorizedError (401).
+	repo := &mockDriverRepo{}
+	svc := NewService(repo)
+
+	err := svc.MarkDeparture(context.Background(), 500)
+	require.Error(t, err)
+	var ue apperror.UnauthorizedError
+	require.True(t, errors.As(err, &ue), "sin JWT valido debe mapear a UnauthorizedError")
+}
+
 func TestMarkArrival_DriverNotAssigned_ReturnsForbidden(t *testing.T) {
 	// El conductor 77 marca llegada en el viaje 10, pero ese viaje esta
 	// asignado al conductor 999. El servicio valida asignacion antes de
