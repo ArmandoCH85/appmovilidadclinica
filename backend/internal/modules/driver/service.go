@@ -23,6 +23,7 @@ type DriverService interface {
 	StartTrip(ctx context.Context, tripID int64) error
 	CompleteTrip(ctx context.Context, tripID int64) error
 	MarkArrival(ctx context.Context, tripStopTimeID int64) error
+	MarkDeparture(ctx context.Context, tripStopTimeID int64) error
 	MarkBoarded(ctx context.Context, reservationID int64) error
 	MarkNoShow(ctx context.Context, reservationID int64) error
 	MarkAlighted(ctx context.Context, reservationID int64) error
