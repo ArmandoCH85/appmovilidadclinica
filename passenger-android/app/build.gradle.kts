@@ -25,8 +25,8 @@ android {
         applicationId = "com.sitech.clinica.empleados"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20260827
-        versionName = "0.1.2"
+        versionCode = 20260828
+        versionName = "0.1.3"
     }
 
     signingConfigs {
