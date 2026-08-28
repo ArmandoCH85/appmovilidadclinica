@@ -82,6 +82,9 @@ class DriverRepositoryImpl @Inject constructor(
     override suspend fun markArrival(tripStopTimeId: Long): Result<Unit> =
         noBodyCall { apiClient.driverApi.markArrival(tripStopTimeId) }
 
+    override suspend fun markDeparture(tripStopTimeId: Long): Result<Unit> =
+        noBodyCall { apiClient.driverApi.markDeparture(tripStopTimeId) }
+
     override suspend fun markBoarded(reservationId: Long): Result<Unit> =
         noBodyCall { apiClient.driverApi.boardPassenger(reservationId) }
 

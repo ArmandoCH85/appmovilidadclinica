@@ -41,6 +41,9 @@ class KtorDriverApi(private val client: HttpClient) {
     suspend fun markArrival(tripStopTimeId: Long): HttpResponse =
         client.post("driver/trip-stops/$tripStopTimeId/arrival")
 
+    suspend fun markDeparture(tripStopTimeId: Long): HttpResponse =
+        client.post("driver/trip-stops/$tripStopTimeId/departure")
+
     suspend fun boardPassenger(reservationId: Long): HttpResponse =
         client.post("driver/reservations/$reservationId/board")
 

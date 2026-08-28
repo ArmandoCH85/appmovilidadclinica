@@ -13,6 +13,7 @@ interface DriverRepository {
     suspend fun startTrip(tripId: Long): Result<Unit>
     suspend fun completeTrip(tripId: Long): Result<Unit>
     suspend fun markArrival(tripStopTimeId: Long): Result<Unit>
+    suspend fun markDeparture(tripStopTimeId: Long): Result<Unit>
     suspend fun markBoarded(reservationId: Long): Result<Unit>
     suspend fun markNoShow(reservationId: Long): Result<Unit>
     suspend fun markAlighted(reservationId: Long): Result<Unit>

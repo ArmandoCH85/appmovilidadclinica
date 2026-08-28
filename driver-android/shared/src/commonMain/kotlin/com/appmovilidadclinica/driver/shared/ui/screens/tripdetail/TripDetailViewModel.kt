@@ -121,6 +121,10 @@ class TripDetailViewModel(
         driverRepository.markArrival(tripStopTimeId)
     }
 
+    fun markDeparture(tripStopTimeId: Long) = runAction(tripStopTimeId, "Salida marcada") {
+        driverRepository.markDeparture(tripStopTimeId)
+    }
+
     fun dismissToast() {
         _uiState.update { it.copy(toastMessage = null) }
     }

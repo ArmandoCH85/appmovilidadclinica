@@ -374,6 +374,7 @@ fun TripDetailScreen(
                         pending = state.pendingActionId == stop.id,
                         tripInProgress = state.trip?.status == TripStatus.IN_PROGRESS,
                         onMarkArrival = { arrivalConfirmId = stop.id },
+                        onMarkDeparture = { viewModel.markDeparture(stop.id) },
                     )
                 }
             }
@@ -465,6 +466,7 @@ private fun StopRow(
     pending: Boolean,
     tripInProgress: Boolean,
     onMarkArrival: () -> Unit,
+    onMarkDeparture: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -488,10 +490,18 @@ private fun StopRow(
                         color = stop.status.color(),
                     )
                 }
-                if (stop.status == TripStopStatus.PENDING) {
-                    Button(onClick = onMarkArrival, enabled = !pending && tripInProgress) {
-                        Text(if (pending) "…" else "Marcar llegada")
+                when (stop.status) {
+                    TripStopStatus.PENDING -> {
+                        Button(onClick = onMarkArrival, enabled = !pending && tripInProgress) {
+                            Text(if (pending) "…" else "Marcar llegada")
+                        }
                     }
+                    TripStopStatus.ARRIVED -> {
+                        Button(onClick = onMarkDeparture, enabled = !pending && tripInProgress) {
+                            Text(if (pending) "…" else "Marcar salida")
+                        }
+                    }
+                    TripStopStatus.DEPARTED, TripStopStatus.SKIPPED -> {}
                 }
             }
             if (stop.status == TripStopStatus.PENDING && !tripInProgress) {
