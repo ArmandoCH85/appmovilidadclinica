@@ -114,6 +114,9 @@ type DriverRepository interface {
 	// MarkArrival llama a sp_mark_trip_stop_arrival.
 	MarkArrival(ctx context.Context, tripStopTimeID, driverID int64) error
 
+	// MarkDeparture llama a sp_mark_trip_stop_departure.
+	MarkDeparture(ctx context.Context, tripStopTimeID, driverID int64) error
+
 	// MarkBoarded llama a sp_mark_reservation_boarded.
 	MarkBoarded(ctx context.Context, reservationID, driverID int64) error
 
@@ -384,6 +387,17 @@ func (r *driverRepository) MarkArrival(ctx context.Context, tripStopTimeID, driv
 			return spErr
 		}
 		return fmt.Errorf("llamando sp_mark_trip_stop_arrival: %w", err)
+	}
+	return nil
+}
+
+func (r *driverRepository) MarkDeparture(ctx context.Context, tripStopTimeID, driverID int64) error {
+	_, err := r.db.ExecContext(ctx, "CALL sp_mark_trip_stop_departure(?, ?)", tripStopTimeID, driverID)
+	if err != nil {
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return spErr
+		}
+		return fmt.Errorf("llamando sp_mark_trip_stop_departure: %w", err)
 	}
 	return nil
 }
