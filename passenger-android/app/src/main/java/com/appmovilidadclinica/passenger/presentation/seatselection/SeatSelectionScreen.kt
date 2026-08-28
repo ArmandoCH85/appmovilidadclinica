@@ -177,8 +177,7 @@ private fun SeatCell(seat: TripSeat, selected: Boolean, onClick: () -> Unit) {
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .size(64.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(background)
             .then(
@@ -188,7 +187,10 @@ private fun SeatCell(seat: TripSeat, selected: Boolean, onClick: () -> Unit) {
                     Modifier
                 }
             )
-            .clickable(enabled = seat.isSelectable, onClick = onClick)
+            .clickable(enabled = true, onClick = {
+                android.util.Log.d("SeatCell", "click on seat ${seat.seatLabel} selectable=${seat.isSelectable}")
+                onClick()
+            })
             .semantics { contentDescription = "Asiento ${seat.seatLabel}, $stateDescription" },
         contentAlignment = Alignment.Center,
     ) {
