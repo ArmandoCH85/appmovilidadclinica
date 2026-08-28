@@ -152,6 +152,26 @@ func (s *driverService) MarkArrival(ctx context.Context, tripStopTimeID int64) e
 	return s.repo.MarkArrival(ctx, tripStopTimeID, driverID)
 }
 
+// MarkDeparture marca la salida del conductor de una parada. Misma
+// validacion que MarkArrival: se resuelve el trip_id desde el
+// trip_stop_time_id para chequear asignacion del conductor antes de
+// delegar al SP. El SP hace la validacion final de estado (no se puede
+// salir sin haber llegado, no se puede des-departir).
+func (s *driverService) MarkDeparture(ctx context.Context, tripStopTimeID int64) error {
+	driverID, err := requireDriver(ctx)
+	if err != nil {
+		return err
+	}
+	tripID, err := s.repo.GetTripStopTimeTripID(ctx, tripStopTimeID)
+	if err != nil {
+		return err
+	}
+	if err := s.ensureAssigned(ctx, driverID, tripID); err != nil {
+		return err
+	}
+	return s.repo.MarkDeparture(ctx, tripStopTimeID, driverID)
+}
+
 // MarkBoarded marca el abordaje de un pasajero. Se valida la asignacion del
 // conductor resolviendo el trip_id desde el reservation_id.
 func (s *driverService) MarkBoarded(ctx context.Context, reservationID int64) error {
