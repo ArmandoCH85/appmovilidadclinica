@@ -29,6 +29,7 @@ type mockDriverRepo struct {
 	reservationTrip   int64
 	reservationErr    error
 	markArrivalErr    error
+	markDepartureErr  error
 	markBoardedErr    error
 	markNoShowErr     error
 	markAlightedErr   error
@@ -70,6 +71,10 @@ func (m *mockDriverRepo) GetReservationTripID(_ context.Context, _ int64) (int64
 
 func (m *mockDriverRepo) MarkArrival(_ context.Context, _, _ int64) error {
 	return m.markArrivalErr
+}
+
+func (m *mockDriverRepo) MarkDeparture(_ context.Context, _, _ int64) error {
+	return m.markDepartureErr
 }
 
 func (m *mockDriverRepo) MarkBoarded(_ context.Context, _, _ int64) error {
