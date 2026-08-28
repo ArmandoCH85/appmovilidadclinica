@@ -132,6 +132,20 @@ func (h *DriverHandler) MarkArrivalStop(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// MarkDepartureStop maneja POST /driver/trip-stops/{id}/departure — marca la
+// salida del conductor de la parada indicada por trip_stop_time_id.
+func (h *DriverHandler) MarkDepartureStop(w http.ResponseWriter, r *http.Request) {
+	tripStopTimeID, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	if err := h.svc.MarkDeparture(r.Context(), tripStopTimeID); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // Board maneja POST /driver/reservations/{id}/board — marca el abordaje del
 // pasajero.
 func (h *DriverHandler) Board(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +233,7 @@ func (h *DriverHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/trips/{id}/start", h.StartTrip)
 		r.Post("/trips/{id}/complete", h.CompleteTrip)
 		r.Post("/trip-stops/{id}/arrival", h.MarkArrivalStop)
+		r.Post("/trip-stops/{id}/departure", h.MarkDepartureStop)
 		r.Post("/reservations/{id}/board", h.Board)
 		r.Post("/reservations/{id}/no-show", h.NoShow)
 		r.Post("/reservations/{id}/alight", h.Alight)
