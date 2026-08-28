@@ -68,10 +68,20 @@ class MyReservationDetailViewModel @Inject constructor(
         }
     }
 
-    /** Trae el cronograma completo del viaje para mostrar la hora aproximada de llegada a cada parada. */
+    /** Trae el cronograma completo del viaje la primera vez (sin polling). */
     private fun loadStopsIfNeeded(tripId: Long) {
         if (stopsLoadedForTripId == tripId) return
         stopsLoadedForTripId = tripId
+        doRefreshStops(tripId)
+    }
+
+    /** Refresca la lista de paradas. Usado por polling y pull-to-refresh. */
+    fun refreshStops() {
+        val tripId = stopsLoadedForTripId ?: return
+        doRefreshStops(tripId)
+    }
+
+    private fun doRefreshStops(tripId: Long) {
         viewModelScope.launch {
             when (val result = tripsRepository.getDetail(tripId)) {
                 is AppResult.Success -> _uiState.update { it.copy(stops = result.data.stops, loadingStops = false) }

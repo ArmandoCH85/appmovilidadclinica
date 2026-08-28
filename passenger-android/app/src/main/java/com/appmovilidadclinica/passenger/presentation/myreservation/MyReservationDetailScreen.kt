@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -33,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -41,7 +43,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -79,17 +83,23 @@ fun MyReservationDetailScreen(
             )
         },
     ) { padding ->
-        Column(
+        PullToRefreshBox(
+            isRefreshing = state.loadingStops,
+            onRefresh = viewModel::refreshStops,
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .fillMaxWidth(),
         ) {
-            if (reservation == null) {
-                Text("Cargandoâ€¦")
-                return@Column
-            }
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (reservation == null) {
+                    Text("Cargando…")
+                    return@Column
+                }
 
             // Codigo de reserva
             Text(
@@ -245,6 +255,7 @@ fun MyReservationDetailScreen(
                     modifier = Modifier.padding(top = 12.dp),
                 )
             }
+            }
         }
     }
 
@@ -280,27 +291,30 @@ private fun TripStopRow(stop: TripStop, isLast: Boolean) {
     val arrived = stop.actualArrivalAt != null
     val departed = stop.actualDepartureAt != null
 
-    val icon = when {
-        skipped -> Icons.Filled.Cancel
-        departed -> Icons.Filled.CheckCircle
-        arrived -> Icons.Filled.DirectionsBus
-        else -> Icons.Outlined.RadioButtonUnchecked
+    // Semáforo de colores: rojo PENDIENTE, amarillo ARRIVED, verde DEPARTED,
+    // gris SKIPPED.
+    val semaphoreColor = when (stop.status) {
+        TripStopStatus.PENDING -> Color(0xFFD32F2F)
+        TripStopStatus.ARRIVED -> Color(0xFFF9A825)
+        TripStopStatus.DEPARTED -> Color(0xFF388E3C)
+        TripStopStatus.SKIPPED -> Color(0xFF9E9E9E)
     }
-    val iconColor = when {
-        skipped -> MaterialTheme.colorScheme.error
-        departed -> MaterialTheme.colorScheme.primary
-        arrived -> MaterialTheme.colorScheme.secondary
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
+
     val timeText = when {
         skipped -> "Parada omitida"
-        arrived -> "LlegÃ³ ${stop.actualArrivalAt!!.toPeruTime()}"
+        departed -> "Salio ${stop.actualDepartureAt!!.toPeruTime()}"
+        arrived -> "Llego ${stop.actualArrivalAt!!.toPeruTime()}"
         else -> "Hora aprox. ${stop.scheduledArrivalAt.toPeruTime()}"
     }
 
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(24.dp)) {
-            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(semaphoreColor),
+            )
             if (!isLast) {
                 Box(
                     modifier = Modifier
@@ -316,6 +330,8 @@ private fun TripStopRow(stop: TripStop, isLast: Boolean) {
                 stop.stopName,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (arrived || skipped) FontWeight.Medium else FontWeight.Normal,
+                color = if (skipped) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurface,
                 textDecoration = if (skipped) TextDecoration.LineThrough else null,
             )
             Text(
@@ -363,3 +379,6 @@ private fun statusColor(status: ReservationStatus) = when (status) {
     ReservationStatus.COMPLETED, ReservationStatus.BOARDED -> MaterialTheme.colorScheme.primary
     ReservationStatus.CONFIRMED -> MaterialTheme.colorScheme.onSurface
 }
+
+
+
