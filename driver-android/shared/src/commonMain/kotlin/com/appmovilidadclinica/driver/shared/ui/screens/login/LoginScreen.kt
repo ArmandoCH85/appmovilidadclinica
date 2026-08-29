@@ -53,12 +53,21 @@ import org.koin.compose.koinInject
 @Composable
 fun LoginScreen(
     authRepository: AuthRepository = koinInject(),
+    onLoggedIn: () -> Unit = {},
 ) {
     val viewModel = remember(authRepository) { LoginViewModel(authRepository) }
     DisposableEffect(viewModel) { onDispose { viewModel.dispose() } }
 
     val state by viewModel.uiState.collectAsState()
     var passwordVisible by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                LoginEvent.Authenticated -> onLoggedIn()
+            }
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
@@ -112,7 +121,7 @@ private fun LoginCard(
             OutlinedTextField(
                 value = state.documentNumber,
                 onValueChange = onDocumentNumberChange,
-                label = { Text("Usuario") },
+                label = { Text("Nombre de usuario") },
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,

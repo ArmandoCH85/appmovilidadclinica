@@ -100,13 +100,15 @@ export const usersConfig: CrudResourceConfig = {
   labelPlural: 'Usuarios',
   columns: [
     { key: 'employee_code', label: 'Legajo' },
+    { key: 'username', label: 'Nombre de usuario' },
     { key: 'full_name', label: 'Nombre completo' },
     { key: 'role', label: 'Rol' },
     { key: 'active', label: 'Activo' },
   ],
   fields: [
     { key: 'employee_code', label: 'Legajo', type: 'text', required: true, maxLength: 30 },
-    { key: 'document_number', label: 'Número de documento', type: 'text', required: true, maxLength: 20 },
+    { key: 'document_number', label: 'DNI', type: 'text', required: true, maxLength: 20 },
+    { key: 'username', label: 'Nombre de usuario', type: 'text', maxLength: 60 },
     // required:'create' — ver comentario en CrudField sobre este campo.
     { key: 'password', label: 'Contraseña', type: 'password', required: 'create' },
     { key: 'full_name', label: 'Nombre completo', type: 'text', required: true, maxLength: 150 },
@@ -122,8 +124,12 @@ export const usersConfig: CrudResourceConfig = {
       ],
     },
     { key: 'department', label: 'Área', type: 'text', maxLength: 100 },
-    { key: 'phone', label: 'Teléfono', type: 'text', maxLength: 25 },
-    { key: 'preferred_stop_id', label: 'ID de parada preferida', type: 'number' },
+    { key: 'ceco', label: 'CeCo', type: 'text', maxLength: 30 },
+    { key: 'phone', label: 'Celular', type: 'text', maxLength: 25 },
+    { key: 'personal_email', label: 'Correo Pers', type: 'text', maxLength: 150 },
+    { key: 'management', label: 'Gerencia', type: 'text', maxLength: 100 },
+    { key: 'site', label: 'SEDE', type: 'text', maxLength: 100 },
+    { key: 'preferred_stop_id', label: 'Parada preferida', type: 'number' },
     { key: 'active', label: 'Activo', type: 'boolean' },
   ],
 }

@@ -57,45 +57,60 @@ type StopUpdateParams struct {
 
 // User refleja una fila de users (sin password_hash).
 type User struct {
-	ID              int64   `json:"id"`
-	EmployeeCode    string  `json:"employee_code"`
-	DocumentNumber  string  `json:"document_number"`
-	FullName        string  `json:"full_name"`
-	Role            string  `json:"role"`
-	Department      *string `json:"department,omitempty"`
-	Phone           *string `json:"phone,omitempty"`
-	PreferredStopID *int64  `json:"preferred_stop_id,omitempty"`
-	Active          bool    `json:"active"`
+	ID             int64   `json:"id"`
+	EmployeeCode   string  `json:"employee_code"`
+	DocumentNumber string  `json:"document_number"`
+	Username       *string `json:"username,omitempty"`
+	FullName       string  `json:"full_name"`
+	Role           string  `json:"role"`
+	Department     *string `json:"department,omitempty"`
+	CECO           *string `json:"ceco,omitempty"`
+	Phone          *string `json:"phone,omitempty"`
+	PersonalEmail  *string `json:"personal_email,omitempty"`
+	Management     *string `json:"management,omitempty"`
+	Site           *string `json:"site,omitempty"`
+	PreferredStopID *int64 `json:"preferred_stop_id,omitempty"`
+	Active         bool    `json:"active"`
 }
 
 // UserCreateParams crea un usuario. Password llega en texto plano (TLS); el
 // servicio la hashea con bcrypt antes de invocar al repositorio, que ya
 // recibe el hash listo para persistir.
 type UserCreateParams struct {
-	EmployeeCode    string  `json:"employee_code" validate:"required,max=30"`
-	DocumentNumber  string  `json:"document_number" validate:"required,max=20"`
-	Password        string  `json:"password" validate:"required"`
-	FullName        string  `json:"full_name" validate:"required,max=150"`
-	Role            string  `json:"role" validate:"required,oneof=ADMIN DRIVER WORKER"`
-	Department      *string `json:"department,omitempty" validate:"omitempty,max=100"`
-	Phone           *string `json:"phone,omitempty" validate:"omitempty,max=25"`
-	PreferredStopID *int64  `json:"preferred_stop_id,omitempty"`
-	Active          bool    `json:"active"`
+	EmployeeCode   string  `json:"employee_code" validate:"required,max=30"`
+	DocumentNumber string  `json:"document_number" validate:"required,max=20"`
+	Username       *string `json:"username,omitempty" validate:"omitempty,max=60"`
+	Password       string  `json:"password" validate:"required"`
+	FullName       string  `json:"full_name" validate:"required,max=150"`
+	Role           string  `json:"role" validate:"required,oneof=ADMIN DRIVER WORKER"`
+	Department     *string `json:"department,omitempty" validate:"omitempty,max=100"`
+	CECO           *string `json:"ceco,omitempty" validate:"omitempty,max=30"`
+	Phone          *string `json:"phone,omitempty" validate:"omitempty,max=25"`
+	PersonalEmail  *string `json:"personal_email,omitempty" validate:"omitempty,email,max=150"`
+	Management     *string `json:"management,omitempty" validate:"omitempty,max=100"`
+	Site           *string `json:"site,omitempty" validate:"omitempty,max=100"`
+	PreferredStopID *int64 `json:"preferred_stop_id,omitempty"`
+	Active         bool    `json:"active"`
 }
 
 // UserUpdateParams actualiza un usuario. Password es opcional en texto plano:
 // si llega vacia no se modifica el hash existente; si llega, el servicio la
 // hashea antes de pasarla al repositorio.
 type UserUpdateParams struct {
-	EmployeeCode    string  `json:"employee_code" validate:"required,max=30"`
-	DocumentNumber  string  `json:"document_number" validate:"required,max=20"`
-	Password        string  `json:"password,omitempty"`
-	FullName        string  `json:"full_name" validate:"required,max=150"`
-	Role            string  `json:"role" validate:"required,oneof=ADMIN DRIVER WORKER"`
-	Department      *string `json:"department,omitempty" validate:"omitempty,max=100"`
-	Phone           *string `json:"phone,omitempty" validate:"omitempty,max=25"`
-	PreferredStopID *int64  `json:"preferred_stop_id,omitempty"`
-	Active          bool    `json:"active"`
+	EmployeeCode   string  `json:"employee_code" validate:"required,max=30"`
+	DocumentNumber string  `json:"document_number" validate:"required,max=20"`
+	Username       *string `json:"username,omitempty" validate:"omitempty,max=60"`
+	Password       string  `json:"password,omitempty"`
+	FullName       string  `json:"full_name" validate:"required,max=150"`
+	Role           string  `json:"role" validate:"required,oneof=ADMIN DRIVER WORKER"`
+	Department     *string `json:"department,omitempty" validate:"omitempty,max=100"`
+	CECO           *string `json:"ceco,omitempty" validate:"omitempty,max=30"`
+	Phone          *string `json:"phone,omitempty" validate:"omitempty,max=25"`
+	PersonalEmail  *string `json:"personal_email,omitempty" validate:"omitempty,email,max=150"`
+	Management     *string `json:"management,omitempty" validate:"omitempty,max=100"`
+	Site           *string `json:"site,omitempty" validate:"omitempty,max=100"`
+	PreferredStopID *int64 `json:"preferred_stop_id,omitempty"`
+	Active         bool    `json:"active"`
 }
 
 // Vehicle refleja una fila de vehicles.
@@ -523,6 +538,9 @@ type AdminRepository interface {
 	ListUsers(ctx context.Context, pg types.PaginationParams) ([]User, int, error)
 	CreateUser(ctx context.Context, p UserCreateParams) (User, error)
 	UpdateUser(ctx context.Context, id int64, p UserUpdateParams) error
+	// UsernameExists devuelve true si hay algun usuario con ese username
+	// (excluyendo el id opcional, para permitir update sin chocar consigo mismo).
+	UsernameExists(ctx context.Context, username string, excludeID int64) (bool, error)
 
 	// Vehiculos
 	ListVehicles(ctx context.Context, pg types.PaginationParams) ([]Vehicle, int, error)
@@ -687,8 +705,9 @@ func (r *adminRepository) UpdateStop(ctx context.Context, id int64, p StopUpdate
 func (r *adminRepository) ListUsers(ctx context.Context, pg types.PaginationParams) ([]User, int, error) {
 	pg.Normalize()
 	const q = `
-        SELECT id, employee_code, document_number, full_name, role,
-               department, phone, preferred_stop_id, active
+        SELECT id, employee_code, document_number, username, full_name, role,
+               department, ceco, phone, personal_email, management, site,
+               preferred_stop_id, active
           FROM users
          ORDER BY id
          LIMIT ? OFFSET ?`
@@ -701,14 +720,20 @@ func (r *adminRepository) ListUsers(ctx context.Context, pg types.PaginationPara
 	var users []User
 	for rows.Next() {
 		var u User
-		var dept, phone sql.NullString
+		var username, dept, ceco, phone, personalEmail, management, site sql.NullString
 		var prefStop sql.NullInt64
-		if err := rows.Scan(&u.ID, &u.EmployeeCode, &u.DocumentNumber, &u.FullName,
-			&u.Role, &dept, &phone, &prefStop, &u.Active); err != nil {
+		if err := rows.Scan(&u.ID, &u.EmployeeCode, &u.DocumentNumber, &username,
+			&u.FullName, &u.Role, &dept, &ceco, &phone, &personalEmail, &management,
+			&site, &prefStop, &u.Active); err != nil {
 			return nil, 0, fmt.Errorf("escaneando usuario: %w", err)
 		}
+		u.Username = nullableStr(username)
 		u.Department = nullableStr(dept)
+		u.CECO = nullableStr(ceco)
 		u.Phone = nullableStr(phone)
+		u.PersonalEmail = nullableStr(personalEmail)
+		u.Management = nullableStr(management)
+		u.Site = nullableStr(site)
 		u.PreferredStopID = nullableInt(prefStop)
 		users = append(users, u)
 	}
@@ -727,11 +752,14 @@ func (r *adminRepository) ListUsers(ctx context.Context, pg types.PaginationPara
 // invocar este metodo (el repositorio no conoce bcrypt).
 func (r *adminRepository) CreateUser(ctx context.Context, p UserCreateParams) (User, error) {
 	res, err := r.db.ExecContext(ctx, `
-        INSERT INTO users (employee_code, document_number, password_hash, full_name,
-               role, department, phone, preferred_stop_id, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.EmployeeCode, p.DocumentNumber, p.Password, p.FullName, p.Role,
-		p.Department, p.Phone, p.PreferredStopID, p.Active)
+        INSERT INTO users (employee_code, document_number, username, password_hash,
+               full_name, role, department, ceco, phone, personal_email,
+               management, site, preferred_stop_id, active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.EmployeeCode, p.DocumentNumber, nilIfEmpty(p.Username), p.Password, p.FullName,
+		p.Role, nilIfEmpty(p.Department), nilIfEmpty(p.CECO), nilIfEmpty(p.Phone),
+		nilIfEmpty(p.PersonalEmail), nilIfEmpty(p.Management), nilIfEmpty(p.Site),
+		p.PreferredStopID, p.Active)
 	if err != nil {
 		return User{}, dberr.TranslatePlainSQL(err, "usuario", "")
 	}
@@ -741,7 +769,9 @@ func (r *adminRepository) CreateUser(ctx context.Context, p UserCreateParams) (U
 	}
 	return User{
 		ID: id, EmployeeCode: p.EmployeeCode, DocumentNumber: p.DocumentNumber,
-		FullName: p.FullName, Role: p.Role, Department: p.Department, Phone: p.Phone,
+		Username: p.Username, FullName: p.FullName, Role: p.Role,
+		Department: p.Department, CECO: p.CECO, Phone: p.Phone,
+		PersonalEmail: p.PersonalEmail, Management: p.Management, Site: p.Site,
 		PreferredStopID: p.PreferredStopID, Active: p.Active,
 	}, nil
 }
@@ -754,24 +784,68 @@ func (r *adminRepository) UpdateUser(ctx context.Context, id int64, p UserUpdate
 	if p.Password == "" {
 		res, err = r.db.ExecContext(ctx, `
             UPDATE users
-               SET employee_code = ?, document_number = ?, full_name = ?, role = ?,
-                   department = ?, phone = ?, preferred_stop_id = ?, active = ?
+               SET employee_code = ?, document_number = ?, username = ?, full_name = ?,
+                   role = ?, department = ?, ceco = ?, phone = ?, personal_email = ?,
+                   management = ?, site = ?, preferred_stop_id = ?, active = ?
              WHERE id = ?`,
-			p.EmployeeCode, p.DocumentNumber, p.FullName, p.Role,
-			p.Department, p.Phone, p.PreferredStopID, p.Active, id)
+			p.EmployeeCode, p.DocumentNumber, nilIfEmpty(p.Username), p.FullName,
+			p.Role, nilIfEmpty(p.Department), nilIfEmpty(p.CECO), nilIfEmpty(p.Phone),
+			nilIfEmpty(p.PersonalEmail), nilIfEmpty(p.Management), nilIfEmpty(p.Site),
+			p.PreferredStopID, p.Active, id)
 	} else {
 		res, err = r.db.ExecContext(ctx, `
             UPDATE users
-               SET employee_code = ?, document_number = ?, password_hash = ?, full_name = ?,
-                   role = ?, department = ?, phone = ?, preferred_stop_id = ?, active = ?
+               SET employee_code = ?, document_number = ?, username = ?, password_hash = ?,
+                   full_name = ?, role = ?, department = ?, ceco = ?, phone = ?,
+                   personal_email = ?, management = ?, site = ?, preferred_stop_id = ?,
+                   active = ?
              WHERE id = ?`,
-			p.EmployeeCode, p.DocumentNumber, p.Password, p.FullName, p.Role,
-			p.Department, p.Phone, p.PreferredStopID, p.Active, id)
+			p.EmployeeCode, p.DocumentNumber, nilIfEmpty(p.Username), p.Password,
+			p.FullName, p.Role, nilIfEmpty(p.Department), nilIfEmpty(p.CECO),
+			nilIfEmpty(p.Phone), nilIfEmpty(p.PersonalEmail), nilIfEmpty(p.Management),
+			nilIfEmpty(p.Site), p.PreferredStopID, p.Active, id)
 	}
 	if err != nil {
 		return dberr.TranslatePlainSQL(err, "usuario", "")
 	}
 	return ensureAffected(res, "usuario", id)
+}
+
+// nilIfEmpty convierte un *string vacio a nil para que la columna SQL quede
+// NULL en lugar de un string vacio. Asi el UNIQUE(username) no se confunde
+// con duplicados vacios.
+func nilIfEmpty(s *string) any {
+	if s == nil {
+		return nil
+	}
+	if *s == "" {
+		return nil
+	}
+	return *s
+}
+
+// UsernameExists chequea unicidad del username excluyendo un id (que puede
+// ser 0 en Create). Si llega un username vacio devuelve false (no hay nada
+// que validar) para no romper el caso legacy donde username es NULL.
+func (r *adminRepository) UsernameExists(ctx context.Context, username string, excludeID int64) (bool, error) {
+	if username == "" {
+		return false, nil
+	}
+	const q = `
+        SELECT 1
+          FROM users
+         WHERE username = ?
+           AND id <> ?
+         LIMIT 1`
+	var one int
+	err := r.db.QueryRowContext(ctx, q, username, excludeID).Scan(&one)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, fmt.Errorf("chequeando username duplicado: %w", err)
+	}
+	return true, nil
 }
 
 // ----------------------------------------------------------------------------

@@ -17,7 +17,8 @@ const tokenTTL = 24 * time.Hour
 // AuthService define las operaciones de dominio del modulo.
 type AuthService interface {
 	// Login valida credenciales y devuelve un JWT firmado + el usuario.
-	Login(ctx context.Context, documentNumber, password string) (string, User, error)
+	// El identifier puede ser DNI o username (resuelto por el repositorio).
+	Login(ctx context.Context, identifier, password string) (string, User, error)
 }
 
 // authService es la implementacion concreta.
@@ -37,7 +38,7 @@ func NewService(repo AuthRepository, secret string) AuthService {
 
 // Login orquesta la verificacion de bcrypt y la emision del JWT HS256.
 // Flujo:
-//  1. Carga el usuario por document_number.
+//  1. Carga el usuario por document_number o username (repositorio decide).
 //  2. Compara el hash con bcrypt.CompareHashAndPassword.
 //  3. Emite un JWT con claims {user_id, role, full_name, employee_code,
 //     exp, iat} para que /me no toque la BD.
@@ -45,8 +46,8 @@ func NewService(repo AuthRepository, secret string) AuthService {
 // Ante cualquier fallo se devuelve UnauthorizedError con el mismo mensaje
 // ("credenciales invalidas") para no filtrar si el usuario no existe vs
 // password incorrecto (mejor practica de seguridad).
-func (s *authService) Login(ctx context.Context, documentNumber, password string) (string, User, error) {
-	user, err := s.repo.GetUserByDocument(ctx, documentNumber)
+func (s *authService) Login(ctx context.Context, identifier, password string) (string, User, error) {
+	user, err := s.repo.GetUserByIdentifier(ctx, identifier)
 	if err != nil {
 		var nf apperror.NotFoundError
 		if errors.As(err, &nf) {

@@ -71,6 +71,9 @@ func (m *mockAdminRepo) UpdateUser(_ context.Context, _ int64, p UserUpdateParam
 	m.receivedUserUpdate = p
 	return nil
 }
+func (m *mockAdminRepo) UsernameExists(_ context.Context, _ string, _ int64) (bool, error) {
+	return false, nil
+}
 func (m *mockAdminRepo) ListVehicles(_ context.Context, _ types.PaginationParams) ([]Vehicle, int, error) {
 	return nil, 0, nil
 }

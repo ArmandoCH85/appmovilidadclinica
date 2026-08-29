@@ -169,6 +169,15 @@ func (s *adminService) CreateUser(ctx context.Context, p UserCreateParams) (User
 	if err := requireAdmin(ctx); err != nil {
 		return User{}, err
 	}
+	if p.Username != nil && *p.Username != "" {
+		exists, err := s.repo.UsernameExists(ctx, *p.Username, 0)
+		if err != nil {
+			return User{}, err
+		}
+		if exists {
+			return User{}, apperror.ConflictError{Msg: "username ya registrado"}
+		}
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return User{}, fmt.Errorf("hasheando password: %w", err)
@@ -183,6 +192,15 @@ func (s *adminService) CreateUser(ctx context.Context, p UserCreateParams) (User
 func (s *adminService) UpdateUser(ctx context.Context, id int64, p UserUpdateParams) error {
 	if err := requireAdmin(ctx); err != nil {
 		return err
+	}
+	if p.Username != nil && *p.Username != "" {
+		exists, err := s.repo.UsernameExists(ctx, *p.Username, id)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return apperror.ConflictError{Msg: "username ya registrado"}
+		}
 	}
 	if p.Password != "" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)

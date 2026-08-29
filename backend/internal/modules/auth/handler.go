@@ -22,10 +22,37 @@ func NewHandler(svc AuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 
-// loginRequest es el cuerpo de POST /login.
+// loginRequest es el cuerpo de POST /login. Acepta DNI (document_number)
+// o nombre de usuario (username) en el mismo campo "identifier" — el
+// servicio decide cual usar segun el contenido (digitos -> DNI, otro ->
+// username). Esto evita romper clientes viejos que mandan document_number.
 type loginRequest struct {
-	DocumentNumber string `json:"document_number" validate:"required"`
-	Password       string `json:"password" validate:"required"`
+	Identifier string
+	Password   string
+}
+
+// UnmarshalJSON acepta tanto document_number (compat legacy) como
+// username (camino nuevo) en el mismo slot del payload.
+func (r *loginRequest) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		DocumentNumber string `json:"document_number"`
+		Username       string `json:"username"`
+		Identifier     string `json:"identifier"`
+		Password       string `json:"password"`
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	switch {
+	case aux.Identifier != "":
+		r.Identifier = aux.Identifier
+	case aux.Username != "":
+		r.Identifier = aux.Username
+	case aux.DocumentNumber != "":
+		r.Identifier = aux.DocumentNumber
+	}
+	r.Password = aux.Password
+	return nil
 }
 
 // loginResponse devuelve el token y el perfil del usuario autenticado.
@@ -42,12 +69,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
 		return
 	}
-	if err := validate.Default.Struct(req); err != nil {
-		apperror.WriteJSONError(w, validate.ToAppError(err))
+	if req.Identifier == "" {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "identifier", Reason: "document_number o username requerido"})
+		return
+	}
+	if req.Password == "" {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "password", Reason: "requerido"})
 		return
 	}
 
-	token, user, err := h.svc.Login(r.Context(), req.DocumentNumber, req.Password)
+	token, user, err := h.svc.Login(r.Context(), req.Identifier, req.Password)
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return

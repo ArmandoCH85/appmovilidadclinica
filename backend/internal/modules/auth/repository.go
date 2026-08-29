@@ -17,6 +17,7 @@ type User struct {
 	ID             int64   `json:"id"`
 	EmployeeCode   string  `json:"employee_code"`
 	DocumentNumber string  `json:"document_number"`
+	Username       *string `json:"username,omitempty"`
 	PasswordHash   string  `json:"-"` // nunca se envia al cliente
 	FullName       string  `json:"full_name"`
 	Role           string  `json:"role"`
@@ -28,9 +29,9 @@ type User struct {
 // AuthRepository abstrae el acceso a users. La interfaz permite mockear a
 // mano en tests sin mockery (decision del ponytail-audit).
 type AuthRepository interface {
-	// GetUserByDocument carga el usuario activo por numero de documento.
+	// GetUserByIdentifier carga el usuario activo por DNI o username.
 	// Devuelve apperror.NotFoundError si no existe.
-	GetUserByDocument(ctx context.Context, documentNumber string) (User, error)
+	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
 }
 
 // authRepository es la implementacion concreta con database/sql.
@@ -43,28 +44,34 @@ func NewRepository(db *sql.DB) AuthRepository {
 	return &authRepository{db: db}
 }
 
-// GetUserByDocument busca un usuario activo por document_number. active=1
-// filtra empleados dados de baja sin costar logica extra en Go.
-func (r *authRepository) GetUserByDocument(ctx context.Context, documentNumber string) (User, error) {
+// GetUserByIdentifier busca un usuario activo por DNI o por username. El
+// ORDER BY prioriza el match por DNI (mas confiable) y luego cae al
+// username. active=1 filtra empleados dados de baja sin logica extra en Go.
+func (r *authRepository) GetUserByIdentifier(ctx context.Context, identifier string) (User, error) {
 	const q = `
-        SELECT id, employee_code, document_number, password_hash,
+        SELECT id, employee_code, document_number, username, password_hash,
                full_name, role, department, phone, active
           FROM users
-         WHERE document_number = ?
+         WHERE (document_number = ? OR username = ?)
            AND active = 1
+         ORDER BY (document_number = ?) DESC
          LIMIT 1`
 
 	var u User
-	var department, phone sql.NullString
-	err := r.db.QueryRowContext(ctx, q, documentNumber).Scan(
-		&u.ID, &u.EmployeeCode, &u.DocumentNumber, &u.PasswordHash,
+	var username, department, phone sql.NullString
+	err := r.db.QueryRowContext(ctx, q, identifier, identifier, identifier).Scan(
+		&u.ID, &u.EmployeeCode, &u.DocumentNumber, &username, &u.PasswordHash,
 		&u.FullName, &u.Role, &department, &phone, &u.Active,
 	)
 	if err != nil {
-		if nfErr := dberr.NotFound(err, "usuario", documentNumber); nfErr != err {
+		if nfErr := dberr.NotFound(err, "usuario", identifier); nfErr != err {
 			return User{}, nfErr
 		}
-		return User{}, fmt.Errorf("buscando usuario por documento: %w", err)
+		return User{}, fmt.Errorf("buscando usuario por identificador: %w", err)
+	}
+	if username.Valid {
+		s := username.String
+		u.Username = &s
 	}
 	if department.Valid {
 		s := department.String
