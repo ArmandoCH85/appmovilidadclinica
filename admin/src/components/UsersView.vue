@@ -75,11 +75,16 @@ function roleTagProps(role: User['role']) {
 type FormState = {
   employee_code: string
   document_number: string
+  username: string
   password: string
   full_name: string
   role: User['role'] | ''
   department: string
+  ceco: string
   phone: string
+  personal_email: string
+  management: string
+  site: string
   preferred_stop_id: number | null
   active: boolean
 }
@@ -88,11 +93,16 @@ function blankForm(): FormState {
   return {
     employee_code: '',
     document_number: '',
+    username: '',
     password: '',
     full_name: '',
     role: '',
     department: '',
+    ceco: '',
     phone: '',
+    personal_email: '',
+    management: '',
+    site: '',
     preferred_stop_id: null,
     active: true,
   }
@@ -124,11 +134,16 @@ function openEdit(row: User): void {
   resetFormState()
   formData.employee_code = row.employee_code
   formData.document_number = row.document_number
+  formData.username = row.username ?? ''
   formData.password = ''
   formData.full_name = row.full_name
   formData.role = row.role
   formData.department = row.department ?? ''
+  formData.ceco = row.ceco ?? ''
   formData.phone = row.phone ?? ''
+  formData.personal_email = row.personal_email ?? ''
+  formData.management = row.management ?? ''
+  formData.site = row.site ?? ''
   formData.preferred_stop_id = row.preferred_stop_id ?? null
   formData.active = row.active
   dialogVisible.value = true
@@ -175,8 +190,28 @@ function validateClientSide(): boolean {
     fieldErrors.department = 'Máximo 100 caracteres.'
     return false
   }
+  if (formData.username.length > 60) {
+    fieldErrors.username = 'Máximo 60 caracteres.'
+    return false
+  }
+  if (formData.ceco.length > 30) {
+    fieldErrors.ceco = 'Máximo 30 caracteres.'
+    return false
+  }
   if (formData.phone.length > 25) {
     fieldErrors.phone = 'Máximo 25 caracteres.'
+    return false
+  }
+  if (formData.personal_email.length > 150) {
+    fieldErrors.personal_email = 'Máximo 150 caracteres.'
+    return false
+  }
+  if (formData.management.length > 100) {
+    fieldErrors.management = 'Máximo 100 caracteres.'
+    return false
+  }
+  if (formData.site.length > 100) {
+    fieldErrors.site = 'Máximo 100 caracteres.'
     return false
   }
   return true
@@ -186,11 +221,16 @@ const FIELD_ERROR_RE = /^campo (\w+) invalido:/i
 const SERVER_FIELD_MAP: Record<string, keyof FormState> = {
   employeecode: 'employee_code',
   documentnumber: 'document_number',
+  username: 'username',
   password: 'password',
   fullname: 'full_name',
   role: 'role',
   department: 'department',
+  ceco: 'ceco',
   phone: 'phone',
+  personalemail: 'personal_email',
+  management: 'management',
+  site: 'site',
   preferredstopid: 'preferred_stop_id',
   active: 'active',
 }
@@ -210,10 +250,15 @@ async function onSubmit(): Promise<void> {
   const body: Record<string, unknown> = {
     employee_code: formData.employee_code,
     document_number: formData.document_number,
+    username: formData.username || null,
     full_name: formData.full_name,
     role: formData.role,
     department: formData.department || null,
+    ceco: formData.ceco || null,
     phone: formData.phone || null,
+    personal_email: formData.personal_email || null,
+    management: formData.management || null,
+    site: formData.site || null,
     preferred_stop_id: formData.preferred_stop_id,
     active: formData.active,
   }
@@ -319,6 +364,12 @@ async function confirmDeactivate(): Promise<void> {
         <template #body="{ data }"><span class="users-code">{{ data.employee_code }}</span></template>
       </Column>
 
+      <Column field="username" header="Usuario">
+        <template #body="{ data }">
+          <span class="users-username">{{ data.username || '—' }}</span>
+        </template>
+      </Column>
+
       <Column field="full_name" header="Nombre completo" />
 
       <Column field="role" header="Rol">
@@ -397,6 +448,20 @@ async function confirmDeactivate(): Promise<void> {
                 {{ fieldErrors.document_number }}
               </p>
             </div>
+            <div class="field">
+              <label for="user-username">Usuario</label>
+              <InputText
+                id="user-username"
+                v-model="formData.username"
+                autocomplete="off"
+                :aria-invalid="!!fieldErrors.username"
+                :aria-describedby="fieldErrors.username ? 'user-username-error' : 'user-username-help'"
+              />
+              <p v-if="!isCreate" id="user-username-help" class="field-help">Alternativa al DNI para login.</p>
+              <p v-if="fieldErrors.username" id="user-username-error" role="alert" class="field-error">
+                {{ fieldErrors.username }}
+              </p>
+            </div>
           </div>
           <div class="field">
             <label for="user-name">Nombre completo <span class="required-mark" aria-hidden="true">*</span></label>
@@ -472,6 +537,20 @@ async function confirmDeactivate(): Promise<void> {
               </p>
             </div>
             <div class="field">
+              <label for="user-ceco">CeCo</label>
+              <InputText
+                id="user-ceco"
+                v-model="formData.ceco"
+                :aria-invalid="!!fieldErrors.ceco"
+                :aria-describedby="fieldErrors.ceco ? 'user-ceco-error' : undefined"
+              />
+              <p v-if="fieldErrors.ceco" id="user-ceco-error" role="alert" class="field-error">
+                {{ fieldErrors.ceco }}
+              </p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
               <label for="user-phone">Teléfono</label>
               <InputText
                 id="user-phone"
@@ -481,6 +560,46 @@ async function confirmDeactivate(): Promise<void> {
               />
               <p v-if="fieldErrors.phone" id="user-phone-error" role="alert" class="field-error">
                 {{ fieldErrors.phone }}
+              </p>
+            </div>
+            <div class="field">
+              <label for="user-personal-email">Correo personal</label>
+              <InputText
+                id="user-personal-email"
+                v-model="formData.personal_email"
+                type="email"
+                autocomplete="off"
+                :aria-invalid="!!fieldErrors.personal_email"
+                :aria-describedby="fieldErrors.personal_email ? 'user-personal-email-error' : undefined"
+              />
+              <p v-if="fieldErrors.personal_email" id="user-personal-email-error" role="alert" class="field-error">
+                {{ fieldErrors.personal_email }}
+              </p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="user-management">Gerencia</label>
+              <InputText
+                id="user-management"
+                v-model="formData.management"
+                :aria-invalid="!!fieldErrors.management"
+                :aria-describedby="fieldErrors.management ? 'user-management-error' : undefined"
+              />
+              <p v-if="fieldErrors.management" id="user-management-error" role="alert" class="field-error">
+                {{ fieldErrors.management }}
+              </p>
+            </div>
+            <div class="field">
+              <label for="user-site">Sede</label>
+              <InputText
+                id="user-site"
+                v-model="formData.site"
+                :aria-invalid="!!fieldErrors.site"
+                :aria-describedby="fieldErrors.site ? 'user-site-error' : undefined"
+              />
+              <p v-if="fieldErrors.site" id="user-site-error" role="alert" class="field-error">
+                {{ fieldErrors.site }}
               </p>
             </div>
           </div>

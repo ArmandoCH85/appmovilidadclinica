@@ -18,10 +18,15 @@ export interface User {
   id: number
   employee_code: string
   document_number: string
+  username?: string | null
   full_name: string
   role: 'ADMIN' | 'DRIVER' | 'WORKER'
   department?: string | null
+  ceco?: string | null
   phone?: string | null
+  personal_email?: string | null
+  management?: string | null
+  site?: string | null
   preferred_stop_id?: number | null
   active: boolean
 }
