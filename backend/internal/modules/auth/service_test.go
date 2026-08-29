@@ -19,7 +19,7 @@ type mockAuthRepo struct {
 	err  error
 }
 
-func (m *mockAuthRepo) GetUserByDocument(_ context.Context, _ string) (User, error) {
+func (m *mockAuthRepo) GetUserByIdentifier(_ context.Context, _ string) (User, error) {
 	return m.user, m.err
 }
 
