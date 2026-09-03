@@ -29,7 +29,7 @@ class BookingRepositoryImpl @Inject constructor(
                 Result.failure(apiErrorMapper.map(response))
             }
         } catch (e: IOException) {
-            Result.failure(AppError.Network("Sin conexion a internet"))
+            Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }

@@ -40,7 +40,7 @@ class AndroidNotificationService(private val context: Context) : NotificationSer
         post(
             id = notificationIdBase,
             title = "Viaje iniciado",
-            body = "Trip #$tripId en curso.",
+            body = "Viaje #$tripId en curso.",
         )
     }
 

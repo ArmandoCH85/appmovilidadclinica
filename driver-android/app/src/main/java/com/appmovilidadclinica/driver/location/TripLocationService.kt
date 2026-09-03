@@ -119,7 +119,7 @@ class TripLocationService : Service() {
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Tracking del viaje")
-            .setContentText("Registrando ubicacion del recorrido")
+            .setContentText("Registrando ubicación del recorrido")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

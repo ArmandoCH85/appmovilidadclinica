@@ -10,7 +10,7 @@ class StubScannerQrService : ScannerQrService {
     private val logger = Logger.withTag("ScannerQr")
 
     override suspend fun scan(): String {
-        logger.e { "ScannerQrService.scan() no implementado en iOS todavia" }
+        logger.e { "ScannerQrService.scan() no implementado en iOS todavía" }
         error("Scanner QR no implementado en iOS (Fase 7: AVFoundation + Vision)")
     }
 

@@ -506,7 +506,7 @@ private fun StopRow(
             }
             if (stop.status == TripStopStatus.PENDING && !tripInProgress) {
                 Text(
-                    "Iniciá el viaje para marcar llegadas",
+                    "Inicie el viaje para marcar llegadas",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),

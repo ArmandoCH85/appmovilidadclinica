@@ -130,7 +130,7 @@ fun QrScanScreen(
                 )
 
                 Text(
-                    "Apunte la cÃ¡mara al cÃ³digo QR del pasajero",
+                    "Apunte la cámara al código QR del pasajero",
                     color = androidx.compose.ui.graphics.Color.White,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
@@ -150,7 +150,7 @@ fun QrScanScreen(
                         ) {
                             CircularProgressIndicator()
                             Spacer(Modifier.height(12.dp))
-                            Text("Verificandoâ€¦")
+                            Text("Verificando…")
                         }
                     }
                 }
@@ -177,9 +177,9 @@ fun QrScanScreen(
             title = { Text(state.passenger?.workerFullName ?: reservation.reservationCode) },
             text = {
                 Column {
-                    Text("CÃ³digo: ${reservation.reservationCode}")
+                    Text("Código: ${reservation.reservationCode}")
                     state.passenger?.let { p ->
-                        Text("Asiento ${p.seatLabel} Â· ${p.originStopName} â†’ ${p.destinationStopName}")
+                        Text("Asiento ${p.seatLabel} · ${p.originStopName} → ${p.destinationStopName}")
                     }
                     Text("Estado: ${statusLabel(reservation.status)}")
                 }
@@ -225,7 +225,7 @@ fun QrScanScreen(
 private fun statusLabel(status: ReservationStatus): String = when (status) {
     ReservationStatus.CONFIRMED -> "Confirmado"
     ReservationStatus.BOARDED -> "Abordado"
-    ReservationStatus.NO_SHOW -> "No se presentÃ³"
+    ReservationStatus.NO_SHOW -> "No se presentó"
     ReservationStatus.COMPLETED -> "Completado"
     ReservationStatus.CANCELLED -> "Cancelado"
 }
@@ -271,7 +271,7 @@ private fun PermissionRationale(onRequest: () -> Unit) {
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            "Se requiere permiso de cÃ¡mara para escanear los cÃ³digos QR de los pasajeros.",
+            "Se requiere permiso de cámara para escanear los códigos QR de los pasajeros.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(16.dp))

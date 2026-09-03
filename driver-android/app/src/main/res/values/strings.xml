@@ -2,7 +2,7 @@
     <string name="app_name">Conductor App</string>
 
     <!-- Login -->
-    <string name="login_title">Iniciar Sesión</string>
+    <string name="login_title">Iniciar sesión</string>
     <string name="login_subtitle">Conductor</string>
     <string name="login_document_label">Usuario</string>
     <string name="login_password_label">Contraseña</string>
@@ -13,7 +13,7 @@
 
     <!-- Dashboard -->
     <string name="dashboard_title">Viajes del día</string>
-    <string name="dashboard_empty">No tienes viajes asignados para hoy</string>
+    <string name="dashboard_empty">No tiene viajes asignados para hoy</string>
     <string name="dashboard_error">Error al cargar los viajes</string>
     <string name="dashboard_retry">Reintentar</string>
     <string name="dashboard_trip_passengers">%d pasajeros</string>
@@ -38,7 +38,7 @@
 
     <!-- QR Scan -->
     <string name="qr_scan_title">Escanear QR</string>
-    <string name="qr_scan_instructions">Apunta la cámara al código QR del pasajero</string>
+    <string name="qr_scan_instructions">Apunte la cámara al código QR del pasajero</string>
     <string name="qr_scan_invalid">QR inválido</string>
     <string name="qr_scan_permission_required">Se requiere permiso de cámara</string>
     <string name="qr_scan_permission_rationale">Necesitamos acceso a la cámara para escanear los códigos QR de los pasajeros.</string>
@@ -48,7 +48,7 @@
     <string name="incident_title">Reportar incidencia</string>
     <string name="incident_type_label">Tipo de incidencia</string>
     <string name="incident_description_label">Descripción</string>
-    <string name="incident_description_hint">Describe la incidencia (máx. 1000 caracteres)</string>
+    <string name="incident_description_hint">Describa la incidencia (máx. 1000 caracteres)</string>
     <string name="incident_submit">Enviar reporte</string>
     <string name="incident_success">Incidencia reportada</string>
     <string name="incident_error">Error al reportar incidencia</string>
@@ -66,7 +66,7 @@
     <string name="profile_license_expires">Vence: %s</string>
     <string name="profile_today_trips">Viajes hoy: %d</string>
     <string name="profile_logout">Cerrar sesión</string>
-    <string name="profile_logout_confirm">¿Estás seguro de que deseas cerrar sesión?</string>
+    <string name="profile_logout_confirm">¿Está seguro de que desea cerrar sesión?</string>
     <string name="profile_version">Versión %s</string>
 
     <!-- Session -->

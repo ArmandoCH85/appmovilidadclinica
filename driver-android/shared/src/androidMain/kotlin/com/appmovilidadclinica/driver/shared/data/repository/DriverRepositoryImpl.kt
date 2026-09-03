@@ -35,7 +35,7 @@ class DriverRepositoryImpl @Inject constructor(
             Result.failure(apiErrorMapper.map(response))
         }
     } catch (e: IOException) {
-        Result.failure(AppError.Network("Sin conexion a internet"))
+        Result.failure(AppError.Network("Sin conexión a internet"))
     } catch (e: Exception) {
         Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
     }
@@ -48,7 +48,7 @@ class DriverRepositoryImpl @Inject constructor(
             Result.failure(apiErrorMapper.map(response))
         }
     } catch (e: IOException) {
-        Result.failure(AppError.Network("Sin conexion a internet"))
+        Result.failure(AppError.Network("Sin conexión a internet"))
     } catch (e: Exception) {
         Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
     }
@@ -65,6 +65,12 @@ class DriverRepositoryImpl @Inject constructor(
         safeCall(
             call = { apiClient.driverApi.getPassengers(tripId) },
             parseBody = { response -> response.body<List<com.appmovilidadclinica.driver.shared.data.remote.dto.PassengerDto>>().map { it.toDomain() } },
+        )
+
+    override suspend fun getTrip(tripId: Long): Result<DriverTrip> =
+        safeCall(
+            call = { apiClient.driverApi.getTrip(tripId) },
+            parseBody = { response -> response.body<com.appmovilidadclinica.driver.shared.data.remote.dto.DriverTripDto>().toDomain() },
         )
 
     override suspend fun getTripStops(tripId: Long): Result<List<TripStop>> =

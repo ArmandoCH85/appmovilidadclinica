@@ -46,7 +46,7 @@ class AuthRepositoryImpl @Inject constructor(
                 Result.failure(error)
             }
         } catch (e: java.io.IOException) {
-            Result.failure(AppError.Network("Sin conexion a internet"))
+            Result.failure(AppError.Network("Sin conexión a internet"))
         } catch (e: Exception) {
             Result.failure(AppError.Unknown(e.message ?: "Error desconocido"))
         }
@@ -75,7 +75,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     private fun parseTokenExpiration(token: String): Long {
-        // Stub: expira en 24h. En realidad deber�a decodificar el JWT
+        // Stub: expira en 24h. En realidad debería decodificar el JWT
         // y leer el `exp` field. Para Fase 4 alcanza.
         return System.currentTimeMillis() / 1000 + 24 * 60 * 60
     }

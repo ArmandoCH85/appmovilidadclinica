@@ -110,7 +110,7 @@ class LoginViewModelTest {
     @Test
     fun submitFallidoUnauthorizedMuestraMensajeAmigable() = runTest(testDispatcher) {
         val fake = FakeAuthRepository().apply {
-            loginResult = Result.failure(AppError.Unauthorized("credenciales invalidas"))
+            loginResult = Result.failure(AppError.Unauthorized("credenciales inválidas"))
         }
         val vm = LoginViewModel(fake)
 

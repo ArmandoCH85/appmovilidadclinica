@@ -77,13 +77,13 @@ Agregar las claves siguientes en `Info.plist` aunque los bindings actuales sean 
 
 ```xml
 <key>NSCameraUsageDescription</key>
-<string>Necesitamos la camara para escanear el codigo QR del pasajero.</string>
+<string>Necesitamos la cámara para escanear el código QR del pasajero.</string>
 
 <key>NSLocationWhenInUseUsageDescription</key>
-<string>Necesitamos tu ubicacion para registrar el recorrido del viaje.</string>
+<string>Necesitamos su ubicación para registrar el recorrido del viaje.</string>
 
 <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>Necesitamos tu ubicacion para registrar el recorrido del viaje.</string>
+<string>Necesitamos su ubicación para registrar el recorrido del viaje.</string>
 ```
 
 ## Paso 6: build & run
