@@ -21,7 +21,7 @@ class LoginUseCase @Inject constructor(
         if (result is AppResult.Success && result.data.role != UserRole.WORKER) {
             authRepository.logout()
             return AppResult.Failure(
-                AppError.Forbidden("Esta app es para trabajadores. UsÃ¡ el panel admin o la app de conductor.")
+                AppError.Forbidden("Esta app es para trabajadores. Use el panel admin o la app de conductor.")
             )
         }
         return result

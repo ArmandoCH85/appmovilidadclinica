@@ -30,13 +30,13 @@ class ApiErrorMapper(private val json: Json = defaultJson) {
     }
 
     private fun fallbackMessage(code: Int): String = when (code) {
-        401 -> "Sesion expirada. Inicie sesion nuevamente."
-        403 -> "No tiene permisos para realizar esta accion."
+        401 -> "Sesión expirada. Inicie sesión nuevamente."
+        403 -> "No tiene permisos para realizar esta acción."
         404 -> "El recurso solicitado no existe."
-        409 -> "La operacion entra en conflicto con datos existentes."
-        422 -> "Hay campos invalidos en el formulario."
+        409 -> "La operación entra en conflicto con datos existentes."
+        422 -> "Hay campos inválidos en el formulario."
         500 -> "Error interno del servidor."
-        else -> "Ocurrio un error inesperado. Intente nuevamente."
+        else -> "Ocurrió un error inesperado. Intente nuevamente."
     }
 
     companion object {
@@ -62,7 +62,7 @@ suspend fun <T> safeApiCall(
 } catch (e: java.io.IOException) {
     AppResult.Failure(AppError.Network(e.message ?: "No se pudo conectar con el servidor."))
 } catch (e: Exception) {
-    AppResult.Failure(AppError.Unknown(e.message ?: "Ocurrio un error inesperado."))
+    AppResult.Failure(AppError.Unknown(e.message ?: "Ocurrió un error inesperado."))
 }
 
 suspend fun safeApiCallUnit(
@@ -78,5 +78,5 @@ suspend fun safeApiCallUnit(
 } catch (e: java.io.IOException) {
     AppResult.Failure(AppError.Network(e.message ?: "No se pudo conectar con el servidor."))
 } catch (e: Exception) {
-    AppResult.Failure(AppError.Unknown(e.message ?: "Ocurrio un error inesperado."))
+    AppResult.Failure(AppError.Unknown(e.message ?: "Ocurrió un error inesperado."))
 }

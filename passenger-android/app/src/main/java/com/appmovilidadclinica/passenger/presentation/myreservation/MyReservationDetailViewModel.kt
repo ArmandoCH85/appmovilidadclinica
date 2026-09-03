@@ -157,7 +157,7 @@ class MyReservationDetailViewModel @Inject constructor(
                     it.copy(
                         checkingIn = false,
                         errorMessage = if (result.error is com.appmovilidadclinica.passenger.shared.domain.error.AppError.NotFound) {
-                            "Esta funciÃ³n todavÃ­a no estÃ¡ disponible en el servidor."
+                            "Esta función todavía no está disponible en el servidor."
                         } else {
                             errorMessageFor(result)
                         },
@@ -169,5 +169,5 @@ class MyReservationDetailViewModel @Inject constructor(
 
     private fun errorMessageFor(failure: AppResult.Failure): String =
         (failure.error as? com.appmovilidadclinica.passenger.shared.domain.error.AppError.Conflict)?.message
-            ?: "OcurriÃ³ un error inesperado. Intente nuevamente."
+            ?: "Ocurrió un error inesperado. Intente nuevamente."
 }

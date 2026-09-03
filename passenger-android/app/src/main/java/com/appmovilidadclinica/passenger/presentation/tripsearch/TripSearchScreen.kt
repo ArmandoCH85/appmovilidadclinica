@@ -91,7 +91,7 @@ fun TripSearchScreen(
                     IconButton(onClick = onLogout) {
                         Icon(
                             Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Cerrar sesiÃ³n",
+                            contentDescription = "Cerrar sesión",
                             tint = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -171,12 +171,12 @@ fun TripSearchScreen(
                     )
                     androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 8.dp))
                     Text(
-                        "No hay viajes para esa bÃºsqueda",
+                        "No hay viajes para esa búsqueda",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        "ProbÃ¡ con otra fecha u otro origen/destino.",
+                        "Pruebe con otra fecha u otro origen/destino.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -313,7 +313,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Origen â†’ Destino como titulo principal
             Text(
-                "${trip.originName} â†’ ${trip.destinationName}",
+                "${trip.originName} → ${trip.destinationName}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -351,7 +351,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
             // Vehiculo y placa
             TripInfoRow(
                 icon = Icons.Default.DirectionsBus,
-                label = "VehÃ­culo",
+                label = "Vehículo",
                 value = trip.plate,
             )
 
@@ -359,7 +359,7 @@ private fun TripResultCard(trip: TripSearchResult, onClick: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = when (trip.bookingState) {
-                        BookingState.NOT_OPEN -> "Reserva aÃºn no abierta"
+                        BookingState.NOT_OPEN -> "Reserva aún no abierta"
                         BookingState.CLOSED -> "Reserva cerrada"
                         else -> ""
                     },

@@ -118,14 +118,14 @@ class TripSearchViewModel @Inject constructor(
         val origin = state.stops.find { it.id == originId }
         val destination = state.stops.find { it.id == destinationId }
         if (origin == null || destination == null) {
-            _uiState.update { it.copy(errorMessage = "Las paradas seleccionadas no son vÃ¡lidas.") }
+            _uiState.update { it.copy(errorMessage = "Las paradas seleccionadas no son válidas.") }
             return
         }
 
         val directions = deriveDirections(origin, destination)
         if (directions.isEmpty()) {
             _uiState.update {
-                it.copy(errorMessage = "No hay viajes configurados para esa combinaciÃ³n de paradas.")
+                it.copy(errorMessage = "No hay viajes configurados para esa combinación de paradas.")
             }
             return
         }
@@ -183,7 +183,7 @@ class TripSearchViewModel @Inject constructor(
     }
 
     private fun errorMessageFor(error: AppError): String = when (error) {
-        is AppError.Forbidden -> "El backend todavÃ­a no expone un catÃ¡logo de paradas para pasajeros (ver diseÃ±o tÃ©cnico)."
+        is AppError.Forbidden -> "El backend todavía no expone un catálogo de paradas para pasajeros (ver diseño técnico)."
         else -> error.toString()
     }
 }

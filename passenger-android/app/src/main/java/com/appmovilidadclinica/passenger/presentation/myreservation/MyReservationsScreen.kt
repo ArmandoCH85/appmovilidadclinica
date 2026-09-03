@@ -94,13 +94,13 @@ fun MyReservationsScreen(
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "TodavÃ­a no tenÃ©s reservas",
+                    "Todavía no tiene reservas",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "BuscÃ¡ un viaje para reservar tu asiento.",
+                    "Busque un viaje para reservar su asiento.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -140,7 +140,7 @@ private fun ReservationCard(
         Column(modifier = Modifier.padding(16.dp)) {
             // Origen â†’ Destino
             Text(
-                "${reservation.originName} â†’ ${reservation.destinationName}",
+                "${reservation.originName} → ${reservation.destinationName}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -167,7 +167,7 @@ private fun ReservationCard(
             if (reservation.vehicleCode.isNotEmpty()) {
                 ReservaInfoRow(
                     icon = Icons.Default.DirectionsBus,
-                    text = "VehÃ­culo ${reservation.plate}",
+                    text = "Vehículo ${reservation.plate}",
                 )
             }
 
@@ -253,7 +253,7 @@ private fun statusLabel(status: ReservationStatus): String = when (status) {
     ReservationStatus.CONFIRMED -> "Confirmada"
     ReservationStatus.BOARDED -> "Abordada"
     ReservationStatus.COMPLETED -> "Completada"
-    ReservationStatus.NO_SHOW -> "No se presentÃ³"
+    ReservationStatus.NO_SHOW -> "No se presentó"
     ReservationStatus.CANCELLED -> "Cancelada"
 }
 

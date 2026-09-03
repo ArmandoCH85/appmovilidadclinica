@@ -70,8 +70,8 @@ class MyReservationsViewModel @Inject constructor(
     }
 
     private fun errorMessageFor(error: AppError): String = when (error) {
-        is AppError.NotFound -> "Esta funciÃ³n todavÃ­a no estÃ¡ disponible en el servidor."
+        is AppError.NotFound -> "Esta función todavía no está disponible en el servidor."
         is AppError.Conflict -> error.message
-        else -> "OcurriÃ³ un error inesperado. Intente nuevamente."
+        else -> "Ocurrió un error inesperado. Intente nuevamente."
     }
 }

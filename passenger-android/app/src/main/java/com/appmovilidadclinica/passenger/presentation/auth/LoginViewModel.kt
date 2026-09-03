@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.passenger.presentation.auth
+package com.appmovilidadclinica.passenger.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -38,13 +38,13 @@ class LoginViewModel @Inject constructor(
     fun submit() {
         val state = _uiState.value
         if (state.documentNumber.isBlank() || state.password.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Complete el usuario y la contraseÃ±a.") }
+            _uiState.update { it.copy(errorMessage = "Complete el usuario y la contraseña.") }
             return
         }
         _uiState.update { it.copy(submitting = true, errorMessage = null) }
         viewModelScope.launch {
             // Session se actualiza sola via ObserveSessionUseCase (NavGraph
-            // reacciona al cambio) â€” este ViewModel no navega, solo reporta error.
+            // reacciona al cambio) — este ViewModel no navega, solo reporta error.
             when (val result = loginUseCase(state.documentNumber.trim(), state.password)) {
                 is AppResult.Success -> _uiState.update { it.copy(submitting = false) }
                 is AppResult.Failure -> _uiState.update {
@@ -55,9 +55,9 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun messageFor(error: AppError): String = when (error) {
-        is AppError.Unauthorized -> "Usuario o contraseÃ±a incorrectos."
+        is AppError.Unauthorized -> "Usuario o contraseña incorrectos."
         is AppError.Forbidden -> error.message
-        is AppError.Network -> "No se pudo conectar con el servidor. Verifique su conexiÃ³n."
-        else -> "OcurriÃ³ un error inesperado. Intente nuevamente."
+        is AppError.Network -> "No se pudo conectar con el servidor. Verifique su conexión."
+        else -> "Ocurrió un error inesperado. Intente nuevamente."
     }
 }

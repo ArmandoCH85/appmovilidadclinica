@@ -133,12 +133,12 @@ fun MyReservationDetailScreen(
             if (state.qrBitmap != null) {
                 androidx.compose.foundation.Image(
                     bitmap = state.qrBitmap!!.asImageBitmap(),
-                    contentDescription = "CÃ³digo QR de la reserva",
+                    contentDescription = "Código QR de la reserva",
                     modifier = Modifier.size(220.dp),
                 )
             } else {
                 Text(
-                    "QR no disponible. Cancele y reconfirme para regenerar el cÃ³digo.",
+                    "QR no disponible. Cancele y reconfirme para regenerar el código.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -158,7 +158,7 @@ fun MyReservationDetailScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     // Ruta
                     Text(
-                        "${reservation.originName} â†’ ${reservation.destinationName}",
+                        "${reservation.originName} → ${reservation.destinationName}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -183,7 +183,7 @@ fun MyReservationDetailScreen(
                         Spacer(Modifier.height(6.dp))
                         DetailRow(
                             icon = Icons.Default.DirectionsBus,
-                            text = "VehÃ­culo: ${reservation.plate}",
+                            text = "Vehículo: ${reservation.plate}",
                         )
                     }
                 }
@@ -227,7 +227,7 @@ fun MyReservationDetailScreen(
                     enabled = viewModel.canSelfCheckin && !state.checkingIn,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
-                    Text(if (state.checkingIn) "Confirmandoâ€¦" else "Confirmar abordaje")
+                    Text(if (state.checkingIn) "Confirmando…" else "Confirmar abordaje")
                 }
                 if (!viewModel.canSelfCheckin) {
                     Text(
@@ -244,7 +244,7 @@ fun MyReservationDetailScreen(
                     enabled = !state.cancelling,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
-                    Text(if (state.cancelling) "Cancelandoâ€¦" else "Cancelar reserva")
+                    Text(if (state.cancelling) "Cancelando…" else "Cancelar reserva")
                 }
             }
 
@@ -264,9 +264,9 @@ fun MyReservationDetailScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissCancel,
             title = { Text("Cancelar reserva") },
-            text = { Text("Â¿Confirma que desea cancelar esta reserva? Esta acciÃ³n no se puede deshacer.") },
+            text = { Text("¿Confirma que desea cancelar esta reserva? Esta acción no se puede deshacer.") },
             confirmButton = {
-                TextButton(onClick = viewModel::confirmCancel) { Text("SÃ­, cancelar") }
+                TextButton(onClick = viewModel::confirmCancel) { Text("Sí, cancelar") }
             },
             dismissButton = {
                 TextButton(onClick = viewModel::dismissCancel) { Text("Volver") }
@@ -302,8 +302,8 @@ private fun TripStopRow(stop: TripStop, isLast: Boolean) {
 
     val timeText = when {
         skipped -> "Parada omitida"
-        departed -> "Salio ${stop.actualDepartureAt!!.toPeruTime()}"
-        arrived -> "Llego ${stop.actualArrivalAt!!.toPeruTime()}"
+departed -> "Salió ${stop.actualDepartureAt!!.toPeruTime()}"
+        arrived -> "Llegó ${stop.actualArrivalAt!!.toPeruTime()}"
         else -> "Hora aprox. ${stop.scheduledArrivalAt.toPeruTime()}"
     }
 
@@ -364,7 +364,7 @@ private fun statusLabel(status: ReservationStatus): String = when (status) {
     ReservationStatus.CONFIRMED -> "Confirmada"
     ReservationStatus.BOARDED -> "Abordada"
     ReservationStatus.COMPLETED -> "Completada"
-    ReservationStatus.NO_SHOW -> "No se presentÃ³"
+    ReservationStatus.NO_SHOW -> "No se presentó"
     ReservationStatus.CANCELLED -> "Cancelada"
 }
 
