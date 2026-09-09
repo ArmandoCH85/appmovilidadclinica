@@ -1,7 +1,7 @@
 # Spec — Botón "Mis reservas" en TopAppBar de TripSearchScreen
 
 **Fecha**: 2026-09-09
-**Estado**: Implementado (commits `d08a79f`, `41a303d`). Pendiente verificación visual del usuario en el emulador corriendo.
+**Estado**: Implementado (commits `d08a79f`, `41a303d`, `cf88b58`). Ícono final: `EventSeat` (asiento literal). Pendiente verificación visual del usuario en el emulador corriendo.
 **Alcance**: Cambio visual/iconográfico mínimo. Cero impacto en lógica, navegación, ViewModel o build.
 
 ## Goal
