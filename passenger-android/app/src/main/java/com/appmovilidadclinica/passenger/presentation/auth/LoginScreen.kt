@@ -92,11 +92,11 @@ private fun LoginCard(
         tonalElevation = 3.dp,
         shadowElevation = 8.dp,
         modifier = Modifier
-            .padding(horizontal = 28.dp)
+            .padding(horizontal = 20.dp)
             .fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(28.dp),
+            modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             BrandHeader()
@@ -202,9 +202,9 @@ private fun BrandHeader() {
 
         Text(
             "Aplicación Pasajeros",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
         )
 
         Spacer(Modifier.height(4.dp))
