@@ -184,7 +184,7 @@ private fun SeatCell(seat: TripSeat, selected: Boolean, onClick: () -> Unit) {
             .background(background)
             .then(
                 if (selected) {
-                    Modifier.border(2.dp, MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(8.dp))
+                    Modifier.border(3.dp, MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(8.dp))
                 } else {
                     Modifier
                 }
@@ -202,6 +202,16 @@ private fun SeatCell(seat: TripSeat, selected: Boolean, onClick: () -> Unit) {
                 Icons.Filled.Check,
                 contentDescription = null,
                 tint = textColor,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(2.dp)
+                    .size(14.dp),
+            )
+        } else if (!seat.isSelectable) {
+            Icon(
+                Icons.Filled.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(2.dp)
