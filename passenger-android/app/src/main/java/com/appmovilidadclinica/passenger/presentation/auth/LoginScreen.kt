@@ -201,7 +201,7 @@ private fun BrandHeader() {
         Spacer(Modifier.height(16.dp))
 
         Text(
-            "Aplicación Pasajeros",
+            "Movilidad clínica - cuidadores",
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
