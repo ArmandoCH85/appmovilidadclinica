@@ -81,7 +81,7 @@ fun TripSearchScreen(
                 title = { Text("Buscar viaje") },
                 actions = {
                     IconButton(onClick = onOpenReservations) {
-                        Icon(Icons.Default.BookOnline, contentDescription = "Mis reservas")
+                        Icon(Icons.Default.EventSeat, contentDescription = "Mis reservas")
                     }
                     VerticalDivider(
                         modifier = Modifier
