@@ -121,7 +121,7 @@ fun SeatSelectionScreen(
                 columns = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 280.dp, max = 480.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             ) {
                 items(state.seats, key = { it.tripSeatId }) { seat ->
                     SeatCell(
