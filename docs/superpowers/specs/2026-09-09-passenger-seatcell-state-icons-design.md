@@ -1,7 +1,7 @@
 # Spec — Iconos de estado en SeatCell (semáforo de asientos)
 
 **Fecha**: 2026-09-09
-**Estado**: Aprobado por el usuario (diseño) — pendiente revisión del spec escrito
+**Estado**: Implementado (commits `e95a5f4`, `91db4b1`, `6dd913e`). Pendiente verificación visual del usuario en el emulador.
 **Alcance**: Mejora visual/de accesibilidad. Cero impacto en lógica de selección, ViewModel, build dependencies o navegación.
 
 ## Goal
