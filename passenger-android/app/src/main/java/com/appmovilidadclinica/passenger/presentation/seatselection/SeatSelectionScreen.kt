@@ -227,21 +227,37 @@ private fun SeatLegend() {
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        LegendItem(color = MaterialTheme.colorScheme.primaryContainer, label = "Disponible")
-        LegendItem(color = MaterialTheme.colorScheme.primary, label = "Seleccionado")
-        LegendItem(color = MaterialTheme.colorScheme.surfaceVariant, label = "Ocupado")
+        LegendItem(color = MaterialTheme.colorScheme.primaryContainer, label = "Disponible",  icon = null)
+        LegendItem(color = MaterialTheme.colorScheme.primary,         label = "Seleccionado", icon = Icons.Filled.Check)
+        LegendItem(color = MaterialTheme.colorScheme.surfaceVariant,  label = "Ocupado",      icon = Icons.Filled.Lock)
     }
 }
 
 @Composable
-private fun LegendItem(color: Color, label: String) {
+private fun LegendItem(
+    color: Color,
+    label: String,
+    icon: ImageVector? = null,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(12.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(color),
-        )
+            contentAlignment = Alignment.TopEnd,
+        ) {
+            if (icon != null) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .padding(1.dp)
+                        .size(10.dp),
+                )
+            }
+        }
         Spacer(Modifier.width(6.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
