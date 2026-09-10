@@ -92,6 +92,7 @@ fun TripSearchScreen(
                     )
                     ProfileMenuButton(
                         userDisplayName = userDisplayName,
+                        onOpenReservations = onOpenReservations,
                         onOpenChangePassword = onOpenChangePassword,
                         onOpenReportIncident = onOpenReportIncident,
                         onLogout = onLogout,

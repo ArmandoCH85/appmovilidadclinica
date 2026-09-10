@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ReportProblem
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ProfileMenuButton(
     userDisplayName: String,
+    onOpenReservations: () -> Unit,
     onOpenChangePassword: () -> Unit,
     onOpenReportIncident: () -> Unit,
     onLogout: () -> Unit,
@@ -134,6 +136,18 @@ fun ProfileMenuButton(
                             )
                         }
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    ProfileMenuRow(
+                        icon = Icons.Default.EventSeat,
+                        label = "Mis reservas",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        onClick = {
+                            close()
+                            onOpenReservations()
+                        },
+                    )
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
