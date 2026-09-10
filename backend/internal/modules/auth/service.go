@@ -19,6 +19,11 @@ type AuthService interface {
 	// Login valida credenciales y devuelve un JWT firmado + el usuario.
 	// El identifier puede ser DNI o username (resuelto por el repositorio).
 	Login(ctx context.Context, identifier, password string) (string, User, error)
+
+	// ChangePassword verifica la clave actual con bcrypt y la reemplaza por
+	// la nueva (hasheada con bcrypt). El userID sale del JWT, nunca del body:
+	// un usuario solo puede cambiar su propia clave.
+	ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string) error
 }
 
 // authService es la implementacion concreta.
@@ -74,4 +79,41 @@ func (s *authService) Login(ctx context.Context, identifier, password string) (s
 		return "", User{}, apperror.InternalError{Err: err}
 	}
 	return tokenString, user, nil
+}
+
+// ChangePassword implementa POST /auth/change-password. Flujo:
+//  1. Carga el usuario por id (del JWT).
+//  2. Verifica la clave actual con bcrypt. Si falla, Unauthorized con mensaje
+//     accionable (a diferencia de Login, aqui NO hay riesgo de enumerar
+//     usuarios: el caller ya esta autenticado como ese userID).
+//  3. Valida la nueva: minimo 8 caracteres y distinta a la actual.
+//  4. Hashea con bcrypt.DefaultCost y persiste via el repositorio.
+func (s *authService) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string) error {
+	if currentPassword == "" {
+		return apperror.ValidationError{Field: "current_password", Reason: "requerido"}
+	}
+	if len(newPassword) < 8 {
+		return apperror.ValidationError{Field: "new_password", Reason: "minimo 8 caracteres"}
+	}
+	if newPassword == currentPassword {
+		return apperror.ValidationError{Field: "new_password", Reason: "debe ser distinta a la actual"}
+	}
+
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
+		return apperror.UnauthorizedError{Reason: "La clave actual es incorrecta."}
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return apperror.InternalError{Err: err}
+	}
+	if err := s.repo.UpdatePasswordHash(ctx, userID, string(hash)); err != nil {
+		return apperror.InternalError{Err: err}
+	}
+	return nil
 }

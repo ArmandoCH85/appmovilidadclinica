@@ -10,6 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.appmovilidadclinica.passenger.presentation.auth.LoginScreen
+import com.appmovilidadclinica.passenger.presentation.changepassword.ChangePasswordScreen
 import com.appmovilidadclinica.passenger.presentation.common.SessionExpiredDialog
 import com.appmovilidadclinica.passenger.presentation.common.SessionViewModel
 import com.appmovilidadclinica.passenger.presentation.myreservation.MyReservationDetailScreen
@@ -55,8 +56,14 @@ fun PassengerNavGraph(navController: NavHostController = rememberNavController()
                     navController.navigate(Screen.SeatSelection(tripId, originStopId, destinationStopId))
                 },
                 onOpenReservations = { navController.navigate(Screen.MyReservations) },
+                userDisplayName = user?.fullName.orEmpty(),
+                onOpenChangePassword = { navController.navigate(Screen.ChangePassword) },
                 onLogout = { sessionViewModel.logout() },
             )
+        }
+
+        composable<Screen.ChangePassword> {
+            ChangePasswordScreen(onBack = { navController.popBackStack() })
         }
 
         composable<Screen.SeatSelection> {

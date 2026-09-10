@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.BookOnline
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.DirectionsBus
@@ -70,6 +69,8 @@ import java.time.ZoneOffset
 fun TripSearchScreen(
     onTripSelected: (tripId: Long, originStopId: Long, destinationStopId: Long) -> Unit,
     onOpenReservations: () -> Unit,
+    userDisplayName: String,
+    onOpenChangePassword: () -> Unit,
     onLogout: () -> Unit,
     viewModel: TripSearchViewModel = hiltViewModel(),
 ) {
@@ -88,13 +89,11 @@ fun TripSearchScreen(
                             .padding(vertical = 12.dp)
                             .height(24.dp),
                     )
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Cerrar sesión",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                    }
+                    ProfileMenuButton(
+                        userDisplayName = userDisplayName,
+                        onOpenChangePassword = onOpenChangePassword,
+                        onLogout = onLogout,
+                    )
                     Spacer(Modifier.width(4.dp))
                 },
             )

@@ -18,6 +18,9 @@ sealed interface Screen {
     data object MyReservations : Screen
 
     @Serializable
+    data object ChangePassword : Screen
+
+    @Serializable
     data class SeatSelection(
         val tripId: Long,
         val originStopId: Long,

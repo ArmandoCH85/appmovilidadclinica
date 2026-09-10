@@ -6,12 +6,18 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * `domain` define el contrato, `data.repository.AuthRepositoryImpl` lo
- * implementa contra Retrofit+DataStore â€” el ViewModel/UseCase nunca conoce
- * esa implementacion (regla de dependencia de Clean Architecture, ver diseÃ±o).
+ * implementa contra Retrofit+DataStore ” el ViewModel/UseCase nunca conoce
+ * esa implementacion (regla de dependencia de Clean Architecture, ver diseño).
  */
 interface AuthRepository {
-    /** POST /api/auth/login â€” persiste token+user en exito. */
+    /** POST /api/auth/login ” persiste token+user en exito. */
     suspend fun login(documentNumber: String, password: String): AppResult<User>
+
+    /**
+     * POST /api/auth/change-password — verifica la clave actual en el
+     * servidor y la reemplaza. El userID sale del JWT, no hace falta pasarlo.
+     */
+    suspend fun changePassword(currentPassword: String, newPassword: String): AppResult<Unit>
 
     /** Limpia la sesion local (DataStore). No llama al backend (no hay endpoint de logout). */
     suspend fun logout()
@@ -23,7 +29,7 @@ interface AuthRepository {
     fun observeSecondsUntilExpiry(): Flow<Long?>
 
     /**
-     * Emite un evento cada vez que una request cualquiera recibe 401 â€”
+     * Emite un evento cada vez que una request cualquiera recibe 401 ”
      * la UI raiz lo observa para forzar logout (mismo patron que el
      * `sessionExpired` reactivo del panel admin, `useAuth.ts`).
      */

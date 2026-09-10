@@ -16,6 +16,12 @@ data class LoginResponseDto(
 )
 
 @Serializable
+data class ChangePasswordRequestDto(
+    @SerialName("current_password") val currentPassword: String,
+    @SerialName("new_password") val newPassword: String,
+)
+
+@Serializable
 data class UserDto(
     val id: Long,
     @SerialName("employee_code") val employeeCode: String,

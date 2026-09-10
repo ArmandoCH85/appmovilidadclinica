@@ -8,6 +8,8 @@ import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.passenger.data.remote.KtorApiClient
 import com.appmovilidadclinica.passenger.data.remote.SessionExpiredNotifier
 import com.appmovilidadclinica.passenger.data.remote.safeApiCall
+import com.appmovilidadclinica.passenger.data.remote.safeApiCallUnit
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ChangePasswordRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginResponseDto
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
@@ -65,6 +67,16 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun logout() {
         sessionDataStore.clear()
     }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String): AppResult<Unit> =
+        safeApiCallUnit(
+            errorMapper = errorMapper,
+            call = {
+                apiClient.authApi.changePassword(
+                    ChangePasswordRequestDto(currentPassword, newPassword)
+                )
+            },
+        )
 
     override fun observeSession(): Flow<User?> =
         sessionDataStore.sessionFlow.map { it?.toDomain() }
