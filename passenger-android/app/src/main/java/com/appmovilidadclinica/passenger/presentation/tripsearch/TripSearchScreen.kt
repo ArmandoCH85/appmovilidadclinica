@@ -71,6 +71,7 @@ fun TripSearchScreen(
     onOpenReservations: () -> Unit,
     userDisplayName: String,
     onOpenChangePassword: () -> Unit,
+    onOpenReportIncident: () -> Unit,
     onLogout: () -> Unit,
     viewModel: TripSearchViewModel = hiltViewModel(),
 ) {
@@ -92,6 +93,7 @@ fun TripSearchScreen(
                     ProfileMenuButton(
                         userDisplayName = userDisplayName,
                         onOpenChangePassword = onOpenChangePassword,
+                        onOpenReportIncident = onOpenReportIncident,
                         onLogout = onLogout,
                     )
                     Spacer(Modifier.width(4.dp))

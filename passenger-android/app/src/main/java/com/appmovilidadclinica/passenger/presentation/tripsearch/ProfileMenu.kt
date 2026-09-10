@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.dp
 fun ProfileMenuButton(
     userDisplayName: String,
     onOpenChangePassword: () -> Unit,
+    onOpenReportIncident: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -142,6 +144,18 @@ fun ProfileMenuButton(
                         onClick = {
                             close()
                             onOpenChangePassword()
+                        },
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    ProfileMenuRow(
+                        icon = Icons.Default.ReportProblem,
+                        label = "Reportar incidente",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        onClick = {
+                            close()
+                            onOpenReportIncident()
                         },
                     )
 

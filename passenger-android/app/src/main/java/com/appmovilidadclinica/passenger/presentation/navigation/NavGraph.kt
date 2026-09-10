@@ -15,6 +15,7 @@ import com.appmovilidadclinica.passenger.presentation.common.SessionExpiredDialo
 import com.appmovilidadclinica.passenger.presentation.common.SessionViewModel
 import com.appmovilidadclinica.passenger.presentation.myreservation.MyReservationDetailScreen
 import com.appmovilidadclinica.passenger.presentation.myreservation.MyReservationsScreen
+import com.appmovilidadclinica.passenger.presentation.reportincident.ReportIncidentScreen
 import com.appmovilidadclinica.passenger.presentation.seatselection.SeatSelectionScreen
 import com.appmovilidadclinica.passenger.presentation.tripsearch.TripSearchScreen
 
@@ -58,12 +59,17 @@ fun PassengerNavGraph(navController: NavHostController = rememberNavController()
                 onOpenReservations = { navController.navigate(Screen.MyReservations) },
                 userDisplayName = user?.fullName.orEmpty(),
                 onOpenChangePassword = { navController.navigate(Screen.ChangePassword) },
+                onOpenReportIncident = { navController.navigate(Screen.ReportIncident) },
                 onLogout = { sessionViewModel.logout() },
             )
         }
 
         composable<Screen.ChangePassword> {
             ChangePasswordScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable<Screen.ReportIncident> {
+            ReportIncidentScreen(onBack = { navController.popBackStack() })
         }
 
         composable<Screen.SeatSelection> {
