@@ -111,6 +111,39 @@ func (h *BookingHandler) SelfCheckin(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(res)
 }
 
+// reportIncidentResponse es la respuesta de POST /reservations/{id}/incidents.
+type reportIncidentResponse struct {
+	ID int64 `json:"id"`
+}
+
+// ReportIncident maneja POST /reservations/{id}/incidents — registra una
+// incidencia reportada por el pasajero sobre su propia reserva. El
+// reservation_id autoritativo es el del path; el worker_id sale del JWT.
+// Patrón idéntico a Cancel para el parseo del id.
+func (h *BookingHandler) ReportIncident(w http.ResponseWriter, r *http.Request) {
+	reservationID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "id", Reason: "debe ser un entero positivo"})
+		return
+	}
+	var req ReportIncidentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	id, err := h.svc.ReportPassengerIncident(r.Context(), reservationID, req)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(reportIncidentResponse{ID: id})
+}
+
 // ListMine maneja GET /reservations. Devuelve todas las reservas del
 // trabajador autenticado (sin filtrar por status — la UI distingue
 // CONFIRMED / BOARDED / COMPLETED / NO_SHOW / CANCELLED). No expone el
@@ -139,4 +172,5 @@ func (h *BookingHandler) RegisterRoutes(r chi.Router) {
 	// su abordaje desde la app (boton de contingencia si falla la lectura
 	// del QR por el chofer). Ver `desarrollo_pasajero.md` §5.1.
 	r.Post("/reservations/{id}/self-checkin", h.SelfCheckin)
+	r.Post("/reservations/{id}/incidents", h.ReportIncident)
 }
