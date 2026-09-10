@@ -1,5 +1,6 @@
 package com.appmovilidadclinica.passenger.data.remote
 
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationResponseDto
@@ -34,4 +35,10 @@ class KtorReservationsApi(private val client: HttpClient) {
 
     suspend fun selfCheckinParsed(reservationId: Long): SelfCheckinResponseDto =
         selfCheckin(reservationId).body()
+
+    suspend fun reportIncident(reservationId: Long, body: ReportIncidentRequestDto): HttpResponse =
+        client.post("reservations/$reservationId/incidents") {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
 }

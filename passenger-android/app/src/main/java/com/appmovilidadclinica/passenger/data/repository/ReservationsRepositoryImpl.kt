@@ -7,10 +7,13 @@ import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.passenger.data.remote.KtorApiClient
 import com.appmovilidadclinica.passenger.data.remote.safeApiCall
 import com.appmovilidadclinica.passenger.data.remote.safeApiCallUnit
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentResponseDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationResponseDto
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.error.map
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
 import com.appmovilidadclinica.passenger.domain.repository.ReservationTripContext
@@ -77,6 +80,24 @@ class ReservationsRepositoryImpl @Inject constructor(
         }
         @Suppress("UNCHECKED_CAST")
         return result as AppResult<Reservation>
+    }
+
+    override suspend fun reportIncident(
+        reservationId: Long,
+        incidentType: String,
+        description: String,
+    ): AppResult<Long> {
+        val result = safeApiCall<ReportIncidentResponseDto>(
+            errorMapper = errorMapper,
+            call = {
+                apiClient.reservationsApi.reportIncident(
+                    reservationId,
+                    ReportIncidentRequestDto(incidentType, description),
+                )
+            },
+            parseBody = { it.body() },
+        )
+        return result.map { it.id }
     }
 
     override fun observeReservations(): Flow<List<Reservation>> =

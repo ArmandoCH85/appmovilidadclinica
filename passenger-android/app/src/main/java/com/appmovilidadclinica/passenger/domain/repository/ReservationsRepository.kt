@@ -10,22 +10,29 @@ interface ReservationsRepository {
     /**
      * POST /api/reservations. Contrato: la implementacion DEBE persistir el
      * `qr_token` recibido en Room como primera accion al recibir 201, antes
-     * de devolver el resultado â€” es la unica vez que el backend lo entrega
+     * de devolver el resultado ” es la unica vez que el backend lo entrega
      * en claro (ver Reservation.qrToken, dominio).
      */
     suspend fun confirm(request: ReservationRequest, tripContext: ReservationTripContext): AppResult<Reservation>
 
-    /** POST /api/reservations/{id}/cancel â€” 204, sin body. */
+    /** POST /api/reservations/{id}/cancel ” 204, sin body. */
     suspend fun cancel(reservationId: Long): AppResult<Unit>
 
     /**
-     * POST /api/reservations/{id}/self-checkin â€” CONTRATO NUEVO, no existe
-     * en el backend todavia (ver diseÃ±o tÃ©cnico, seccion "Contratos nuevos
+     * POST /api/reservations/{id}/self-checkin ” CONTRATO NUEVO, no existe
+     * en el backend todavia (ver diseño técnico, seccion "Contratos nuevos
      * requeridos"). La implementacion esta lista contra el contrato
      * propuesto; hasta que el backend lo tenga, esta llamada devuelve
      * AppError.NotFound (404) real del servidor.
      */
     suspend fun selfCheckin(reservationId: Long): AppResult<Reservation>
+
+    /**
+     * POST /api/reservations/{id}/incidents ” 201 {id}. La reserva debe ser
+     * propia y estar activa (CONFIRMED/BOARDED); si no, el backend responde
+     * 404/409 con mensaje accionable.
+     */
+    suspend fun reportIncident(reservationId: Long, incidentType: String, description: String): AppResult<Long>
 
     /** Reservas propias persistidas localmente (fuente de verdad: Room, no red). */
     fun observeReservations(): Flow<List<Reservation>>
@@ -33,13 +40,13 @@ interface ReservationsRepository {
     fun observeReservation(reservationId: Long): Flow<Reservation?>
 
     /**
-     * GET /api/reservations â€” sincroniza la cache local con la lista del
+     * GET /api/reservations ” sincroniza la cache local con la lista del
      * backend. Trae TODAS las reservas del WORKER (sin filtrar por status)
      * y hace upsert en Room con REPLACE. Las reservas sincronizadas vienen
      * SIN qrToken (el backend nunca lo expone despues del confirm inicial);
      * las creadas localmente por `confirm()` conservan su qrToken porque
      * el REPLACE sobre la misma PK mantiene la fila existente con su
-     * valor de qrToken intacto? No â€” REPLACE escribe TODA la fila. Por
+     * valor de qrToken intacto? No ” REPLACE escribe TODA la fila. Por
      * eso `syncFromBackend` preserva el qrToken local si la reserva ya
      * existia con qrToken (mismo patron que la unicidad del JWT).
      */
@@ -48,7 +55,7 @@ interface ReservationsRepository {
 
 /**
  * Datos de contexto (ruta/paradas/horario) que YA tiene la app en pantalla
- * al confirmar (vinieron de TripDetail/TripSearchResult) â€” se persisten
+ * al confirmar (vinieron de TripDetail/TripSearchResult) ” se persisten
  * junto a la reserva para que "Mi reserva" no dependa de una llamada de red
  * extra para mostrarlos.
  */
