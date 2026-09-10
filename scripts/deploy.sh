@@ -164,7 +164,8 @@ fi
 # otros modulos. Si se toca un modulo nuevo, sumarlo a MODULES.
 # NOTA: auth se agrego aca para desplegar POST /auth/change-password; antes
 # solo se sincronizaba admin y el endpoint nunca llegaba a prod (404).
-MODULES=(admin auth)
+# booking se agrego para POST /reservations/{id}/incidents.
+MODULES=(admin auth booking)
 for mod in "${MODULES[@]}"; do
     for f in handler.go repository.go service.go service_test.go; do
         src="$SRC_BACKEND/internal/modules/$mod/$f"

@@ -27,6 +27,10 @@ type BookingService interface {
 	// en "Mis reservas" para sincronizar con el backend — sin esto, una
 	// reserva creada en otro dispositivo o sesion no aparece en la app.
 	ListForWorker(ctx context.Context) ([]ReservationListItem, error)
+	// ReportPassengerIncident registra una incidencia reportada por el
+	// pasajero sobre su propia reserva activa. El worker_id sale del JWT.
+	// Devuelve el id de la fila creada en trip_incidents.
+	ReportPassengerIncident(ctx context.Context, reservationID int64, req ReportIncidentRequest) (int64, error)
 }
 
 // ConfirmRequest es el cuerpo de POST /reservations. El worker_id se toma
@@ -36,6 +40,14 @@ type ConfirmRequest struct {
 	TripSeatID                int64 `json:"trip_seat_id" validate:"required,gt=0"`
 	OriginTripStopTimeID      int64 `json:"origin_trip_stop_time_id" validate:"required,gt=0"`
 	DestinationTripStopTimeID int64 `json:"destination_trip_stop_time_id" validate:"required,gt=0"`
+}
+
+// ReportIncidentRequest es el cuerpo de POST /reservations/{id}/incidents.
+// El reservation_id viaja en el path y el worker_id en el JWT; el trip_id
+// se deriva server-side desde la reserva.
+type ReportIncidentRequest struct {
+	IncidentType string `json:"incident_type" validate:"required,oneof=BREAKDOWN DELAY ACCIDENT OTHER"`
+	Description  string `json:"description" validate:"required,min=10,max=1000"`
 }
 
 // ConfirmResponse devuelve el token QR crudo (para que el movil lo muestre)
@@ -142,6 +154,48 @@ func (s *bookingService) ListForWorker(ctx context.Context) ([]ReservationListIt
 		return nil, apperror.UnauthorizedError{Reason: "token sin identidad de trabajador"}
 	}
 	return s.repo.ListReservationsByWorker(ctx, workerID)
+}
+
+// RoleWORKER es el único rol que puede reportar incidencias de pasajero.
+const RoleWORKER = "WORKER"
+
+// requireWorker extrae y valida que el caller tenga rol WORKER. Espejo de
+// requireDriver del módulo driver. UnauthorizedError sin claims/rol,
+// ForbiddenError si el rol no es WORKER.
+func requireWorker(ctx context.Context) (int64, error) {
+	workerID, err := authctx.UserIDFromContext(ctx)
+	if err != nil {
+		return 0, apperror.UnauthorizedError{Reason: "token sin identidad de trabajador"}
+	}
+	role, err := authctx.RoleFromContext(ctx)
+	if err != nil {
+		return 0, apperror.UnauthorizedError{Reason: "token sin rol"}
+	}
+	if role != RoleWORKER {
+		return 0, apperror.ForbiddenError{Reason: "solo el rol WORKER puede reportar incidencias de pasajero"}
+	}
+	return workerID, nil
+}
+
+// ReportPassengerIncident valida ownership + estado activo e inserta en
+// trip_incidents con reported_by_user_id = caller. Reserva ajena → 404
+// genérico (no filtrar existencia); estado no activo → 409.
+func (s *bookingService) ReportPassengerIncident(ctx context.Context, reservationID int64, req ReportIncidentRequest) (int64, error) {
+	workerID, err := requireWorker(ctx)
+	if err != nil {
+		return 0, err
+	}
+	ident, err := s.repo.GetReservationIdentity(ctx, reservationID)
+	if err != nil {
+		return 0, err
+	}
+	if ident.WorkerID != workerID {
+		return 0, apperror.NotFoundError{Entity: "reserva", ID: reservationID}
+	}
+	if ident.Status != "CONFIRMED" && ident.Status != "BOARDED" {
+		return 0, apperror.ConflictError{Msg: "solo puedes reportar incidentes sobre viajes activos (reservas confirmadas o abordadas)"}
+	}
+	return s.repo.InsertIncident(ctx, ident.TripID, workerID, req.IncidentType, req.Description)
 }
 
 // newUUIDv4 genera un UUID v4 (RFC 4122) usando crypto/rand. Sin dependencia

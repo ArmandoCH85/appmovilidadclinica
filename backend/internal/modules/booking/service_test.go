@@ -15,15 +15,19 @@ import (
 // mockBookingRepo cumple BookingRepository para tests. Mock a mano, sin mockery.
 // Solo se rellenan los campos que cada test consume.
 type mockBookingRepo struct {
-	active      bool
-	activeErr   error
-	confirm     ConfirmResult
-	confirmErr  error
-	cancelErr   error
-	verifyRes   Reservation
-	verifyErr   error
-	selfCheckin SelfCheckinResult
+	active         bool
+	activeErr      error
+	confirm        ConfirmResult
+	confirmErr     error
+	cancelErr      error
+	verifyRes      Reservation
+	verifyErr      error
+	selfCheckin    SelfCheckinResult
 	selfCheckinErr error
+	identity       ReservationIdentity
+	identityErr    error
+	incidentID     int64
+	incidentErr    error
 }
 
 func (m *mockBookingRepo) CheckActiveReservation(_ context.Context, _, _ int64) (bool, error) {
@@ -50,6 +54,14 @@ func (m *mockBookingRepo) ListReservationsByWorker(_ context.Context, _ int64) (
 	return nil, nil
 }
 
+func (m *mockBookingRepo) GetReservationIdentity(_ context.Context, _ int64) (ReservationIdentity, error) {
+	return m.identity, m.identityErr
+}
+
+func (m *mockBookingRepo) InsertIncident(_ context.Context, _, _ int64, _, _ string) (int64, error) {
+	return m.incidentID, m.incidentErr
+}
+
 // ctxWithWorker construye un context que simula un JWT valido con el worker_id
 // dado, tal como lo haria jwtauth.Verifier en produccion.
 func ctxWithWorker(t *testing.T, workerID int64) context.Context {
@@ -58,6 +70,20 @@ func ctxWithWorker(t *testing.T, workerID int64) context.Context {
 	claims := map[string]any{
 		"user_id": float64(workerID), // JSON deserializa enteros a float64
 		"role":    "WORKER",
+	}
+	token, _, err := ja.Encode(claims)
+	require.NoError(t, err)
+	return jwtauth.NewContext(context.Background(), token, nil)
+}
+
+// ctxWithRole igual que ctxWithWorker pero con rol dado, para probar el
+// rechazo a roles no-WORKER.
+func ctxWithRole(t *testing.T, userID int64, role string) context.Context {
+	t.Helper()
+	ja := jwtauth.New("HS256", []byte("booking-test-secret"), nil)
+	claims := map[string]any{
+		"user_id": float64(userID), // JSON deserializa enteros a float64
+		"role":    role,
 	}
 	token, _, err := ja.Encode(claims)
 	require.NoError(t, err)
@@ -130,4 +156,66 @@ func TestConfirm_SPReturnsQRToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "sp-generated-qr-xyz", resp.QRToken)
 	assert.Equal(t, int64(200), resp.ReservationID)
+}
+
+func TestReportPassengerIncident_Success_ReturnsID(t *testing.T) {
+	repo := &mockBookingRepo{
+		identity:   ReservationIdentity{WorkerID: 77, TripID: 5, Status: "CONFIRMED"},
+		incidentID: 900,
+	}
+	svc := NewService(repo)
+
+	id, err := svc.ReportPassengerIncident(ctxWithWorker(t, 77), 42, ReportIncidentRequest{
+		IncidentType: "DELAY",
+		Description:  "El bus nunca pasó por mi parada",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(900), id)
+}
+
+func TestReportPassengerIncident_ForeignReservation_ReturnsNotFound(t *testing.T) {
+	// La reserva es de otro worker: 404 genérico, sin filtrar que existe.
+	repo := &mockBookingRepo{
+		identity: ReservationIdentity{WorkerID: 99, TripID: 5, Status: "CONFIRMED"},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.ReportPassengerIncident(ctxWithWorker(t, 77), 42, ReportIncidentRequest{
+		IncidentType: "DELAY",
+		Description:  "El bus nunca pasó por mi parada",
+	})
+	require.Error(t, err)
+	var nf apperror.NotFoundError
+	require.True(t, errors.As(err, &nf), "reserva ajena debe mapear a NotFound")
+	assert.Empty(t, repo.incidentID, "no debe insertar nada si el ownership falla")
+}
+
+func TestReportPassengerIncident_CancelledReservation_ReturnsConflict(t *testing.T) {
+	repo := &mockBookingRepo{
+		identity: ReservationIdentity{WorkerID: 77, TripID: 5, Status: "CANCELLED"},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.ReportPassengerIncident(ctxWithWorker(t, 77), 42, ReportIncidentRequest{
+		IncidentType: "DELAY",
+		Description:  "El bus nunca pasó por mi parada",
+	})
+	require.Error(t, err)
+	var ce apperror.ConflictError
+	require.True(t, errors.As(err, &ce), "reserva no activa debe mapear a Conflict")
+}
+
+func TestReportPassengerIncident_NonWorkerRole_ReturnsForbidden(t *testing.T) {
+	repo := &mockBookingRepo{
+		identity: ReservationIdentity{WorkerID: 77, TripID: 5, Status: "CONFIRMED"},
+	}
+	svc := NewService(repo)
+
+	_, err := svc.ReportPassengerIncident(ctxWithRole(t, 77, "DRIVER"), 42, ReportIncidentRequest{
+		IncidentType: "DELAY",
+		Description:  "El bus nunca pasó por mi parada",
+	})
+	require.Error(t, err)
+	var fe apperror.ForbiddenError
+	require.True(t, errors.As(err, &fe), "rol no-WORKER debe mapear a Forbidden")
 }

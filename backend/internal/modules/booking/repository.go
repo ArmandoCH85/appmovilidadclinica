@@ -51,6 +51,14 @@ type Reservation struct {
 	ConfirmedAt               time.Time `json:"confirmed_at"`
 }
 
+// ReservationIdentity es lo mínimo de una reserva para validar ownership y
+// estado en ReportPassengerIncident.
+type ReservationIdentity struct {
+	WorkerID int64
+	TripID   int64
+	Status   string
+}
+
 // SelfCheckinResult es el resultado de sp_mark_reservation_boarded_self.
 // Solo expone lo que la app necesita para actualizar la UI (status +
 // boarded_at), sin filtrar el id interno.
@@ -77,6 +85,14 @@ type BookingRepository interface {
 	// contexto minimo del viaje (trip_code + service_date) que la UI
 	// necesita para mostrar el resumen.
 	ListReservationsByWorker(ctx context.Context, workerID int64) ([]ReservationListItem, error)
+	// GetReservationIdentity devuelve worker_id, trip_id y status de una
+	// reserva. Usado por ReportPassengerIncident para validar ownership y
+	// estado activo sin cargar toda la fila.
+	GetReservationIdentity(ctx context.Context, reservationID int64) (ReservationIdentity, error)
+	// InsertIncident inserta una incidencia de pasajero en trip_incidents y
+	// devuelve su id. El trip_id ya viene resuelto por el servicio desde la
+	// reserva (el cliente nunca lo manda).
+	InsertIncident(ctx context.Context, tripID, reporterUserID int64, incidentType, description string) (int64, error)
 }
 
 // bookingRepository es la implementacion concreta con database/sql.
@@ -263,6 +279,38 @@ func (r *bookingRepository) ListReservationsByWorker(ctx context.Context, worker
 		return nil, err
 	}
 	return items, nil
+}
+
+// GetReservationIdentity lee worker_id, trip_id y status de una reserva.
+// Reserva inexistente → dberr.NotFound ("reserva ..."), igual que
+// GetUserByIdentifier en el módulo auth.
+func (r *bookingRepository) GetReservationIdentity(ctx context.Context, reservationID int64) (ReservationIdentity, error) {
+	const q = `SELECT worker_id, trip_id, status FROM reservations WHERE id = ?`
+	var ident ReservationIdentity
+	err := r.db.QueryRowContext(ctx, q, reservationID).Scan(&ident.WorkerID, &ident.TripID, &ident.Status)
+	if err != nil {
+		if nfErr := dberr.NotFound(err, "reserva", reservationID); nfErr != err {
+			return ReservationIdentity{}, nfErr
+		}
+		return ReservationIdentity{}, fmt.Errorf("buscando reserva por id: %w", err)
+	}
+	return ident, nil
+}
+
+// InsertIncident inserta en trip_incidents. Mismo INSERT que
+// driverRepository.ReportIncident (módulo driver), pero el trip_id llega
+// resuelto desde la reserva del pasajero.
+func (r *bookingRepository) InsertIncident(ctx context.Context, tripID, reporterUserID int64, incidentType, description string) (int64, error) {
+	const q = `INSERT INTO trip_incidents (trip_id, reported_by_user_id, incident_type, description) VALUES (?, ?, ?, ?)`
+	res, err := r.db.ExecContext(ctx, q, tripID, reporterUserID, incidentType, description)
+	if err != nil {
+		return 0, fmt.Errorf("insertando incidencia de pasajero: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("leyendo id de incidencia: %w", err)
+	}
+	return id, nil
 }
 
 // compile-time guard.
