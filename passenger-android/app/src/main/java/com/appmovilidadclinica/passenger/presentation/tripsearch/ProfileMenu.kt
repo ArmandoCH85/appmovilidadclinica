@@ -40,13 +40,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-private val MenuContainer = Color(0xFF1E1E1E)
-private val MenuIconCircle = Color(0xFF3A3A3A)
-private val MenuSubtitle = Color(0xFF9E9E9E)
-
 /**
  * Boton de perfil del header + popover anclado debajo, alineado a la derecha
  * (DropdownMenu lo alinea al End del IconButton por defecto).
+ *
+ * Los colores salen del tema de la app (surfaceContainer, onSurface, etc.),
+ * no hardcodeados: el menu mimetiza el fondo de la pantalla en modo
+ * oscuro y claro.
  *
  * El nombre viene de la sesion real (NavGraph -> SessionViewModel.user) y el
  * logout reutiliza la logica existente (SessionViewModel.logout via NavGraph).
@@ -85,7 +85,7 @@ fun ProfileMenuButton(
             expanded = expanded,
             onDismissRequest = close,
             shape = RoundedCornerShape(14.dp),
-            containerColor = MenuContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             shadowElevation = 8.dp,
             tonalElevation = 4.dp,
             modifier = Modifier.width(240.dp),
@@ -106,13 +106,13 @@ fun ProfileMenuButton(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(MenuIconCircle),
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 Icons.Default.Person,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(22.dp),
                             )
                         }
@@ -121,31 +121,31 @@ fun ProfileMenuButton(
                             Text(
                                 "Mi cuenta",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MenuSubtitle,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
                                 userDisplayName.ifBlank { "—" },
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                             )
                         }
                     }
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                     ProfileMenuRow(
                         icon = Icons.Default.Lock,
                         label = "Cambiar clave",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         onClick = {
                             close()
                             onOpenChangePassword()
                         },
                     )
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                     ProfileMenuRow(
                         icon = Icons.AutoMirrored.Filled.Logout,
@@ -180,7 +180,7 @@ private fun ProfileMenuRow(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f)),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
