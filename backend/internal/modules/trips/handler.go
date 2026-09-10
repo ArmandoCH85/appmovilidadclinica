@@ -22,14 +22,20 @@ func NewHandler(svc TripsService) *TripsHandler {
 }
 
 // searchQuery valida los query params de GET /trips.
+// `direction` es opcional: si se omite, el handler prueba IDA y VUELTA
+// y combina los resultados. Esto permite al cliente del pasajero
+// enviar solo origen/destino sin tener que conocer el sentido.
 type searchQuery struct {
 	ServiceDate       string `validate:"required"`
-	Direction         string `validate:"required,oneof=IDA VUELTA"`
+	Direction         string // opcional: "IDA", "VUELTA" o vacio
 	OriginStopID      int64  `validate:"required,gt=0"`
 	DestinationStopID int64  `validate:"required,gt=0"`
 }
 
-// Search maneja GET /trips?date=&direction=&origin=&destination=.
+// Search maneja GET /trips?date=&origin=&destination=&direction=.
+// `direction` es opcional. Si no se envia, se prueban ambos sentidos
+// (IDA y VUELTA) y se concatenan los resultados. Esto refleja el flujo
+// del pasajero, que solo conoce origen y destino.
 // Devuelve 200 con el listado (array vacio si no hay resultados).
 func (h *TripsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	q := searchQuery{
@@ -54,10 +60,32 @@ func (h *TripsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, err := h.svc.Search(r.Context(), q.ServiceDate, q.Direction, q.OriginStopID, q.DestinationStopID)
-	if err != nil {
-		apperror.WriteJSONError(w, err)
-		return
+	var results []TripSearchResult
+	if q.Direction == "" {
+		// direction omitido: probar IDA y VUELTA y combinar resultados
+		idaResults, idaErr := h.svc.Search(r.Context(), q.ServiceDate, "IDA", q.OriginStopID, q.DestinationStopID)
+		if idaErr != nil {
+			apperror.WriteJSONError(w, idaErr)
+			return
+		}
+		vtaResults, vtaErr := h.svc.Search(r.Context(), q.ServiceDate, "VUELTA", q.OriginStopID, q.DestinationStopID)
+		if vtaErr != nil {
+			apperror.WriteJSONError(w, vtaErr)
+			return
+		}
+		results = append(idaResults, vtaResults...)
+	} else {
+		// direction explicito: validar valor
+		if q.Direction != "IDA" && q.Direction != "VUELTA" {
+			apperror.WriteJSONError(w, apperror.ValidationError{Field: "direction", Reason: "debe ser IDA o VUELTA (o vacio para ambos)"})
+			return
+		}
+		var searchErr error
+		results, searchErr = h.svc.Search(r.Context(), q.ServiceDate, q.Direction, q.OriginStopID, q.DestinationStopID)
+		if searchErr != nil {
+			apperror.WriteJSONError(w, searchErr)
+			return
+		}
 	}
 	if results == nil {
 		results = []TripSearchResult{}
