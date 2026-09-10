@@ -115,10 +115,40 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// RegisterRoutes monta los endpoints del modulo auth. /me requiere usuario
-// autenticado; el router padre (Phase 3) aplica jwtauth.Verifier+
-// Authenticator sobre el grupo que monta /me. /login es publico.
+// changePasswordRequest es el cuerpo de POST /change-password. El userID
+// sale del JWT (authctx), nunca del body: un usuario solo cambia su clave.
+type changePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+// ChangePassword maneja POST /change-password. Requiere JWT (lo garantiza
+// el authenticator del router). Responde 204 sin body en exito; en error
+// un JSON estandar via apperror.WriteJSONError (401 si la actual no
+// coincide, 422 si la nueva no valida).
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userID, err := authctx.UserIDFromContext(r.Context())
+	if err != nil {
+		apperror.WriteJSONError(w, apperror.UnauthorizedError{Reason: "token sin claims"})
+		return
+	}
+	var req changePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := h.svc.ChangePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword); err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RegisterRoutes monta los endpoints del modulo auth. /me y /change-password
+// requieren usuario autenticado; el router padre aplica jwtauth.Verifier+
+// Authenticator sobre el grupo. /login es publico.
 func (h *AuthHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/login", h.Login)
 	r.Get("/me", h.Me)
+	r.Post("/change-password", h.ChangePassword)
 }

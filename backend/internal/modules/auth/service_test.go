@@ -17,10 +17,32 @@ import (
 type mockAuthRepo struct {
 	user User
 	err  error
+
+	byIDUser User
+	byIDErr  error
+	updated  map[int64]string
 }
 
 func (m *mockAuthRepo) GetUserByIdentifier(_ context.Context, _ string) (User, error) {
 	return m.user, m.err
+}
+
+func (m *mockAuthRepo) GetUserByID(_ context.Context, _ int64) (User, error) {
+	if m.byIDErr != nil {
+		return User{}, m.byIDErr
+	}
+	if m.byIDUser.ID != 0 {
+		return m.byIDUser, nil
+	}
+	return m.user, m.err
+}
+
+func (m *mockAuthRepo) UpdatePasswordHash(_ context.Context, id int64, hash string) error {
+	if m.updated == nil {
+		m.updated = map[int64]string{}
+	}
+	m.updated[id] = hash
+	return nil
 }
 
 // mustHash genera un bcrypt hash valido para un password conocido.
@@ -112,4 +134,54 @@ func TestLogin_InactiveUser_ReturnsUnauthorized(t *testing.T) {
 	require.Error(t, err)
 	var ue apperror.UnauthorizedError
 	require.True(t, errors.As(err, &ue), "usuario inactivo debe mapear a Unauthorized")
+}
+
+func TestChangePassword_ValidCurrent_UpdatesHash(t *testing.T) {
+	repo := &mockAuthRepo{
+		user: User{ID: 7, PasswordHash: mustHash(t, "actual123"), Role: "WORKER", Active: true},
+	}
+	svc := NewService(repo, testSecret)
+
+	require.NoError(t, svc.ChangePassword(context.Background(), 7, "actual123", "nuevaClave123"))
+
+	stored, ok := repo.updated[7]
+	require.True(t, ok, "debe persistir el nuevo hash")
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(stored), []byte("nuevaClave123")))
+}
+
+func TestChangePassword_WrongCurrent_ReturnsUnauthorized(t *testing.T) {
+	repo := &mockAuthRepo{
+		user: User{ID: 7, PasswordHash: mustHash(t, "actual123"), Role: "WORKER", Active: true},
+	}
+	svc := NewService(repo, testSecret)
+
+	err := svc.ChangePassword(context.Background(), 7, "otra99999", "nuevaClave123")
+	require.Error(t, err)
+	var ue apperror.UnauthorizedError
+	require.True(t, errors.As(err, &ue), "clave actual incorrecta debe mapear a Unauthorized")
+	assert.Empty(t, repo.updated, "no debe persistir nada si la actual falla")
+}
+
+func TestChangePassword_ShortNew_ReturnsValidation(t *testing.T) {
+	repo := &mockAuthRepo{
+		user: User{ID: 7, PasswordHash: mustHash(t, "actual123"), Role: "WORKER", Active: true},
+	}
+	svc := NewService(repo, testSecret)
+
+	err := svc.ChangePassword(context.Background(), 7, "actual123", "corta")
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "nueva < 8 debe mapear a Validation")
+}
+
+func TestChangePassword_SameAsCurrent_ReturnsValidation(t *testing.T) {
+	repo := &mockAuthRepo{
+		user: User{ID: 7, PasswordHash: mustHash(t, "actual123"), Role: "WORKER", Active: true},
+	}
+	svc := NewService(repo, testSecret)
+
+	err := svc.ChangePassword(context.Background(), 7, "actual123", "actual123")
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "nueva igual a la actual debe mapear a Validation")
 }

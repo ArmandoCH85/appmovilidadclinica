@@ -159,15 +159,20 @@ if [[ -d "$SRC_BACKEND/migrations" ]]; then
     fi
 fi
 
-# 3b. Modulo admin (los archivos que tocamos en este feature).
-# Syncronizamos los 4 archivos del paquete admin para mantener consistencia
-# con los cambios del repo de trabajo. El resto del codigo prod queda igual.
-for f in handler.go repository.go service.go service_test.go; do
-    src="$SRC_BACKEND/internal/modules/admin/$f"
-    dst="$PROD_BACKEND/internal/modules/admin/$f"
-    [[ -f "$src" ]] || { warn "no existe en repo: $src"; continue; }
-    run cp -p "$src" "$dst"
-    ok "modulo admin sync: $f"
+# 3b. Modulos backend que se sincronizan a prod. Es un allowlist explicito
+# (no un rsync del arbol completo) para no arrastrar cambios sin commitear de
+# otros modulos. Si se toca un modulo nuevo, sumarlo a MODULES.
+# NOTA: auth se agrego aca para desplegar POST /auth/change-password; antes
+# solo se sincronizaba admin y el endpoint nunca llegaba a prod (404).
+MODULES=(admin auth)
+for mod in "${MODULES[@]}"; do
+    for f in handler.go repository.go service.go service_test.go; do
+        src="$SRC_BACKEND/internal/modules/$mod/$f"
+        dst="$PROD_BACKEND/internal/modules/$mod/$f"
+        [[ -f "$src" ]] || { warn "no existe en repo: $src"; continue; }
+        run cp -p "$src" "$dst"
+        ok "modulo $mod sync: $f"
+    done
 done
 
 # 3c. Motor de migraciones (migrate.go). Lo sincronizamos aca para que los
