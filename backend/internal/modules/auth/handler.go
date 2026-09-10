@@ -9,7 +9,6 @@ import (
 
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/authctx"
-	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/validate"
 )
 
 // AuthHandler expone los endpoints HTTP del modulo auth.
