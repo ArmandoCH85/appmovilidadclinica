@@ -55,6 +55,8 @@ type Passenger struct {
 	Status               string     `json:"status"`
 	ConfirmedAt          time.Time  `json:"confirmed_at"`
 	BoardedAt            *time.Time `json:"boarded_at,omitempty"`
+	IsGuest              bool       `json:"is_guest"`
+	GuestDisplayName     string     `json:"guest_display_name,omitempty"`
 }
 
 // TripStop refleja una parada del cronograma de un viaje, con hora
@@ -76,6 +78,16 @@ type IncidentParams struct {
 	TripID       int64  `json:"trip_id" validate:"required,gt=0"`
 	IncidentType string `json:"incident_type" validate:"required,oneof=BREAKDOWN DELAY ACCIDENT OTHER"`
 	Description  string `json:"description" validate:"required,max=1000"`
+}
+
+// GuestOccupantParams agrupa los campos para sp_register_guest_occupant.
+type GuestOccupantParams struct {
+	TripID                   int64
+	TripSeatID               int64
+	OriginTripStopTimeID     int64
+	DestinationTripStopTimeID int64
+	FirstName                string
+	LastName                 string
 }
 
 // DriverRepository abstrae el acceso a BD del modulo driver.
@@ -128,6 +140,10 @@ type DriverRepository interface {
 
 	// ReportIncident inserta una incidencia en trip_incidents y devuelve su id.
 	ReportIncident(ctx context.Context, p IncidentParams, reporterUserID int64) (int64, error)
+
+	// RegisterGuest llama a sp_register_guest_occupant y devuelve el id del
+	// invitado creado. El SP valida tramo, asiento libre y nombre duplicado.
+	RegisterGuest(ctx context.Context, p GuestOccupantParams, reporterUserID int64) (int64, error)
 }
 
 // driverRepository es la implementacion concreta con database/sql.
@@ -178,31 +194,63 @@ func (r *driverRepository) GetDriverTrips(ctx context.Context, driverID int64, s
 
 // GetTripPassengers lista los pasajeros CONFIRMED o BOARDED de un viaje. El
 // JOIN a trip_stop_times trae los nombres de las paradas de subida/bajada y
-// el JOIN a users el nombre del trabajador.
+// el JOIN a users el nombre del trabajador. Los ocupantes invitados
+// (guest_occupants, sin app ni reserva) se unen con UNION: nacen BOARDED,
+// con reservation_id/worker_id en 0 y el nombre concatenado como
+// worker_full_name y guest_display_name.
 func (r *driverRepository) GetTripPassengers(ctx context.Context, tripID int64) ([]Passenger, error) {
 	const q = `
-        SELECT reservation.id, reservation.reservation_code, reservation.worker_id,
-               worker.full_name, seat.seat_number, seat.seat_label,
-               reservation.origin_stop_order, origin_stop.stop_name,
-               reservation.destination_stop_order, destination_stop.stop_name,
-               reservation.status, reservation.confirmed_at, reservation.boarded_at
-          FROM reservations reservation
-          JOIN trip_seats seat ON seat.id = reservation.trip_seat_id
-          JOIN users worker ON worker.id = reservation.worker_id
-          JOIN (
-              SELECT tst.id, ts.name AS stop_name
-                FROM trip_stop_times tst
-                JOIN transport_stops ts ON ts.id = tst.stop_id
-          ) origin_stop ON origin_stop.id = reservation.origin_trip_stop_time_id
-          JOIN (
-              SELECT tst.id, ts.name AS stop_name
-                FROM trip_stop_times tst
-                JOIN transport_stops ts ON ts.id = tst.stop_id
-          ) destination_stop ON destination_stop.id = reservation.destination_trip_stop_time_id
-         WHERE reservation.trip_id = ?
-           AND reservation.status IN ('CONFIRMED', 'BOARDED')
-         ORDER BY reservation.origin_stop_order, seat.seat_number`
-	rows, err := r.db.QueryContext(ctx, q, tripID)
+        SELECT id, reservation_code, worker_id, worker_full_name,
+               seat_number, seat_label, origin_stop_order, origin_stop_name,
+               destination_stop_order, destination_stop_name,
+               status, confirmed_at, boarded_at, is_guest, guest_display_name
+          FROM (
+                SELECT reservation.id, reservation.reservation_code, reservation.worker_id,
+                       worker.full_name, seat.seat_number, seat.seat_label,
+                       reservation.origin_stop_order, origin_stop.stop_name,
+                       reservation.destination_stop_order, destination_stop.stop_name,
+                       reservation.status, reservation.confirmed_at, reservation.boarded_at,
+                       FALSE, ''
+                  FROM reservations reservation
+                  JOIN trip_seats seat ON seat.id = reservation.trip_seat_id
+                  JOIN users worker ON worker.id = reservation.worker_id
+                  JOIN (
+                      SELECT tst.id, ts.name AS stop_name
+                        FROM trip_stop_times tst
+                        JOIN transport_stops ts ON ts.id = tst.stop_id
+                  ) origin_stop ON origin_stop.id = reservation.origin_trip_stop_time_id
+                  JOIN (
+                      SELECT tst.id, ts.name AS stop_name
+                        FROM trip_stop_times tst
+                        JOIN transport_stops ts ON ts.id = tst.stop_id
+                  ) destination_stop ON destination_stop.id = reservation.destination_trip_stop_time_id
+                 WHERE reservation.trip_id = ?
+                   AND reservation.status IN ('CONFIRMED', 'BOARDED')
+                 UNION ALL
+                SELECT 0, '', 0,
+                       CONCAT(guest.first_name, ' ', guest.last_name),
+                       seat.seat_number, seat.seat_label,
+                       guest.origin_stop_order, origin_stop.stop_name,
+                       guest.destination_stop_order, destination_stop.stop_name,
+                       guest.status, guest.created_at, guest.created_at,
+                       TRUE, CONCAT(guest.first_name, ' ', guest.last_name)
+                  FROM guest_occupants guest
+                  JOIN trip_seats seat ON seat.id = guest.trip_seat_id
+                  JOIN (
+                      SELECT tst.id, ts.name AS stop_name
+                        FROM trip_stop_times tst
+                        JOIN transport_stops ts ON ts.id = tst.stop_id
+                  ) origin_stop ON origin_stop.id = guest.origin_trip_stop_time_id
+                  JOIN (
+                      SELECT tst.id, ts.name AS stop_name
+                        FROM trip_stop_times tst
+                        JOIN transport_stops ts ON ts.id = tst.stop_id
+                  ) destination_stop ON destination_stop.id = guest.destination_trip_stop_time_id
+                 WHERE guest.trip_id = ?
+                   AND guest.status = 'BOARDED'
+               ) AS combined
+         ORDER BY origin_stop_order, seat_number`
+	rows, err := r.db.QueryContext(ctx, q, tripID, tripID)
 	if err != nil {
 		return nil, fmt.Errorf("listando pasajeros: %w", err)
 	}
@@ -216,7 +264,8 @@ func (r *driverRepository) GetTripPassengers(ctx context.Context, tripID int64) 
 			&p.WorkerFullName, &p.SeatNumber, &p.SeatLabel,
 			&p.OriginStopOrder, &p.OriginStopName,
 			&p.DestinationStopOrder, &p.DestinationStopName,
-			&p.Status, &p.ConfirmedAt, &boardedAt); err != nil {
+			&p.Status, &p.ConfirmedAt, &boardedAt,
+			&p.IsGuest, &p.GuestDisplayName); err != nil {
 			return nil, fmt.Errorf("escaneando pasajero: %w", err)
 		}
 		if boardedAt.Valid {
@@ -451,6 +500,23 @@ func (r *driverRepository) ReportIncident(ctx context.Context, p IncidentParams,
 	id, err := res.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("obteniendo id de incidencia: %w", err)
+	}
+	return id, nil
+}
+
+// RegisterGuest invoca sp_register_guest_occupant. Los SIGNAL '45000' del SP
+// se traducen con el mismo tratamiento que el resto de SPs del módulo.
+func (r *driverRepository) RegisterGuest(ctx context.Context, p GuestOccupantParams, reporterUserID int64) (int64, error) {
+	var id int64
+	err := r.db.QueryRowContext(ctx, "CALL sp_register_guest_occupant(?, ?, ?, ?, ?, ?, ?)",
+		p.TripID, p.TripSeatID, p.OriginTripStopTimeID, p.DestinationTripStopTimeID,
+		p.FirstName, p.LastName, reporterUserID,
+	).Scan(&id)
+	if err != nil {
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return 0, spErr
+		}
+		return 0, fmt.Errorf("registrando ocupante invitado: %w", err)
 	}
 	return id, nil
 }
