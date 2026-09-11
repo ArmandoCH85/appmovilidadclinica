@@ -31,7 +31,7 @@ class KtorDriverApi(private val client: HttpClient) {
 
     suspend fun getTripStops(tripId: Long): HttpResponse =
         client.get("driver/trips/$tripId/stops")
-suspend fun getTripStopsParsed(tripId: Long): List<TripStopDto> =
+    suspend fun getTripStopsParsed(tripId: Long): List<TripStopDto> =
         getTripStops(tripId).body()
 
     suspend fun getTrip(tripId: Long): HttpResponse =
