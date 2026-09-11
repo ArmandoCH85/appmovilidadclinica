@@ -205,12 +205,17 @@ func (r *driverRepository) GetTripPassengers(ctx context.Context, tripID int64) 
                destination_stop_order, destination_stop_name,
                status, confirmed_at, boarded_at, is_guest, guest_display_name
           FROM (
-                SELECT reservation.id, reservation.reservation_code, reservation.worker_id,
-                       worker.full_name, seat.seat_number, seat.seat_label,
-                       reservation.origin_stop_order, origin_stop.stop_name,
-                       reservation.destination_stop_order, destination_stop.stop_name,
-                       reservation.status, reservation.confirmed_at, reservation.boarded_at,
-                       FALSE, ''
+                SELECT reservation.id AS id, reservation.reservation_code AS reservation_code,
+                       reservation.worker_id AS worker_id,
+                       worker.full_name AS worker_full_name,
+                       seat.seat_number AS seat_number, seat.seat_label AS seat_label,
+                       reservation.origin_stop_order AS origin_stop_order,
+                       origin_stop.stop_name AS origin_stop_name,
+                       reservation.destination_stop_order AS destination_stop_order,
+                       destination_stop.stop_name AS destination_stop_name,
+                       reservation.status AS status,
+                       reservation.confirmed_at AS confirmed_at, reservation.boarded_at AS boarded_at,
+                       FALSE AS is_guest, '' AS guest_display_name
                   FROM reservations reservation
                   JOIN trip_seats seat ON seat.id = reservation.trip_seat_id
                   JOIN users worker ON worker.id = reservation.worker_id
@@ -227,13 +232,17 @@ func (r *driverRepository) GetTripPassengers(ctx context.Context, tripID int64) 
                  WHERE reservation.trip_id = ?
                    AND reservation.status IN ('CONFIRMED', 'BOARDED')
                  UNION ALL
-                SELECT 0, '', 0,
-                       CONCAT(guest.first_name, ' ', guest.last_name),
-                       seat.seat_number, seat.seat_label,
-                       guest.origin_stop_order, origin_stop.stop_name,
-                       guest.destination_stop_order, destination_stop.stop_name,
-                       guest.status, guest.created_at, guest.created_at,
-                       TRUE, CONCAT(guest.first_name, ' ', guest.last_name)
+                SELECT 0 AS id, '' AS reservation_code, 0 AS worker_id,
+                       CONCAT(guest.first_name, ' ', guest.last_name) AS worker_full_name,
+                       seat.seat_number AS seat_number, seat.seat_label AS seat_label,
+                       guest.origin_stop_order AS origin_stop_order,
+                       origin_stop.stop_name AS origin_stop_name,
+                       guest.destination_stop_order AS destination_stop_order,
+                       destination_stop.stop_name AS destination_stop_name,
+                       'BOARDED' AS status,
+                       guest.created_at AS confirmed_at, guest.created_at AS boarded_at,
+                       TRUE AS is_guest,
+                       CONCAT(guest.first_name, ' ', guest.last_name) AS guest_display_name
                   FROM guest_occupants guest
                   JOIN trip_seats seat ON seat.id = guest.trip_seat_id
                   JOIN (
