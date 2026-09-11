@@ -4,11 +4,15 @@ import com.appmovilidadclinica.driver.shared.data.mapper.toDomain
 import com.appmovilidadclinica.driver.shared.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.shared.data.remote.KtorApiClient
 import com.appmovilidadclinica.driver.shared.data.remote.dto.IncidentRequestDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.GuestOccupantRequestDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.GuestOccupantResponseDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.SeatAvailabilityDto
 import com.appmovilidadclinica.driver.shared.domain.model.AppError
 import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.shared.domain.model.Incident
 import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger
+import com.appmovilidadclinica.driver.shared.domain.model.SeatAvailability
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
 import io.ktor.client.call.body
@@ -124,5 +128,46 @@ class DriverRepositoryImpl @Inject constructor(
                 description = description,
             )
         },
+    )
+
+    override suspend fun getSeats(
+        tripId: Long,
+        originTripStopTimeId: Long,
+        destinationTripStopTimeId: Long,
+    ): Result<List<SeatAvailability>> = safeCall(
+        call = { apiClient.driverApi.getSeats(tripId, originTripStopTimeId, destinationTripStopTimeId) },
+        parseBody = { response ->
+            response.body<List<SeatAvailabilityDto>>().map {
+                SeatAvailability(
+                    tripSeatId = it.tripSeatId,
+                    seatNumber = it.seatNumber,
+                    seatLabel = it.seatLabel,
+                    availability = it.availability,
+                )
+            }
+        },
+    )
+
+    override suspend fun registerGuest(
+        tripId: Long,
+        tripSeatId: Long,
+        originTripStopTimeId: Long,
+        destinationTripStopTimeId: Long,
+        firstName: String,
+        lastName: String,
+    ): Result<Long> = safeCall(
+        call = {
+            apiClient.driverApi.registerGuest(
+                tripId,
+                GuestOccupantRequestDto(
+                    tripSeatId = tripSeatId,
+                    originTripStopTimeId = originTripStopTimeId,
+                    destinationTripStopTimeId = destinationTripStopTimeId,
+                    firstName = firstName,
+                    lastName = lastName,
+                )
+            )
+        },
+        parseBody = { response -> response.body<GuestOccupantResponseDto>().id },
     )
 }

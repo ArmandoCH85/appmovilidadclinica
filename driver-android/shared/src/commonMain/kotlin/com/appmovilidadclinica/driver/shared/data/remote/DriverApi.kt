@@ -1,8 +1,10 @@
 package com.appmovilidadclinica.driver.shared.data.remote
 
 import com.appmovilidadclinica.driver.shared.data.remote.dto.DriverTripDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.GuestOccupantRequestDto
 import com.appmovilidadclinica.driver.shared.data.remote.dto.IncidentRequestDto
 import com.appmovilidadclinica.driver.shared.data.remote.dto.PassengerDto
+import com.appmovilidadclinica.driver.shared.data.remote.dto.SeatAvailabilityDto
 import com.appmovilidadclinica.driver.shared.data.remote.dto.TripStopDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -35,6 +37,12 @@ class DriverApi(private val client: HttpClient) {
     suspend fun getTripStopsParsed(tripId: Long): List<TripStopDto> =
         getTripStops(tripId).body()
 
+    suspend fun getTrip(tripId: Long): HttpResponse =
+        client.get("driver/trips/$tripId")
+
+    suspend fun getTripParsed(tripId: Long): DriverTripDto =
+        getTrip(tripId).body()
+
     // Endpoints 204 No Content — devuelven HttpResponse (no body) para que
     // el repositorio inspeccione status y errorBody manualmente.
     suspend fun startTrip(tripId: Long): HttpResponse =
@@ -66,4 +74,21 @@ class DriverApi(private val client: HttpClient) {
 
     suspend fun reportIncidentParsed(tripId: Long, body: IncidentRequestDto): Map<String, Long> =
         reportIncident(tripId, body).body()
+
+    suspend fun getSeats(tripId: Long, originTripStopTimeId: Long, destinationTripStopTimeId: Long): HttpResponse =
+        client.get("trips/$tripId/seats") {
+            url {
+                parameters.append("origin", originTripStopTimeId.toString())
+                parameters.append("destination", destinationTripStopTimeId.toString())
+            }
+        }
+
+    suspend fun getSeatsParsed(tripId: Long, originTripStopTimeId: Long, destinationTripStopTimeId: Long): List<SeatAvailabilityDto> =
+        getSeats(tripId, originTripStopTimeId, destinationTripStopTimeId).body()
+
+    suspend fun registerGuest(tripId: Long, body: GuestOccupantRequestDto): HttpResponse =
+        client.post("driver/trips/$tripId/guest-occupants") {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
 }

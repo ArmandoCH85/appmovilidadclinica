@@ -15,5 +15,7 @@ data class Passenger(
     val destinationStopName: String,
     val status: ReservationStatus,
     val confirmedAt: Instant?,
-    val boardedAt: Instant?
+    val boardedAt: Instant?,
+    val isGuest: Boolean = false,
+    val guestDisplayName: String? = null,
 )

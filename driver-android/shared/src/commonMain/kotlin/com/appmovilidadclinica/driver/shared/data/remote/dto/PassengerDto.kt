@@ -17,5 +17,7 @@ data class PassengerDto(
     @SerialName("destination_stop_name") val destinationStopName: String,
     val status: String,
     @SerialName("confirmed_at") val confirmedAt: String? = null,
-    @SerialName("boarded_at") val boardedAt: String? = null
+    @SerialName("boarded_at") val boardedAt: String? = null,
+    @SerialName("is_guest") val isGuest: Boolean = false,
+    @SerialName("guest_display_name") val guestDisplayName: String? = null
 )

@@ -18,5 +18,7 @@ fun PassengerDto.toDomain(): Passenger = Passenger(
     destinationStopName = destinationStopName,
     status = ReservationStatus.valueOf(status.uppercase()),
     confirmedAt = confirmedAt?.let { Instant.parse(it) },
-    boardedAt = boardedAt?.let { Instant.parse(it) }
+    boardedAt = boardedAt?.let { Instant.parse(it) },
+    isGuest = isGuest,
+    guestDisplayName = guestDisplayName
 )

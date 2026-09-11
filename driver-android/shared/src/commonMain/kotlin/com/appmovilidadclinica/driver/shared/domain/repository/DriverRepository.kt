@@ -3,11 +3,13 @@ package com.appmovilidadclinica.driver.shared.domain.repository
 import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.shared.domain.model.Incident
 import com.appmovilidadclinica.driver.shared.domain.model.Passenger
+import com.appmovilidadclinica.driver.shared.domain.model.SeatAvailability
 import com.appmovilidadclinica.driver.shared.domain.model.TripStop
 import kotlinx.datetime.LocalDate
 
 interface DriverRepository {
     suspend fun getTrips(date: LocalDate): Result<List<DriverTrip>>
+    suspend fun getTrip(tripId: Long): Result<DriverTrip>
     suspend fun getPassengers(tripId: Long): Result<List<Passenger>>
     suspend fun getTripStops(tripId: Long): Result<List<TripStop>>
     suspend fun startTrip(tripId: Long): Result<Unit>
@@ -18,4 +20,13 @@ interface DriverRepository {
     suspend fun markNoShow(reservationId: Long): Result<Unit>
     suspend fun markAlighted(reservationId: Long): Result<Unit>
     suspend fun reportIncident(tripId: Long, type: String, description: String): Result<Incident>
+    suspend fun getSeats(tripId: Long, originTripStopTimeId: Long, destinationTripStopTimeId: Long): Result<List<SeatAvailability>>
+    suspend fun registerGuest(
+        tripId: Long,
+        tripSeatId: Long,
+        originTripStopTimeId: Long,
+        destinationTripStopTimeId: Long,
+        firstName: String,
+        lastName: String,
+    ): Result<Long>
 }
