@@ -13,6 +13,7 @@ sealed class Route {
     data object Login : Route()
     data object Dashboard : Route()
     data class TripDetail(val tripId: Long) : Route()
+    data class SeatMap(val tripId: Long) : Route()
     data class Incident(val tripId: Long) : Route()
     data object QrScan : Route() // el tripId se obtiene del trip activo via DriverNavState
     data object Profile : Route()

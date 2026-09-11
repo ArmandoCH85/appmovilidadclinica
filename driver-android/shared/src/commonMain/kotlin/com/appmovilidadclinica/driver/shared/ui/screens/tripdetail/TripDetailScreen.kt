@@ -81,6 +81,7 @@ fun TripDetailScreen(
     onBack: () -> Unit = {},
     onScanQr: (Long) -> Unit = {},
     onReportIncident: (Long) -> Unit = {},
+    onOccupySeat: (Long) -> Unit = {},
 ) {
     val viewModel = remember(tripId, initialTrip, driverRepository) {
         TripDetailViewModel(tripId, initialTrip, driverRepository)
@@ -300,23 +301,31 @@ fun TripDetailScreen(
             }
 
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .clickable { passengersExpanded = !passengersExpanded },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        "Pasajeros (${state.passengers.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Icon(
-                        if (passengersExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (passengersExpanded) "Contraer pasajeros" else "Expandir pasajeros",
-                    )
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { passengersExpanded = !passengersExpanded },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            "Pasajeros (${state.passengers.size})",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Icon(
+                            if (passengersExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (passengersExpanded) "Contraer pasajeros" else "Expandir pasajeros",
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { onOccupySeat(tripId) },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) {
+                        Text("Ocupar asiento")
+                    }
                 }
             }
 
@@ -428,6 +437,16 @@ private fun PassengerCard(
             }
 
             Spacer(Modifier.height(4.dp))
+
+            if (passenger.isGuest) {
+                Text(
+                    "Invitado",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.height(4.dp))
+            }
 
             Text(
                 "Asiento ${passenger.seatLabel} · ${passenger.originStopName} → ${passenger.destinationStopName}",

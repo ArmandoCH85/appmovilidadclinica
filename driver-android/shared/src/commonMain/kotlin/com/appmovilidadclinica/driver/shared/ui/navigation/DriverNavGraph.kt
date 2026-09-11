@@ -11,6 +11,7 @@ import com.appmovilidadclinica.driver.shared.ui.screens.dashboard.DashboardScree
 import com.appmovilidadclinica.driver.shared.ui.screens.incident.IncidentScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.login.LoginScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.profile.ProfileScreen
+import com.appmovilidadclinica.driver.shared.ui.screens.seatmap.SeatMapScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.tripdetail.TripDetailScreen
 import com.appmovilidadclinica.driver.shared.ui.theme.DriverAppTheme
 import org.koin.compose.koinInject
@@ -57,6 +58,12 @@ fun DriverNavGraph(
                 onBack = { navState.pop() },
                 onScanQr = { navState.push(Route.QrScan) },
                 onReportIncident = { navState.push(Route.Incident(it)) },
+                onOccupySeat = { navState.push(Route.SeatMap(it)) },
+            )
+            is Route.SeatMap -> SeatMapScreen(
+                tripId = current.tripId,
+                onBack = { navState.pop() },
+                onRegistered = { navState.pop() },
             )
             is Route.Incident -> IncidentScreen(
                 tripId = current.tripId,
