@@ -28,6 +28,9 @@ type DriverService interface {
 	MarkNoShow(ctx context.Context, reservationID int64) error
 	MarkAlighted(ctx context.Context, reservationID int64) error
 	ReportIncident(ctx context.Context, p IncidentParams) (int64, error)
+	// RegisterGuestOccupant registra un invitado (pasajero sin app) en un
+	// asiento libre del viaje del conductor.
+	RegisterGuestOccupant(ctx context.Context, tripID int64, req RegisterGuestRequest) (int64, error)
 }
 
 // driverService es la implementacion concreta.
@@ -224,6 +227,16 @@ func (s *driverService) MarkAlighted(ctx context.Context, reservationID int64) e
 	return s.repo.MarkAlighted(ctx, reservationID, driverID)
 }
 
+// RegisterGuestRequest es el cuerpo de POST /driver/trips/{id}/guest-occupants.
+// El trip_id viaja en el path y el conductor en el JWT.
+type RegisterGuestRequest struct {
+	TripSeatID                int64  `json:"trip_seat_id" validate:"required,gt=0"`
+	OriginTripStopTimeID      int64  `json:"origin_trip_stop_time_id" validate:"required,gt=0"`
+	DestinationTripStopTimeID int64  `json:"destination_trip_stop_time_id" validate:"required,gt=0"`
+	FirstName                 string `json:"first_name" validate:"required,min=2,max=100"`
+	LastName                  string `json:"last_name" validate:"required,min=2,max=100"`
+}
+
 // ReportIncident registra una incidencia reportada por el conductor. La
 // validacion de asignacion se hace sobre el trip_id del cuerpo de la
 // peticion (IncidentParams.TripID).
@@ -236,6 +249,26 @@ func (s *driverService) ReportIncident(ctx context.Context, p IncidentParams) (i
 		return 0, err
 	}
 	return s.repo.ReportIncident(ctx, p, driverID)
+}
+
+// RegisterGuestOccupant registra un invitado (pasajero sin app) en un
+// asiento libre del viaje del conductor.
+func (s *driverService) RegisterGuestOccupant(ctx context.Context, tripID int64, req RegisterGuestRequest) (int64, error) {
+	driverID, err := requireDriver(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.ensureAssigned(ctx, driverID, tripID); err != nil {
+		return 0, err
+	}
+	return s.repo.RegisterGuest(ctx, GuestOccupantParams{
+		TripID:                    tripID,
+		TripSeatID:                req.TripSeatID,
+		OriginTripStopTimeID:      req.OriginTripStopTimeID,
+		DestinationTripStopTimeID: req.DestinationTripStopTimeID,
+		FirstName:                 req.FirstName,
+		LastName:                  req.LastName,
+	}, driverID)
 }
 
 // compile-time guard.
