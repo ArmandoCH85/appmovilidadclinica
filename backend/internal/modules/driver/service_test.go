@@ -35,6 +35,9 @@ type mockDriverRepo struct {
 	markAlightedErr   error
 	reportIncidentID  int64
 	reportIncidentErr error
+	guestID           int64
+	guestErr          error
+	guestCalled       bool
 }
 
 func (m *mockDriverRepo) GetDriverTrips(_ context.Context, _ int64, _ string) ([]DriverTrip, error) {
@@ -93,14 +96,25 @@ func (m *mockDriverRepo) ReportIncident(_ context.Context, _ IncidentParams, _ i
 	return m.reportIncidentID, m.reportIncidentErr
 }
 
+func (m *mockDriverRepo) RegisterGuest(_ context.Context, _ GuestOccupantParams, _ int64) (int64, error) {
+	m.guestCalled = true
+	return m.guestID, m.guestErr
+}
+
 // ctxWithDriver construye un context que simula un JWT valido de rol DRIVER
 // con el driver_id dado, tal como lo dejaria jwtauth.Verifier en produccion.
 func ctxWithDriver(t *testing.T, driverID int64) context.Context {
 	t.Helper()
+	return ctxWithRole(t, driverID, RoleDRIVER)
+}
+
+// ctxWithRole construye un context que simula un JWT valido con el rol dado.
+func ctxWithRole(t *testing.T, userID int64, role string) context.Context {
+	t.Helper()
 	ja := jwtauth.New("HS256", []byte("driver-test-secret"), nil)
 	claims := map[string]any{
-		"user_id": float64(driverID),
-		"role":    RoleDRIVER,
+		"user_id": float64(userID),
+		"role":    role,
 	}
 	token, _, err := ja.Encode(claims)
 	require.NoError(t, err)
@@ -211,3 +225,96 @@ func TestMarkBoarded_DriverNotAssigned_ReturnsForbidden(t *testing.T) {
 // Asegura que la asercion de compilacion del mock funcione (sin uso directo,
 // evita "declared and not used" en campos no consumidos por estos tests).
 var _ DriverRepository = (*mockDriverRepo)(nil)
+
+func TestRegisterGuestOccupant_Success_ReturnsID(t *testing.T) {
+	// El conductor 77 registra un invitado en su viaje 10. El viaje esta
+	// asignado a 77 y el repo devuelve el id 700 del invitado creado.
+	repo := &mockDriverRepo{
+		tripDriverID: 77,
+		guestID:      700,
+	}
+	svc := NewService(repo)
+	req := RegisterGuestRequest{
+		TripSeatID:                5,
+		OriginTripStopTimeID:      11,
+		DestinationTripStopTimeID: 14,
+		FirstName:                 "Juan",
+		LastName:                  "Perez",
+	}
+
+	id, err := svc.RegisterGuestOccupant(ctxWithDriver(t, 77), 10, req)
+	require.NoError(t, err)
+	require.Equal(t, int64(700), id)
+	require.True(t, repo.guestCalled, "el repo debe llamarse cuando el conductor esta asignado")
+}
+
+func TestRegisterGuestOccupant_NotAssigned_ReturnsForbidden(t *testing.T) {
+	// El conductor 77 registra un invitado en el viaje 10, pero ese viaje
+	// esta asignado al conductor 999. El servicio corta con ForbiddenError
+	// (403) antes de tocar el repositorio.
+	repo := &mockDriverRepo{
+		tripDriverID: 999,
+		guestID:      700,
+	}
+	svc := NewService(repo)
+	req := RegisterGuestRequest{
+		TripSeatID:                5,
+		OriginTripStopTimeID:      11,
+		DestinationTripStopTimeID: 14,
+		FirstName:                 "Juan",
+		LastName:                  "Perez",
+	}
+
+	_, err := svc.RegisterGuestOccupant(ctxWithDriver(t, 77), 10, req)
+	require.Error(t, err)
+	var fe apperror.ForbiddenError
+	require.True(t, errors.As(err, &fe), "conductor no asignado debe mapear a ForbiddenError")
+	require.False(t, repo.guestCalled, "el repo no debe llamarse si el conductor no esta asignado")
+}
+
+func TestRegisterGuestOccupant_NonDriverRole_ReturnsForbidden(t *testing.T) {
+	// Un JWT valido pero con rol WORKER intenta registrar un invitado:
+	// requireDriver corta con ForbiddenError (403) sin tocar el repo.
+	repo := &mockDriverRepo{
+		tripDriverID: 77,
+		guestID:      700,
+	}
+	svc := NewService(repo)
+	req := RegisterGuestRequest{
+		TripSeatID:                5,
+		OriginTripStopTimeID:      11,
+		DestinationTripStopTimeID: 14,
+		FirstName:                 "Juan",
+		LastName:                  "Perez",
+	}
+
+	_, err := svc.RegisterGuestOccupant(ctxWithRole(t, 77, "WORKER"), 10, req)
+	require.Error(t, err)
+	var fe apperror.ForbiddenError
+	require.True(t, errors.As(err, &fe), "rol no DRIVER debe mapear a ForbiddenError")
+	require.False(t, repo.guestCalled, "el repo no debe llamarse si el rol no es DRIVER")
+}
+
+func TestRegisterGuestOccupant_RepoConflict_BubblesUp(t *testing.T) {
+	// El conductor esta asignado pero el SP rechaza (asiento ocupado en el
+	// tramo o nombre duplicado en el viaje): el ConflictError del repo se
+	// propaga tal cual al caller.
+	repo := &mockDriverRepo{
+		tripDriverID: 77,
+		guestErr:     apperror.ConflictError{Msg: "El asiento ya esta ocupado en uno o mas tramos solicitados"},
+	}
+	svc := NewService(repo)
+	req := RegisterGuestRequest{
+		TripSeatID:                5,
+		OriginTripStopTimeID:      11,
+		DestinationTripStopTimeID: 14,
+		FirstName:                 "Juan",
+		LastName:                  "Perez",
+	}
+
+	_, err := svc.RegisterGuestOccupant(ctxWithDriver(t, 77), 10, req)
+	require.Error(t, err)
+	var ce apperror.ConflictError
+	require.True(t, errors.As(err, &ce), "el conflicto del repo debe propagarse al caller")
+	require.True(t, repo.guestCalled, "el repo debe haberse llamado")
+}

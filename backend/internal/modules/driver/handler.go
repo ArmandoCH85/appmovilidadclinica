@@ -222,6 +222,37 @@ func (h *DriverHandler) ReportIncident(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, reportIncidentResponse{ID: id})
 }
 
+// registerGuestResponse es la respuesta de POST /driver/trips/{id}/guest-occupants.
+type registerGuestResponse struct {
+	ID int64 `json:"id"`
+}
+
+// RegisterGuest maneja POST /driver/trips/{id}/guest-occupants — registra
+// un ocupante invitado (pasajero sin app) en un asiento libre. El trip_id
+// autoritativo es el del path; el conductor sale del JWT.
+func (h *DriverHandler) RegisterGuest(w http.ResponseWriter, r *http.Request) {
+	tripID, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	var req RegisterGuestRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	id, err := h.svc.RegisterGuestOccupant(r.Context(), tripID, req)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, registerGuestResponse{ID: id})
+}
+
 // RegisterRoutes monta los endpoints del modulo driver bajo /driver/*.
 // El grupo padre (router.go Phase 3) aplica jwtauth.Verifier+Authenticator;
 // el guard de rol DRIVER y la validacion de asignacion viven en el servicio.
@@ -238,5 +269,6 @@ func (h *DriverHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/reservations/{id}/no-show", h.NoShow)
 		r.Post("/reservations/{id}/alight", h.Alight)
 		r.Post("/trips/{id}/incidents", h.ReportIncident)
+		r.Post("/trips/{id}/guest-occupants", h.RegisterGuest)
 	})
 }
