@@ -47,14 +47,19 @@ fun DriverNavGraph(
             }
         }
 
-        when (val current = navState.current) {
-            Route.Login -> LoginScreen()
+        val stack by navState.stack.collectAsState()
+        val current = stack.lastOrNull() ?: Route.Login
+        when (current) {
+            Route.Login -> LoginScreen(
+                onLoggedIn = { navState.replace(Route.Dashboard) },
+            )
             Route.Dashboard -> DashboardScreen(
-                onTripSelected = { tripId -> navState.push(Route.TripDetail(tripId)) },
+                onTripSelected = { trip -> navState.push(Route.TripDetail(trip.id, trip)) },
                 onOpenProfile = { navState.push(Route.Profile) },
             )
             is Route.TripDetail -> TripDetailScreen(
                 tripId = current.tripId,
+                initialTrip = current.tripSnapshot,
                 onBack = { navState.pop() },
                 onScanQr = { navState.push(Route.QrScan) },
                 onReportIncident = { navState.push(Route.Incident(it)) },
