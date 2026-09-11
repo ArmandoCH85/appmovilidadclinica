@@ -23,6 +23,11 @@ DROP FUNCTION IF EXISTS fn_service_operates;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP PROCEDURE IF EXISTS sp_register_guest_occupant;
+DROP TABLE IF EXISTS guest_occupants;
+ALTER TABLE trip_seat_segments DROP FOREIGN KEY fk_trip_seat_segments_guest;
+ALTER TABLE trip_seat_segments DROP COLUMN guest_occupant_id;
+
 -- Orden inverso de dependencia: dependientes antes que padres.
 DROP TABLE IF EXISTS trip_incidents;
 DROP TABLE IF EXISTS reservation_events;
