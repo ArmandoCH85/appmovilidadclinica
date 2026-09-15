@@ -2,7 +2,7 @@
 
 import kotlinx.serialization.Serializable
 
-/** Shape exacto de `apperror.WriteJSONError` (backend Go) â€” `{"error":{"code","message"}}`. */
+/** Shape exacto de `apperror.WriteJSONError` (backend Go) ” `{"error":{"code","message"}}`. */
 @Serializable
 data class ErrorResponseDto(val error: ErrorBodyDto)
 

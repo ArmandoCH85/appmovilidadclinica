@@ -33,11 +33,11 @@ data class TripSearchUiState(
 )
 
 /**
- * Inyecta repositories directo â€” ver memoria "android-passenger-module/ponytail-audit".
+ * Inyecta repositories directo ” ver memoria "android-passenger-module/ponytail-audit".
  *
- * `direction` ya NO es input del usuario: se deriva automÃ¡ticamente desde
+ * `direction` ya NO es input del usuario: se deriva automáticamente desde
  * el `stopType` del origen y destino elegidos. La regla del negocio es
- * estricta (ver `desarrollo_pasajero.md` Â§2.1 y el doc de arquitectura):
+ * estricta (ver `desarrollo_pasajero.md` §2.1 y el doc de arquitectura):
  *   - PARADERO -> SEDE  = IDA
  *   - SEDE    -> PARADERO = VUELTA
  *   - Cualquier otra combinacion = invalida, la app la rechaza antes de
@@ -75,7 +75,7 @@ class TripSearchViewModel @Inject constructor(
 
     /**
      * Al cambiar el origen, si el destino ya elegido dejo de ser valido para
-     * el nuevo origen (ver `destinationOptionsFor`) lo limpiamos â€” evita que
+     * el nuevo origen (ver `destinationOptionsFor`) lo limpiamos ” evita que
      * quede seleccionado un paradero como destino cuando el origen paso a
      * ser un paradero (IDA solo permite destino sede).
      */
@@ -132,11 +132,11 @@ class TripSearchViewModel @Inject constructor(
 
         _uiState.update { it.copy(searching = true, errorMessage = null) }
         viewModelScope.launch {
-            // Para sedeâ†’sede (ambas direcciones posibles), lanzamos las
-            // dos bÃºsquedas en paralelo y mergearos. El backend SP es la
-            // fuente de verdad: devuelve lo que exista segÃºn la
-            // configuraciÃ³n de rutas del admin. Para combos unÃ­vocos
-            // (paraderoâ†’sede = solo IDA, sedeâ†’paradero = solo VUELTA)
+            // Para sede→sede (ambas direcciones posibles), lanzamos las
+            // dos búsquedas en paralelo y mergearos. El backend SP es la
+            // fuente de verdad: devuelve lo que exista según la
+            // configuración de rutas del admin. Para combos unívocos
+            // (paradero→sede = solo IDA, sede→paradero = solo VUELTA)
             // se hace una sola llamada.
             val results = directions.map { dir ->
                 async { tripsRepository.search(state.date, dir, originId, destinationId) }
@@ -149,7 +149,7 @@ class TripSearchViewModel @Inject constructor(
                 }
             }
             // Deduplicar por tripId por si el mismo viaje apareciera en
-            // ambas direcciones (no deberÃ­a, pero defensivo).
+            // ambas direcciones (no debería, pero defensivo).
             val unique = merged.distinctBy { it.tripId }
 
             _uiState.update {
@@ -159,16 +159,16 @@ class TripSearchViewModel @Inject constructor(
     }
 
     /**
-     * Devuelve las direcciones a buscar para la combinaciÃ³n de paradas
-     * elegida, segÃºn las reglas del negocio (ver `desarrollo_pasajero.md`
-     * Â§2.1):
-     *   - PARADERO â†’ SEDE = [IDA]
-     *   - SEDE â†’ PARADERO = [VUELTA]
-     *   - SEDE â†’ SEDE = [IDA, VUELTA] â€” ambigua: el destino es sede (IDA)
-     *     y el origen tambiÃ©n es sede (VUELTA). El admin pudo haber
-     *     configurado la ruta como cualquiera de las dos, asÃ­ que
+     * Devuelve las direcciones a buscar para la combinación de paradas
+     * elegida, según las reglas del negocio (ver `desarrollo_pasajero.md`
+     * §2.1):
+     *   - PARADERO → SEDE = [IDA]
+     *   - SEDE → PARADERO = [VUELTA]
+     *   - SEDE → SEDE = [IDA, VUELTA] ” ambigua: el destino es sede (IDA)
+     *     y el origen también es sede (VUELTA). El admin pudo haber
+     *     configurado la ruta como cualquiera de las dos, así que
      *     buscamos ambas y el SP decide.
-     *   - PARADERO â†’ PARADERO = [] â€” no vÃ¡lida segÃºn las reglas
+     *   - PARADERO → PARADERO = [] ” no válida según las reglas
      *     estrictas del negocio (subida en paradero solo en IDA, y en
      *     IDA el destino debe ser sede).
      */

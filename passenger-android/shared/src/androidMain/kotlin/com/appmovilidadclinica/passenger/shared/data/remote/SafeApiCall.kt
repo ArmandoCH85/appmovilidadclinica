@@ -11,7 +11,7 @@ import kotlinx.serialization.json.Json
  * Traductor unico HTTP -> AppError, espejo Kotlin de
  * `admin/src/api/client.ts` (`extractMessage`) y del shape
  * `{"error":{"code","message"}}` que emite todo handler Go via
- * `apperror.WriteJSONError`. Ningun repository parsea un error a mano â€”
+ * `apperror.WriteJSONError`. Ningun repository parsea un error a mano ”
  * todos pasan por `safeApiCall`.
  *
  * Variante Ktor (antes usaba Retrofit `Response.errorBody()`). Ahora
@@ -40,7 +40,7 @@ class ApiErrorMapper(private val json: Json = defaultJson) {
         }.getOrNull()
     }
 
-    // Mismo texto que admin/src/messages.ts â€” consistencia entre el
+    // Mismo texto que admin/src/messages.ts ” consistencia entre el
     // panel web y esta app.
     private fun fallbackMessage(code: Int): String = when (code) {
         401 -> "Sesion expirada. Inicie sesion nuevamente."

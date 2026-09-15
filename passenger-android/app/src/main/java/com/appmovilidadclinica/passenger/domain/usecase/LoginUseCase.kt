@@ -9,7 +9,7 @@ import javax.inject.Inject
 
 /**
  * Ver Specs #1: el backend deja loguearse a ADMIN/DRIVER igual que a
- * WORKER â€” esta app es solo de pasajero, asi que acÃ¡ se traduce un login
+ * WORKER ” esta app es solo de pasajero, asi que acá se traduce un login
  * tecnicamente exitoso pero de rol incorrecto en un AppError.Forbidden
  * legible, en vez de dejar que la UI navegue a pantallas que no aplican.
  */

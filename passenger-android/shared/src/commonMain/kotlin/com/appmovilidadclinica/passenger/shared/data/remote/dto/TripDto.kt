@@ -3,7 +3,7 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** GET /api/trips â€” un elemento del array que devuelve sp_search_trips. */
+/** GET /api/trips ” un elemento del array que devuelve sp_search_trips. */
 @Serializable
 data class TripSearchResultDto(
     @SerialName("trip_id") val tripId: Long,

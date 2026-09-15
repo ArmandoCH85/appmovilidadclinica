@@ -73,7 +73,7 @@ private fun formatShortDateEs(date: LocalDate): String {
 @Composable
 fun DashboardScreen(
     driverRepository: DriverRepository = koinInject(),
-    onTripSelected: (Long) -> Unit = {},
+    onTripSelected: (DriverTrip) -> Unit = {},
     onOpenProfile: () -> Unit = {},
 ) {
     val viewModel = remember(driverRepository) { DashboardViewModel(driverRepository) }
@@ -151,7 +151,7 @@ fun DashboardScreen(
                                 trip = trip,
                                 onClick = {
                                     viewModel.onTripSelected(trip)
-                                    onTripSelected(trip.id)
+                                    onTripSelected(trip)
                                 },
                             )
                         }

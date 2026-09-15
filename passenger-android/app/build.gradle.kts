@@ -19,14 +19,14 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "com.sitech.clinica.empleados"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sitech.clinica.empleados"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 20260831
-        versionName = "0.1.6"
+        targetSdk = 36
+        versionCode = 20260845
+        versionName = "0.2.8"
     }
 
     signingConfigs {

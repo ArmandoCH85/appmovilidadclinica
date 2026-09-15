@@ -7,7 +7,7 @@ import java.time.Instant
 
 /**
  * Ver Specs #5: el boton de auto-confirmacion solo se habilita en una
- * ventana razonable alrededor del horario de salida â€” evita "auto-abordarse"
+ * ventana razonable alrededor del horario de salida ” evita "auto-abordarse"
  * desde cualquier lado en cualquier momento. Ventana sugerida: +-30min.
  * Compartido entre MyReservationDetailViewModel y MyReservationsViewModel
  * (antes duplicado en el primero).

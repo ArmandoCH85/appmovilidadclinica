@@ -13,11 +13,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Vive en la raiz de la navegacion (ver NavGraph.kt) â€” decide Login vs.
+ * Vive en la raiz de la navegacion (ver NavGraph.kt) ” decide Login vs.
  * pantallas de pasajero, y centraliza el aviso T-2min + logout forzado por
  * 401, mismo patron que `useAuth.ts` + `AppLayout.vue` del panel admin.
  *
- * Inyecta `AuthRepository` directo (no un UseCase intermedio) â€” ver
+ * Inyecta `AuthRepository` directo (no un UseCase intermedio) ” ver
  * memoria "android-passenger-module/ponytail-audit": los use cases que solo
  * delegaban sin logica propia se eliminaron.
  *

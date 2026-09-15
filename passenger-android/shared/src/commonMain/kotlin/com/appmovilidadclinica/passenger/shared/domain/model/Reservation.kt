@@ -6,7 +6,7 @@ enum class ReservationStatus { CONFIRMED, BOARDED, COMPLETED, NO_SHOW, CANCELLED
 
 /**
  * Reserva confirmada, persistida localmente (Room) desde el momento en que
- * `POST /reservations` responde 201 â€” `qrToken` es la UNICA vez que el
+ * `POST /reservations` responde 201 ” `qrToken` es la UNICA vez que el
  * backend lo entrega en claro (guarda `SHA256(qrToken)`, nunca el original).
  * Si este registro se pierde, el QR no se puede volver a generar.
  *
@@ -35,7 +35,7 @@ data class Reservation(
     val plate: String = "",
 )
 
-/** Parametros para confirmar una reserva â€” ver Specs #3. */
+/** Parametros para confirmar una reserva ” ver Specs #3. */
 data class ReservationRequest(
     val tripId: Long,
     val tripSeatId: Long,

@@ -22,12 +22,12 @@ data class ReservationRowState(
 )
 
 /**
- * Lista viene de Room (fuente de verdad local), no de una llamada de red â€”
- * ver diseÃ±o tÃ©cnico. Inyecta `ReservationsRepository` directo (ver memoria
+ * Lista viene de Room (fuente de verdad local), no de una llamada de red ”
+ * ver diseño técnico. Inyecta `ReservationsRepository` directo (ver memoria
  * "android-passenger-module/ponytail-audit").
  *
  * El sync contra `GET /api/reservations` se dispara desde la pantalla via
- * `repeatOnLifecycle(RESUMED)`, no en el `init` del ViewModel â€” asi se
+ * `repeatOnLifecycle(RESUMED)`, no en el `init` del ViewModel ” asi se
  * re-ejecuta cada vez que el usuario vuelve a "Mis reservas" (otra app al
  * frente, navegacion de ida y vuelta, etc.). Sin esto, una reserva creada
  * en otro dispositivo/sesion solo apareceria la primera vez que se abre la
@@ -52,7 +52,7 @@ class MyReservationsViewModel @Inject constructor(
 
     /**
      * Auto-confirmacion de abordaje directo desde la lista, sin entrar al
-     * detalle de la reserva â€” mismo endpoint que
+     * detalle de la reserva ” mismo endpoint que
      * `MyReservationDetailViewModel.selfCheckin` (ver Specs #5, ventana
      * +-30min en `Reservation.canSelfCheckin()`).
      */

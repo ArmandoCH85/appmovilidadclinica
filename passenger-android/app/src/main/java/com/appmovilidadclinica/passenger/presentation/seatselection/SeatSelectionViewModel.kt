@@ -37,8 +37,8 @@ data class SeatSelectionUiState(
 
 /**
  * `GetTripDetailUseCase`/`ConfirmReservationUseCase` se eliminaron (solo
- * delegaban) â€” este ViewModel inyecta `TripsRepository`/`ReservationsRepository`
- * directo. `ListSeatsUseCase` SÃ se conserva: valida que origen preceda a
+ * delegaban) ” este ViewModel inyecta `TripsRepository`/`ReservationsRepository`
+ * directo. `ListSeatsUseCase` Sí se conserva: valida que origen preceda a
  * destino antes de pegarle al backend (ver esa clase). Ver memoria
  * "android-passenger-module/ponytail-audit".
  */

@@ -73,7 +73,7 @@ private fun parseRoute(serialized: String): Route? = when {
  */
 @Composable
 fun rememberDriverNavState(initial: Route = Route.Login): DriverNavState {
-    return rememberSaveable(saver = navStateSaver) {
+    return remember(initial) {
         DriverNavState(initial)
     }
 }

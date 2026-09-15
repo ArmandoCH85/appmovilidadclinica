@@ -17,14 +17,14 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "com.sitech.clinica.conductor"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sitech.clinica.conductor"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 20260822
-        versionName = "1.0.2"
+        targetSdk = 36
+        versionCode = 20260824
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -45,7 +45,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

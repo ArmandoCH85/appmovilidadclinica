@@ -3,7 +3,7 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** Mismo shape que `admin.Stop` (backend) â€” ver diseÃ±o tÃ©cnico #2. */
+/** Mismo shape que `admin.Stop` (backend) ” ver diseño técnico #2. */
 @Serializable
 data class StopDto(
     val id: Long,

@@ -6,8 +6,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -17,6 +20,10 @@ data class LoginUiState(
     val submitting: Boolean = false,
     val errorMessage: String? = null,
 )
+
+sealed interface LoginEvent {
+    data object Authenticated : LoginEvent
+}
 
 /**
  * Login ViewModel multiplatform. No extiende androidx.lifecycle.ViewModel
@@ -31,6 +38,9 @@ class LoginViewModel(
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState
+
+    private val _events = Channel<LoginEvent>(Channel.BUFFERED)
+    val events: Flow<LoginEvent> = _events.receiveAsFlow()
 
     fun onDocumentNumberChange(value: String) {
         _uiState.update { it.copy(documentNumber = value, errorMessage = null) }
@@ -58,6 +68,7 @@ class LoginViewModel(
                         }
                     } else {
                         _uiState.update { it.copy(submitting = false) }
+                        _events.send(LoginEvent.Authenticated)
                     }
                 },
                 onFailure = { error ->

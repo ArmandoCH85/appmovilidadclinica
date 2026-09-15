@@ -23,7 +23,6 @@ class TripsApi(private val client: HttpClient) {
         client.get("trips") {
             url {
                 parameters.append("date", date)
-                parameters.append("direction", direction)
                 parameters.append("origin", originStopId.toString())
                 parameters.append("destination", destinationStopId.toString())
             }

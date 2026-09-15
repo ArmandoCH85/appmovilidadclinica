@@ -28,7 +28,7 @@ private fun parseInstant(raw: String): Instant = OffsetDateTime.parse(raw).toIns
 /**
  * Parsea un campo fecha-hora del backend a LocalDate. El backend manda
  * `service_date` con hora+offset (`2026-07-14T00:00:00-05:00`), no fecha
- * pura â€” `LocalDate.parse()` reventaba con DateTimeParseException porque
+ * pura ” `LocalDate.parse()` reventaba con DateTimeParseException porque
  * espera solo la parte de fecha. Aceptamos los dos formatos: si trae hora,
  * la descartamos; si es fecha pura, la usamos tal cual.
  */

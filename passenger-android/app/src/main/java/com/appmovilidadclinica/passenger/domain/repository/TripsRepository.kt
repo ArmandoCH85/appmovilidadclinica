@@ -16,10 +16,10 @@ interface TripsRepository {
         destinationStopId: Long,
     ): AppResult<List<TripSearchResult>>
 
-    /** GET /api/trips/{id} â€” cronograma completo, resuelve trip_stop_time_id de cada parada. */
+    /** GET /api/trips/{id} ” cronograma completo, resuelve trip_stop_time_id de cada parada. */
     suspend fun getDetail(tripId: Long): AppResult<TripDetail>
 
-    /** GET /api/trips/{id}/seats?origin=&destination= (acÃ¡ origin/destination = trip_stop_time_id). */
+    /** GET /api/trips/{id}/seats?origin=&destination= (acá origin/destination = trip_stop_time_id). */
     suspend fun listSeats(
         tripId: Long,
         originTripStopTimeId: Long,

@@ -4,14 +4,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,6 +27,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -41,6 +47,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
@@ -76,7 +85,7 @@ fun SeatSelectionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("SelecciÃ³n de asiento") },
+                title = { Text("Selección de asiento") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -95,7 +104,7 @@ fun SeatSelectionScreen(
             state.origin?.let { origin ->
                 state.destination?.let { destination ->
                     Text(
-                        "${origin.stopName} â†’ ${destination.stopName}",
+                        "${origin.stopName} → ${destination.stopName}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -119,6 +128,9 @@ fun SeatSelectionScreen(
 
             Spacer(Modifier.height(16.dp))
 
+            // Grid 4 columnas. LazyVerticalGrid maneja el wrap correctamente
+            // y cada celda es un cuadrado fijo de 72dp, predecible en cualquier
+            // ancho de pantalla. Area tappable > 44dp minimo de Android.
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -127,6 +139,7 @@ fun SeatSelectionScreen(
             ) {
                 items(state.seats, key = { it.tripSeatId }) { seat ->
                     SeatCell(
+                        modifier = Modifier.size(72.dp),
                         seat = seat,
                         selected = seat.tripSeatId == state.selectedSeatId,
                         onClick = { viewModel.selectSeat(seat.tripSeatId) },
@@ -164,7 +177,12 @@ fun SeatSelectionScreen(
 }
 
 @Composable
-private fun SeatCell(seat: TripSeat, selected: Boolean, onClick: () -> Unit) {
+private fun SeatCell(
+    modifier: Modifier = Modifier,
+    seat: TripSeat,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
     val background = when {
         selected -> MaterialTheme.colorScheme.primary
         seat.isSelectable -> MaterialTheme.colorScheme.primaryContainer
@@ -178,8 +196,7 @@ private fun SeatCell(seat: TripSeat, selected: Boolean, onClick: () -> Unit) {
     }
 
     Box(
-        modifier = Modifier
-            .size(64.dp)
+        modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .background(background)
             .then(

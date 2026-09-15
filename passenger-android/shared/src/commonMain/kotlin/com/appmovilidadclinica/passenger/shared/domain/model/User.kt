@@ -1,6 +1,6 @@
 ﻿package com.appmovilidadclinica.passenger.shared.domain.model
 
-/** Espejo de dominio de `auth.User` (backend) â€” solo los campos que la app usa. */
+/** Espejo de dominio de `auth.User` (backend) ” solo los campos que la app usa. */
 data class User(
     val id: Long,
     val employeeCode: String,
@@ -12,7 +12,7 @@ data class User(
 
 /**
  * `users.role` es ENUM('ADMIN','DRIVER','WORKER') en el backend. Esta app es
- * exclusiva del rol WORKER (ver Specs #1) â€” ADMIN/DRIVER pueden loguearse
+ * exclusiva del rol WORKER (ver Specs #1) ” ADMIN/DRIVER pueden loguearse
  * (el backend no lo impide en /login) pero la navegacion los bloquea con un
  * mensaje, en vez de dejarlos entrar a pantallas que no les corresponden.
  */

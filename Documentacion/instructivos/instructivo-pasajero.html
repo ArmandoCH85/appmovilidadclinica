@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instructivo · Aplicación de Pasajeros</title>
+  <style>
+    :root {
+      --color-primario: #0f766e;
+      --color-primario-claro: #14b8a6;
+      --color-fondo: #f8fafc;
+      --color-texto: #1e293b;
+      --color-texto-suave: #475569;
+      --color-borde: #e2e8f0;
+      --color-acento: #fef3c7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.65;
+      color: var(--color-texto);
+      background: var(--color-fondo);
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 24px 20px 80px; }
+    header {
+      background: linear-gradient(135deg, var(--color-primario), var(--color-primario-claro));
+      color: white;
+      padding: 48px 24px;
+      border-radius: 0 0 24px 24px;
+      box-shadow: 0 6px 18px rgba(15, 118, 110, 0.25);
+      margin-bottom: 32px;
+    }
+    header h1 { font-size: 32px; margin-bottom: 8px; }
+    header p { font-size: 17px; opacity: 0.95; }
+    .indice {
+      background: white;
+      border-radius: 16px;
+      padding: 24px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 32px;
+    }
+    .indice h2 { font-size: 20px; margin-bottom: 12px; color: var(--color-primario); }
+    .indice ol { padding-left: 24px; }
+    .indice li { margin-bottom: 6px; }
+    .indice a { color: var(--color-primario); text-decoration: none; font-weight: 500; }
+    .indice a:hover { text-decoration: underline; }
+    section {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    section h2 {
+      font-size: 24px;
+      color: var(--color-primario);
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--color-borde);
+    }
+    section .numero {
+      display: inline-block;
+      background: var(--color-primario);
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 36px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    .captura {
+      width: 100%;
+      max-width: 360px;
+      display: block;
+      margin: 20px auto;
+      border-radius: 12px;
+      border: 4px solid #1e293b;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .descripcion { font-size: 16px; color: var(--color-texto-suave); }
+    .descripcion p { margin-bottom: 14px; }
+    .destacado {
+      background: var(--color-acento);
+      border-left: 4px solid #f59e0b;
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 15px;
+    }
+    ul.pasos { padding-left: 24px; margin: 14px 0; }
+    ul.pasos li { margin-bottom: 8px; }
+    .etiqueta {
+      display: inline-block;
+      background: var(--color-primario);
+      color: white;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    footer {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--color-texto-suave);
+      font-size: 14px;
+    }
+    @media print {
+      body { background: white; }
+      header { box-shadow: none; }
+      section { box-shadow: none; border: 1px solid var(--color-borde); page-break-inside: avoid; }
+      .indice { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <h1>Instructivo · Aplicación de Pasajeros</h1>
+    <p>Guía paso a paso para usar la app desde tu celular</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="indice">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#que-es">¿Qué es esta aplicación?</a></li>
+      <li><a href="#antes-de-empezar">Antes de empezar</a></li>
+      <li><a href="#paso-1">Paso 1 · Iniciar sesión</a></li>
+      <li><a href="#paso-2">Paso 2 · Buscar un viaje</a></li>
+      <li><a href="#paso-3">Paso 3 · Ver los viajes disponibles</a></li>
+      <li><a href="#paso-4">Paso 4 · Elegir tu asiento</a></li>
+      <li><a href="#paso-5">Paso 5 · Ver tus reservas</a></li>
+      <li><a href="#paso-6">Paso 6 · Cerrar sesión</a></li>
+      <li><a href="#problemas">Problemas frecuentes</a></li>
+    </ol>
+  </div>
+
+  <section id="que-es">
+    <h2><span class="numero">i</span>¿Qué es esta aplicación?</h2>
+    <div class="descripcion">
+      <p>Es la aplicación que te permite reservar tu lugar en la movilidad de la clínica. Desde tu celular podés:</p>
+      <ul class="pasos">
+        <li>Buscar los viajes disponibles según el día y el recorrido.</li>
+        <li>Elegir el asiento que más te guste.</li>
+        <li>Ver el detalle de tus reservas activas.</li>
+        <li>Cancelar una reserva si ya no la necesitás.</li>
+      </ul>
+      <div class="destacado">
+        <strong>Importante:</strong> esta guía es para usuarios pasajeros. Si sos conductor, tenés una aplicación distinta con su propio instructivo.
+      </div>
+    </div>
+  </section>
+
+  <section id="antes-de-empezar">
+    <h2><span class="numero">i</span>Antes de empezar</h2>
+    <div class="descripcion">
+      <p>Asegurate de tener a mano:</p>
+      <ul class="pasos">
+        <li>Tu <strong>usuario</strong> y <strong>contraseña</strong> entregados por la clínica.</li>
+        <li>Conexión a internet (datos móviles o Wi-Fi).</li>
+        <li>El celular con la batería suficiente.</li>
+      </ul>
+      <p>Si todavía no tenés usuario y contraseña, pedíselos al área de Recursos Humanos o a tu supervisor directo.</p>
+    </div>
+  </section>
+
+  <section id="paso-1">
+    <h2><span class="numero">1</span>Paso 1 · Iniciar sesión</h2>
+    <div class="descripcion">
+      <p>Cuando abrís la aplicación por primera vez, ves la pantalla de bienvenida. En la parte de arriba dice <strong>"Aplicación Pasajeros"</strong>.</p>
+      <p>El cartel grande te pide que ingreses tu usuario y contraseña para empezar a usar la app.</p>
+      <img src="capturas/pasajero/01-login.png" alt="Pantalla de inicio de sesión" class="captura">
+      <ul class="pasos">
+        <li><span class="etiqueta">1</span>Tocá el primer cuadro, el que dice <strong>"Usuario"</strong>.</li>
+        <li><span class="etiqueta">2</span>Escribí tu nombre de usuario (el mismo que te dieron en la clínica).</li>
+        <li><span class="etiqueta">3</span>Tocá el segundo cuadro, el que dice <strong>"Contraseña"</strong>.</li>
+        <li><span class="etiqueta">4</span>Escribí tu contraseña. Los puntitos que aparecen son normales, es para que nadie la vea.</li>
+        <li><span class="etiqueta">5</span>Si querés ver lo que escribiste, tocá el botón <strong>"Mostrar"</strong>.</li>
+        <li><span class="etiqueta">6</span>Por último, tocá el botón verde grande que dice <strong>"Iniciar sesión"</strong>.</li>
+      </ul>
+      <img src="capturas/pasajero/04-login-relleno.png" alt="Pantalla con usuario y contraseña escritos" class="captura">
+      <div class="destacado">
+        <strong>Tip:</strong> si te equivocás al escribir, tocá adentro del cuadro y borra con la tecla de la flecha hacia atrás del teclado. Las mayúsculas y minúsculas importan.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-2">
+    <h2><span class="numero">2</span>Paso 2 · Buscar un viaje</h2>
+    <div class="descripcion">
+      <p>Una vez que entraste con tu usuario, la app te lleva a la pantalla <strong>"Buscar viaje"</strong>. Acá es donde elegís desde dónde salís, hasta dónde vas y qué día.</p>
+      <img src="capturas/pasajero/02-buscar-viaje.png" alt="Pantalla principal de buscar viaje" class="captura">
+      <p>La pantalla tiene tres campos para completar:</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">Origen</span>Tocá este cuadro y se abre la lista de paradas disponibles. Elegí desde dónde te van a buscar.</li>
+        <li><span class="etiqueta">Destino</span>Tocá este cuadro y elegí adónde querés llegar.</li>
+        <li><span class="etiqueta">Fecha</span>Ya viene con el día de hoy cargado. Si querés otro día, tocá el ícono del calendario que está a la derecha.</li>
+      </ul>
+      <p>Por ejemplo, así se ve cuando tocás el campo <strong>Origen</strong> y se abre la lista de paradas para elegir:</p>
+      <img src="capturas/pasajero/06-origen-dropdown.png" alt="Lista desplegable de paradas disponibles" class="captura">
+      <p>Tocá la parada que quieras para seleccionarla. La lista muestra nombres como "Sede Lima", "Sede San Borja", "Estación La Cultura", etc.</p>
+      <p>Cuando completes los tres campos, la pantalla se ve así:</p>
+      <img src="capturas/pasajero/07-buscar-con-datos.png" alt="Pantalla con origen, destino y fecha cargados" class="captura">
+      <p>Ahora sí, tocá el botón verde <strong>"Buscar viajes"</strong> para que la app te muestre los viajes disponibles.</p>
+    </div>
+  </section>
+
+  <section id="paso-3">
+    <h2><span class="numero">3</span>Paso 3 · Ver los viajes disponibles</h2>
+    <div class="descripcion">
+      <p>Después de tocar <strong>"Buscar viajes"</strong>, la pantalla te muestra todos los viajes que coinciden con lo que pediste. Cada viaje aparece como una tarjeta con:</p>
+      <ul class="pasos">
+        <li>El recorrido (por ejemplo, "Sede San Borja → Sede Lima").</li>
+        <li>La hora de salida y la hora de llegada.</li>
+        <li>Cuántos asientos quedan libres.</li>
+        <li>El vehículo asignado (BUS-015, BUS-025, etc.).</li>
+      </ul>
+      <img src="capturas/pasajero/08-resultados-busqueda.png" alt="Lista de viajes disponibles" class="captura">
+      <p>Pasá el dedo hacia arriba en la pantalla para ver más viajes si hay varios. Tocá el viaje que te sirva para pasar a la elección de asiento.</p>
+    </div>
+  </section>
+
+  <section id="paso-4">
+    <h2><span class="numero">4</span>Paso 4 · Elegir tu asiento</h2>
+    <div class="descripcion">
+      <p>Cuando elegís un viaje, la app te lleva a la pantalla <strong>"Selección de asiento"</strong>. Arriba ves el resumen del viaje (hora de salida, hora de llegada) y abajo aparece el dibujo del vehículo con todos los asientos numerados.</p>
+      <img src="capturas/pasajero/09-seleccion-asiento.png" alt="Pantalla de selección de asiento con grilla 4x4" class="captura">
+      <p>Los asientos aparecen ordenados en una grilla de 4 columnas, igual que las filas de un��. El color de cada uno te avisa el estado:</p>
+      <ul class="pasos">
+        <li><strong>Verde claro:</strong> asiento disponible, lo podés elegir.</li>
+        <li><strong>Verde oscuro con tilde:</strong> asiento que ya seleccionaste.</li>
+        <li><strong>Gris:</strong> asiento ocupado, ya está reservado por otro pasajero.</li>
+      </ul>
+      <p>Para elegir tu lugar:</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">1</span>Tocá el número del asiento que quieras (1, 2, 3, etc.).</li>
+        <li><span class="etiqueta">2</span>El asiento cambia a color oscuro para confirmar que lo elegiste.</li>
+      </ul>
+      <img src="capturas/pasajero/10-asiento-seleccionado.png" alt="Asiento 1 seleccionado, botón muestra Confirmar asiento 1" class="captura">
+      <ul class="pasos">
+        <li><span class="etiqueta">3</span>Bajá hasta el final de la pantalla. El botón azul ahora dice <strong>"Confirmar asiento N"</strong> (donde N es el número que elegiste). Tocá ese botón para confirmar la reserva.</li>
+      </ul>
+      <p>La app te lleva automáticamente a la pantalla <strong>"Mi reserva"</strong> con el comprobante de la reserva recién hecha. Ahí vas a ver:</p>
+      <img src="capturas/pasajero/11-reserva-confirmada.png" alt="Pantalla Mi reserva con el comprobante" class="captura">
+      <ul class="pasos">
+        <li><strong>El código de reserva</strong> (empieza con R-) en la parte de arriba. Es único y te identifica.</li>
+        <li><strong>El estado</strong>: "Confirmada" en verde.</li>
+        <li><strong>El recorrido y la hora de salida</strong> del viaje.</li>
+        <li><strong>El número de asiento</strong> que elegiste.</li>
+        <li><strong>El detalle del recorrido</strong> con todas las paradas y la hora aproximada de paso por cada una.</li>
+        <li><strong>El botón "Confirmar abordaje"</strong> para cuando estés subiendo al vehículo (el día del viaje).</li>
+      </ul>
+      <div class="destacado">
+        <strong>Recordá:</strong> guardá el código de reserva por si necesitás consultar la reserva después o presentarla en la parada.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-5">
+    <h2><span class="numero">5</span>Paso 5 · Ver tus reservas</h2>
+    <div class="descripcion">
+      <p>Para ver todas las reservas que tenés hechas, tocá el botón <strong>"Mis reservas"</strong> que aparece en la parte de arriba a la derecha (es el ícono con una lista).</p>
+      <img src="capturas/pasajero/03-mis-reservas.png" alt="Pantalla de mis reservas con una reserva confirmada" class="captura">
+      <p>Acá aparece el listado de todas tus reservas. Cada una muestra:</p>
+      <ul class="pasos">
+        <li>El recorrido (origen y destino).</li>
+        <li>La fecha y hora de salida.</li>
+        <li>El número de asiento.</li>
+        <li>El estado de la reserva (<strong>Confirmada</strong>, <strong>Abordada</strong> o <strong>Cancelada</strong>).</li>
+        <li>El botón <strong>"Confirmar abordaje"</strong>, que se habilita cerca del horario de salida para que confirmes que subiste al vehículo.</li>
+      </ul>
+      <p>Si todavía no hiciste ninguna reserva, en vez de la lista vas a ver el mensaje:</p>
+      <ul class="pasos">
+        <li><strong>"Todavía no tenés reservas"</strong></li>
+        <li><strong>"Cuando hagas una reserva, va a aparecer acá."</strong></li>
+      </ul>
+      <p>Tocá una reserva para abrir el detalle completo (el comprobante con el código). Desde ahí también podés cancelarla si ya no la necesitás, tocando el botón correspondiente y confirmando.</p>
+      <div class="destacado">
+        <strong>Importante:</strong> el botón <strong>"Confirmar abordaje"</strong> solo se habilita cerca del horario de salida del viaje. Si tocás antes y no funciona, esperá a estar más cerca de la hora y volvé a intentar.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-6">
+    <h2><span class="numero">6</span>Paso 6 · Cerrar sesión</h2>
+    <div class="descripcion">
+      <p>Cuando termines de usar la aplicación, es importante cerrar la sesión para que nadie más pueda entrar con tu usuario.</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">1</span>Tocá el botón <strong>"Cerrar sesión"</strong> que aparece arriba a la derecha (es el ícono de la flecha saliendo de una caja).</li>
+        <li><span class="etiqueta">2</span>La app te pregunta si estás seguro. Tocá <strong>"Sí, cerrar sesión"</strong>.</li>
+        <li><span class="etiqueta">3</span>Volvés a la pantalla de inicio y la próxima vez que abras la app te va a pedir usuario y contraseña otra vez.</li>
+      </ul>
+      <div class="destacado">
+        <strong>Consejo de seguridad:</strong> siempre cerrá sesión si dejás el celular en manos de otra persona o si lo prestás.
+      </div>
+    </div>
+  </section>
+
+  <section id="problemas">
+    <h2><span class="numero">!</span>Problemas frecuentes</h2>
+    <div class="descripcion">
+      <p><strong>"Usuario o contraseña incorrectos"</strong></p>
+      <p>Revisá que estés escribiendo bien tu usuario y contraseña. Las mayúsculas y minúsculas importan. Si te confundiste, la app te deja volver a intentarlo las veces que necesites.</p>
+      <img src="capturas/pasajero/05-login-error.png" alt="Mensaje de error al iniciar sesión" class="captura">
+
+      <p style="margin-top: 18px;"><strong>"Complete el usuario y la contraseña"</strong></p>
+      <p>Este mensaje aparece cuando no llenaste alguno de los dos campos. Tocá el cuadro y escribí lo que falta.</p>
+
+      <p style="margin-top: 18px;"><strong>No aparecen viajes en los resultados</strong></p>
+      <p>Puede pasar que para esa fecha y ese recorrido no haya viajes programados. Probá con otra fecha o cambiá el origen y el destino.</p>
+
+      <p style="margin-top: 18px;"><strong>"Sesión expirada"</strong></p>
+      <p>Por seguridad, después de un rato sin usar la app te pide que vuelvas a iniciar sesión. Tocá el botón, escribí tu usuario y contraseña otra vez, y seguís donde estabas.</p>
+
+      <p style="margin-top: 18px;"><strong>¿Otro problema?</strong></p>
+      <p>Si la app no responde, se cierra sola o te muestra un error que no entendés, comunicate con el área de soporte o con tu supervisor. Es importante que tengas la última versión de la aplicación instalada.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p>Instructivo · Aplicación de Pasajeros · Movilidad Clínica</p>
+</footer>
+
+</body>
+</html>

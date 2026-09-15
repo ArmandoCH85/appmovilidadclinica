@@ -40,9 +40,9 @@ data class MyReservationDetailUiState(
 
 /**
  * `ObserveReservationUseCase`/`CancelReservationUseCase`/`SelfCheckinUseCase`
- * se eliminaron (solo delegaban) â€” este ViewModel inyecta
- * `ReservationsRepository` directo. `GenerateQrUseCase` SÃ se conserva (tiene
- * lÃ³gica real: encode ZXing). Ver memoria "android-passenger-module/ponytail-audit".
+ * se eliminaron (solo delegaban) ” este ViewModel inyecta
+ * `ReservationsRepository` directo. `GenerateQrUseCase` Sí se conserva (tiene
+ * lógica real: encode ZXing). Ver memoria "android-passenger-module/ponytail-audit".
  */
 @HiltViewModel
 class MyReservationDetailViewModel @Inject constructor(
@@ -99,7 +99,7 @@ class MyReservationDetailViewModel @Inject constructor(
             // cancel exitoso), marcamos cancelled=true para que el
             // LaunchedEffect navegue atras. Sin esto, el cambio de
             // status viene del flow de Room pero el flag cancelled
-            // esta en _uiState â€” nunca se sincronizan.
+            // esta en _uiState ” nunca se sincronizan.
             val cancelledFromFlow = reservation?.status == ReservationStatus.CANCELLED
             if (reservation != null && reservation != state.reservation) {
                 val qr = reservation.qrToken

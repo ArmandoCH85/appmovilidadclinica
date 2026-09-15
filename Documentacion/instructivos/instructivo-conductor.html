@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instructivo · Aplicación de Conductores</title>
+  <style>
+    :root {
+      --color-primario: #1e40af;
+      --color-primario-claro: #3b82f6;
+      --color-fondo: #f8fafc;
+      --color-texto: #1e293b;
+      --color-texto-suave: #475569;
+      --color-borde: #e2e8f0;
+      --color-acento: #fef3c7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.65;
+      color: var(--color-texto);
+      background: var(--color-fondo);
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 24px 20px 80px; }
+    header {
+      background: linear-gradient(135deg, var(--color-primario), var(--color-primario-claro));
+      color: white;
+      padding: 48px 24px;
+      border-radius: 0 0 24px 24px;
+      box-shadow: 0 6px 18px rgba(30, 64, 175, 0.25);
+      margin-bottom: 32px;
+    }
+    header h1 { font-size: 32px; margin-bottom: 8px; }
+    header p { font-size: 17px; opacity: 0.95; }
+    .indice {
+      background: white;
+      border-radius: 16px;
+      padding: 24px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 32px;
+    }
+    .indice h2 { font-size: 20px; margin-bottom: 12px; color: var(--color-primario); }
+    .indice ol { padding-left: 24px; }
+    .indice li { margin-bottom: 6px; }
+    .indice a { color: var(--color-primario); text-decoration: none; font-weight: 500; }
+    .indice a:hover { text-decoration: underline; }
+    section {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    section h2 {
+      font-size: 24px;
+      color: var(--color-primario);
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--color-borde);
+    }
+    section .numero {
+      display: inline-block;
+      background: var(--color-primario);
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 36px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    .captura {
+      width: 100%;
+      max-width: 360px;
+      display: block;
+      margin: 20px auto;
+      border-radius: 12px;
+      border: 4px solid #1e293b;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .descripcion { font-size: 16px; color: var(--color-texto-suave); }
+    .descripcion p { margin-bottom: 14px; }
+    .destacado {
+      background: var(--color-acento);
+      border-left: 4px solid #f59e0b;
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 15px;
+    }
+    ul.pasos { padding-left: 24px; margin: 14px 0; }
+    ul.pasos li { margin-bottom: 8px; }
+    .etiqueta {
+      display: inline-block;
+      background: var(--color-primario);
+      color: white;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    footer {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--color-texto-suave);
+      font-size: 14px;
+    }
+    @media print {
+      body { background: white; }
+      header { box-shadow: none; }
+      section { box-shadow: none; border: 1px solid var(--color-borde); page-break-inside: avoid; }
+      .indice { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <h1>Instructivo · Aplicación de Conductores</h1>
+    <p>Guía paso a paso para usar la app desde tu celular</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="indice">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#que-es">¿Qué es esta aplicación?</a></li>
+      <li><a href="#antes-de-empezar">Antes de empezar</a></li>
+      <li><a href="#paso-1">Paso 1 · Iniciar sesión</a></li>
+      <li><a href="#paso-2">Paso 2 · Ver los viajes del día</a></li>
+      <li><a href="#paso-3">Paso 3 · Abrir el detalle de un viaje</a></li>
+      <li><a href="#paso-4">Paso 4 · Marcar la llegada a una parada</a></li>
+      <li><a href="#paso-5">Paso 5 · Escanear el QR de un pasajero</a></li>
+      <li><a href="#paso-6">Paso 6 · Reportar una incidencia</a></li>
+      <li><a href="#paso-7">Paso 7 · Ver tu perfil</a></li>
+      <li><a href="#paso-8">Paso 8 · Cerrar sesión</a></li>
+      <li><a href="#problemas">Problemas frecuentes</a></li>
+    </ol>
+  </div>
+
+  <section id="que-es">
+    <h2><span class="numero">i</span>¿Qué es esta aplicación?</h2>
+    <div class="descripcion">
+      <p>Es la herramienta que te ayuda a gestionar los viajes de transporte desde tu celular. Con esta app podés:</p>
+      <ul class="pasos">
+        <li>Ver los viajes que tenés asignados para el día.</li>
+        <li>Pasar de un día a otro con las flechas para ver viajes anteriores o próximos.</li>
+        <li>Abrir el detalle de cada viaje: paradas, pasajeros y horario.</li>
+        <li>Marcar cuando llegás a cada parada.</li>
+        <li>Escanear el código QR que te muestra el pasajero para confirmar que subió al vehículo.</li>
+        <li>Reportar cualquier problema o incidencia durante el viaje.</li>
+        <li>Ver tu información personal y cerrar sesión cuando termines.</li>
+      </ul>
+      <div class="destacado">
+        <strong>Importante:</strong> esta guía es para conductores. Si sos pasajero, la aplicación es otra y tiene su propio instructivo.
+      </div>
+    </div>
+  </section>
+
+  <section id="antes-de-empezar">
+    <h2><span class="numero">i</span>Antes de empezar</h2>
+    <div class="descripcion">
+      <p>Para empezar a usar la app necesitás:</p>
+      <ul class="pasos">
+        <li>Tu <strong>nombre de usuario</strong> y <strong>contraseña</strong> entregados por la clínica.</li>
+        <li>Conexión a internet (datos móviles o Wi-Fi) en el celular.</li>
+        <li>Permitir que la app use la <strong>cámara</strong> (para escanear los QR) y la <strong>ubicación</strong> (para registrar tu posición durante los viajes).</li>
+      </ul>
+      <p>La primera vez que abras la app, el celular te va a preguntar si le das permiso para usar la cámara y para saber dónde estás. Decí que <strong>Sí</strong> a los dos pedidos.</p>
+    </div>
+  </section>
+
+  <section id="paso-1">
+    <h2><span class="numero">1</span>Paso 1 · Iniciar sesión</h2>
+    <div class="descripcion">
+      <p>Cuando abrís la aplicación por primera vez ves la pantalla de bienvenida. En la parte de arriba dice <strong>"Aplicación - Conductores"</strong>.</p>
+      <p>El cartel grande te pide que ingreses tu usuario y contraseña para empezar a usar la app.</p>
+      <img src="capturas/conductor/01-login.png" alt="Pantalla de inicio de sesión del conductor" class="captura">
+      <ul class="pasos">
+        <li><span class="etiqueta">1</span>Tocá el primer cuadro, el que dice <strong>"Nombre de usuario"</strong>.</li>
+        <li><span class="etiqueta">2</span>Escribí tu usuario (el que te dieron cuando te asignaron como conductor).</li>
+        <li><span class="etiqueta">3</span>Tocá el segundo cuadro, el que dice <strong>"Contraseña"</strong>.</li>
+        <li><span class="etiqueta">4</span>Escribí tu contraseña. Los puntitos que aparecen son normales, es para que nadie la vea.</li>
+        <li><span class="etiqueta">5</span>Si querés ver lo que escribiste, tocá el botón <strong>"Mostrar"</strong>.</li>
+        <li><span class="etiqueta">6</span>Por último, tocá el botón azul grande que dice <strong>"Iniciar sesión"</strong>.</li>
+      </ul>
+      <img src="capturas/conductor/02-login-relleno.png" alt="Pantalla con usuario y contraseña escritos" class="captura">
+      <div class="destacado">
+        <strong>Tip:</strong> revisá que las mayúsculas y minúsculas estén bien puestas. La contraseña distingue entre mayúsculas y minúsculas.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-2">
+    <h2><span class="numero">2</span>Paso 2 · Ver los viajes del día</h2>
+    <div class="descripcion">
+      <p>Después de iniciar sesión, la app te lleva a la pantalla principal llamada <strong>"Viajes del día"</strong>. Acá ves todos los viajes que tenés asignados para la fecha actual.</p>
+      <img src="capturas/conductor/04-dashboard.png" alt="Pantalla principal con la lista de viajes del día" class="captura">
+      <p>Arriba a la derecha tenés dos botones muy útiles:</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">Actualizar</span>La flecha circular sirve para recargar la lista y ver si hay viajes nuevos o cambios.</li>
+        <li><span class="etiqueta">Perfil</span>El ícono de la persona te lleva a tu información personal y a cerrar sesión.</li>
+      </ul>
+      <p>Cada viaje de la lista muestra:</p>
+      <ul class="pasos">
+        <li>El nombre del viaje (por ejemplo, "R1 Mañana IDA - BUS-25").</li>
+        <li>El estado (Publicado, En curso, etc.).</li>
+        <li>La fecha y el horario.</li>
+        <li>El vehículo asignado.</li>
+        <li>La capacidad de asientos.</li>
+      </ul>
+      <div class="destacado">
+        <strong>Consejo:</strong> si no aparece ningún viaje, tocá el botón <strong>Actualizar</strong> arriba a la derecha para recargar la lista. Si sigue vacío, es porque no tenés viajes cargados para hoy.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-3">
+    <h2><span class="numero">3</span>Paso 3 · Abrir el detalle de un viaje</h2>
+    <div class="descripcion">
+      <p>Cuando tocás un viaje de la lista, la app abre la pantalla <strong>"Detalle del viaje"</strong>. Acá tenés toda la información del viaje seleccionado.</p>
+      <p>Arriba a la izquierda tenés la flecha <strong>"Volver"</strong> para regresar a la lista de viajes del día.</p>
+      <img src="capturas/conductor/05-detalle-viaje.png" alt="Detalle del viaje con paradas y acciones" class="captura">
+      <p>En la parte superior de la pantalla ves el nombre del viaje, el sentido (Ida o Vuelta), el horario, el vehículo y tres botones de acción:</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">Iniciar viaje</span>Sirve para arrancar formalmente el viaje (cambia el estado).</li>
+        <li><span class="etiqueta">Escanear QR</span>Abre la cámara para escanear el código QR de un pasajero.</li>
+        <li><span class="etiqueta">Incidencia</span>Para reportar un problema durante el viaje.</li>
+      </ul>
+      <p>Más abajo aparece <strong>"Pasajeros (0)"</strong> indicando cuántos pasajeros tienen reserva para este viaje, y después la lista de paradas:</p>
+      <ul class="pasos">
+        <li>El orden de la parada (1, 2, 3, etc.).</li>
+        <li>El nombre del lugar (por ejemplo, "Sede Lima", "Sede S. Isidro - Westin").</li>
+        <li>La hora estimada de llegada a esa parada.</li>
+        <li>El estado (Pendiente, Completada).</li>
+        <li>El botón <strong>"Marcar llegada"</strong> para registrar que llegaste.</li>
+      </ul>
+      <div class="destacado">
+        <strong>Importante:</strong> las paradas muestran el mensaje <strong>"Inicie el viaje para marcar llegadas"</strong> mientras el viaje no haya sido iniciado. Tocá <strong>"Iniciar viaje"</strong> antes de querer marcar la primera llegada.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-4">
+    <h2><span class="numero">4</span>Paso 4 · Marcar la llegada a una parada</h2>
+    <div class="descripcion">
+      <p>Cuando llegás a una parada, tenés que avisarle a la app para que registre la hora real en la que llegaste.</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">1</span>Entrá al detalle del viaje (Paso 3) y asegurate de haber tocado antes <strong>"Iniciar viaje"</strong>.</li>
+        <li><span class="etiqueta">2</span>Buscá la parada en la lista y tocá el botón <strong>"Marcar llegada"</strong>.</li>
+        <li><span class="etiqueta">3</span>La app te pregunta <strong>"¿Confirma la llegada a esta parada?"</strong></li>
+        <li><span class="etiqueta">4</span>Tocá <strong>"Confirmar"</strong> si efectivamente llegaste, o <strong>"Cancelar"</strong> si tocaste sin querer.</li>
+      </ul>
+      <p>Una vez confirmada, la parada cambia de estado a <strong>"Completada"</strong> y la app guarda la hora exacta en la que llegaste. Esto es importante porque después se usa para calcular si el viaje va bien de tiempo o si hubo demoras.</p>
+      <div class="destacado">
+        <strong>Consejo:</strong> si por alguna razón no podés parar (tráfico, obra en la calle, etc.), avisale a la app igual con el botón. La app registra la hora real y se considera que el viaje va con demora, pero los pasajeros quedan protegidos.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-5">
+    <h2><span class="numero">5</span>Paso 5 · Escanear el QR de un pasajero</h2>
+    <div class="descripcion">
+      <p>Cuando un pasajero sube al vehículo, te muestra un código QR en su celular (es la confirmación de su reserva). Con esta app podés escanearlo para confirmar que subió.</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">1</span>En el detalle del viaje, tocá el botón <strong>"Escanear QR"</strong>.</li>
+        <li><span class="etiqueta">2</span>La primera vez, el celular te pregunta si le das permiso para usar la cámara. Tocá <strong>"While using the app"</strong> (Mientras uso la app).</li>
+        <li><span class="etiqueta">3</span>Se abre la cámara con el mensaje <strong>"Apunte la cámara al código QR del pasajero"</strong> arriba de todo.</li>
+        <li><span class="etiqueta">4</span>Pedile al pasajero que te muestre su QR y apuntá la cámara al código. No hace falta tocar nada, la app escanea sola.</li>
+      </ul>
+      <img src="capturas/conductor/06-qr-scan.png" alt="Pantalla del escáner de QR con la cámara abierta" class="captura">
+      <ul class="pasos">
+        <li><span class="etiqueta">5</span>La app te muestra una ventanita con los datos de la reserva: nombre del pasajero, código, asiento, desde dónde sube y hasta dónde va.</li>
+        <li><span class="etiqueta">6</span>En esa ventanita elegí una opción:</li>
+      </ul>
+      <p>Las opciones que aparecen según el caso son:</p>
+      <ul class="pasos">
+        <li><strong>"Abordar"</strong>: el pasajero subió al vehículo. Tocala para confirmar.</li>
+        <li><strong>"No presentado"</strong>: el pasajero tenía reserva pero no se acercó al vehículo. Marcá esto si pasó el tiempo y no vino.</li>
+        <li><strong>"Bajar"</strong>: el pasajero se bajó en esa parada (para viajes con varias paradas).</li>
+        <li><strong>"Cerrar"</strong>: para descartar y volver a la pantalla anterior sin guardar nada.</li>
+      </ul>
+      <div class="destacado">
+        <strong>Permisos de cámara:</strong> si la cámara no se abre, andá a <strong>Configuración &gt; Aplicaciones &gt; Conductor &gt; Permisos</strong> y activá el permiso de cámara. Después volvé a la app y reintentá.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-6">
+    <h2><span class="numero">6</span>Paso 6 · Reportar una incidencia</h2>
+    <div class="descripcion">
+      <p>Si durante el viaje pasa algo fuera de lo normal (un desperfecto mecánico, un accidente, un pasajero que se sintió mal, etc.) tenés que dejar registro en la app.</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">1</span>Entrá al detalle del viaje (Paso 3).</li>
+        <li><span class="etiqueta">2</span>Tocá el botón <strong>"Incidencia"</strong> que aparece en la parte superior del detalle.</li>
+        <li><span class="etiqueta">3</span>Se abre la pantalla <strong>"Reportar incidencia"</strong>. Arriba a la izquierda está la flecha <strong>"Volver"</strong> por si te arrepentís.</li>
+        <li><span class="etiqueta">4</span>Primero elegí el <strong>tipo de incidencia</strong>: Avería, Retraso, Accidente u Otro. Tocá el que corresponda.</li>
+        <li><span class="etiqueta">5</span>Después, en el cuadro grande que dice <strong>"Descripción"</strong>, escribí lo que pasó. Sé claro y concreto: qué pasó, a qué hora, qué hiciste. Abajo a la derecha del cuadro ves un contador (por ejemplo, "0 / 1000") que te indica cuántos caracteres te quedan.</li>
+        <li><span class="etiqueta">6</span>Cuando termines, tocá el botón azul <strong>"Enviar reporte"</strong>.</li>
+        <li><span class="etiqueta">7</span>La app te pregunta <strong>"¿Confirma el envío de este reporte de incidencia?"</strong></li>
+        <li><span class="etiqueta">8</span>Tocá <strong>"Sí, enviar"</strong> para mandar el reporte, o <strong>"Volver"</strong> si querés revisar lo que escribiste antes.</li>
+      </ul>
+      <img src="capturas/conductor/07-incidencia.png" alt="Pantalla de reportar incidencia con ejemplo" class="captura">
+      <div class="destacado">
+        <strong>Importante:</strong> el reporte queda guardado con la fecha, la hora y tu usuario. Una vez enviado no se puede borrar desde la app, así que revisá bien antes de confirmar.
+      </div>
+    </div>
+  </section>
+
+  <section id="paso-7">
+    <h2><span class="numero">7</span>Paso 7 · Ver tu perfil</h2>
+    <div class="descripcion">
+      <p>Para ver tus datos personales (nombre, código de empleado, cantidad de viajes del día) tocá el ícono de la persona que está arriba a la derecha en la pantalla principal.</p>
+      <img src="capturas/conductor/08-perfil.png" alt="Pantalla de perfil del conductor" class="captura">
+      <p>Se abre la pantalla <strong>"Perfil"</strong> con toda tu información:</p>
+      <ul class="pasos">
+        <li><strong>Tu nombre completo</strong> (por ejemplo, "Conductor IDA").</li>
+        <li><strong>Rol</strong>: Conductor.</li>
+        <li><strong>Código</strong>: tu código de empleado (por ejemplo, "COND-IDA").</li>
+        <li><strong>Viajes hoy</strong>: la cantidad de viajes que tenés asignados para el día.</li>
+      </ul>
+      <p>Arriba a la izquierda tenés la flecha <strong>"Volver"</strong> para regresar a la lista de viajes.</p>
+      <p>Abajo está el botón <strong>"Cerrar sesión"</strong> que se explica en el siguiente paso.</p>
+    </div>
+  </section>
+
+  <section id="paso-8">
+    <h2><span class="numero">8</span>Paso 8 · Cerrar sesión</h2>
+    <div class="descripcion">
+      <p>Cuando termines tu jornada, cerrá la sesión para que nadie más pueda entrar con tu usuario.</p>
+      <ul class="pasos">
+        <li><span class="etiqueta">1</span>Desde la pantalla principal, tocá tu perfil (ícono de persona arriba a la derecha).</li>
+        <li><span class="etiqueta">2</span>Tocá el botón <strong>"Cerrar sesión"</strong> abajo de los datos.</li>
+        <li><span class="etiqueta">3</span>La app te pregunta <strong>"¿Está seguro de que desea cerrar sesión?"</strong></li>
+        <li><span class="etiqueta">4</span>Tocá <strong>"Sí, cerrar sesión"</strong> para confirmar, o <strong>"Volver"</strong> si te arrepentiste.</li>
+      </ul>
+      <p>Volvés a la pantalla de inicio. La próxima vez que abras la app te va a pedir usuario y contraseña otra vez.</p>
+      <div class="destacado">
+        <strong>Consejo de seguridad:</strong> siempre cerrá sesión al final del día, sobre todo si compartís el celular con otra persona.
+      </div>
+    </div>
+  </section>
+
+  <section id="problemas">
+    <h2><span class="numero">!</span>Problemas frecuentes</h2>
+    <div class="descripcion">
+      <p><strong>"Usuario o contraseña incorrectos"</strong></p>
+      <p>Revisá que estés escribiendo bien tu usuario y contraseña. Si te equivocaste, la app te deja volver a intentarlo las veces que necesites.</p>
+      <img src="capturas/conductor/03-login-error.png" alt="Mensaje de error de credenciales" class="captura">
+
+      <p style="margin-top: 18px;"><strong>"Complete el usuario y la contraseña"</strong></p>
+      <p>Aparece cuando falta completar alguno de los dos campos. Tocalos y escribí lo que falta.</p>
+
+      <p style="margin-top: 18px;"><strong>La cámara no se abre para escanear QR</strong></p>
+      <p>Puede ser que le hayas negado el permiso a la app. Andá a <strong>Configuración &gt; Aplicaciones &gt; Conductor &gt; Permisos</strong> y activá el permiso de cámara. Después volvé a la app y reintentá.</p>
+
+      <p style="margin-top: 18px;"><strong>No me deja escanear un QR (no aparece)</strong></p>
+      <p>Asegurate de que el QR esté bien iluminado y que la cámara lo enfoque derecho. A veces pasa que el QR está muy chico en la pantalla o muy lejos. Pedile al pasajero que lo agrande.</p>
+
+      <p style="margin-top: 18px;"><strong>La app se queda cargando o no muestra los viajes</strong></p>
+      <p>Verificá que tengas internet (datos móviles o Wi-Fi). Si la señal es mala, esperá unos segundos y tocá el botón <strong>"Actualizar"</strong> arriba a la derecha (la flecha circular).</p>
+
+      <p style="margin-top: 18px;"><strong>No puedo marcar la llegada a una parada</strong></p>
+      <p>Esto puede pasar si todavía no iniciaste el viaje. Tocá primero el botón <strong>"Iniciar viaje"</strong> en la parte superior del detalle, y después intentá marcar la llegada.</p>
+
+      <p style="margin-top: 18px;"><strong>¿Otro problema?</strong></p>
+      <p>Si la app no responde, se cierra sola o te muestra un error que no entendés, comunicate con el área de soporte. Es importante que tengas la última versión de la aplicación instalada.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p>Instructivo · Aplicación de Conductores · Movilidad Clínica</p>
+</footer>
+
+</body>
+</html>

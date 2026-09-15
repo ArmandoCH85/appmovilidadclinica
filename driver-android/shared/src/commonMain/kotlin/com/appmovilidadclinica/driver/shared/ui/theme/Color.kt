@@ -45,14 +45,24 @@ val Error = Color(0xFFF44336)
 val Warning = Color(0xFFFF9800)
 val Info = Color(0xFF2196F3)
 
-// Background colors
+// Background colors (light)
 val Background = Color(0xFFF5F5F5)
 val Surface = Color(0xFFFFFFFF)
 val SurfaceVariant = Color(0xFFF0F0F0)
 
-// Text colors
+// Background colors (dark)
+val BackgroundDark = Color(0xFF121212)
+val SurfaceDark = Color(0xFF1E1E1E)
+val SurfaceVariantDark = Color(0xFF2C2C2C)
+
+// Text colors (light)
 val OnPrimary = Color(0xFFFFFFFF)
 val OnSecondary = Color(0xFFFFFFFF)
 val OnBackground = Color(0xFF212121)
 val OnSurface = Color(0xFF212121)
 val OnSurfaceVariant = Color(0xFF757575)
+
+// Text colors (dark)
+val OnBackgroundDark = Color(0xFFE0E0E0)
+val OnSurfaceDark = Color(0xFFE0E0E0)
+val OnSurfaceVariantDark = Color(0xFFB0B0B0)
