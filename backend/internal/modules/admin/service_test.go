@@ -162,7 +162,7 @@ func (m *mockAdminRepo) GetScheduleConflicts(_ context.Context, _, _, _ string) 
 func (m *mockAdminRepo) GetRouteTimeMatrix(_ context.Context, _ int64, _ string, _ int64) ([]MatrixEntry, error) {
 	return nil, nil
 }
-func (m *mockAdminRepo) GetTripSeatAvailability(_ context.Context, _ int64, _ string) ([]SeatAvail, error) {
+func (m *mockAdminRepo) GetTripSeatAvailability(_ context.Context, _ int64, _, _ string) ([]SeatAvail, error) {
 	return nil, nil
 }
 func (m *mockAdminRepo) GetRouteOccupancy(_ context.Context, _ int64, _, _ string) ([]RouteOccupancy, error) {

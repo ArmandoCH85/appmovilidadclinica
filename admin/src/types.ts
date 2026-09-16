@@ -276,6 +276,9 @@ export interface TripSeatAvailability {
   reservation_code?: string | null
   reserved_at?: string | null
   released_at?: string | null
+  reservation_extended: number
+  original_destination_name?: string
+  current_destination_name?: string
 }
 
 // ============================================================================

@@ -96,7 +96,7 @@ ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string
 	// Reportes
 	GetScheduleConflicts(ctx context.Context, resourceType, dateFrom, dateTo string) ([]Conflict, error)
 	GetRouteTimeMatrix(ctx context.Context, routeID int64, direction string, profileID int64) ([]MatrixEntry, error)
-	GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error)
+	GetTripSeatAvailability(ctx context.Context, tripID int64, state, extended string) ([]SeatAvail, error)
 
 	// Reportes nuevos (migration 0004)
 	GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error)
@@ -726,11 +726,11 @@ func (s *adminService) GetRouteTimeMatrix(ctx context.Context, routeID int64, di
 
 // GetTripSeatAvailability devuelve la disponibilidad de asientos de un viaje.
 // tripID es obligatorio; state es opcional ('' = todos).
-func (s *adminService) GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error) {
+func (s *adminService) GetTripSeatAvailability(ctx context.Context, tripID int64, state, extended string) ([]SeatAvail, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	return s.repo.GetTripSeatAvailability(ctx, tripID, state)
+	return s.repo.GetTripSeatAvailability(ctx, tripID, state, extended)
 }
 
 // ----------------------------------------------------------------------------

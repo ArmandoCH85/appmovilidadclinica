@@ -106,8 +106,9 @@ type DriverRepository interface {
 	// BOARDING.
 	StartTrip(ctx context.Context, tripID int64) error
 
-	// CompleteTrip pasa el viaje a COMPLETED. Solo valido desde IN_PROGRESS.
-	CompleteTrip(ctx context.Context, tripID int64) error
+	// CompleteTrip pasa el viaje a COMPLETED y cierra las reservas BOARDED
+	// que quedaron arriba. Delega en sp_complete_trip.
+	CompleteTrip(ctx context.Context, tripID, driverID int64) error
 
 	// GetTripDriverID devuelve el driver_id asignado a un viaje. Usado por el
 	// servicio para validar que el conductor que llama este asignado.
@@ -366,27 +367,16 @@ func (r *driverRepository) StartTrip(ctx context.Context, tripID int64) error {
 	return nil
 }
 
-// CompleteTrip pasa el viaje a COMPLETED. Mismo patron de validacion que
-// StartTrip: solo afecta viajes en IN_PROGRESS.
-func (r *driverRepository) CompleteTrip(ctx context.Context, tripID int64) error {
-	res, err := r.db.ExecContext(ctx, `
-        UPDATE trip_instances
-           SET status = 'COMPLETED'
-         WHERE id = ?
-           AND status = 'IN_PROGRESS'`, tripID)
+// CompleteTrip pasa el viaje a COMPLETED y cierra las reservas BOARDED que
+// quedaron arriba. Toda la transicion (estado + liberacion de asientos) vive
+// en sp_complete_trip para que sea atomica.
+func (r *driverRepository) CompleteTrip(ctx context.Context, tripID, driverID int64) error {
+	_, err := r.db.ExecContext(ctx, "CALL sp_complete_trip(?, ?)", tripID, driverID)
 	if err != nil {
-		return fmt.Errorf("finalizando viaje: %w", err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("verificando filas afectadas al finalizar viaje: %w", err)
-	}
-	if n == 0 {
-		current, cerr := r.getTripStatus(ctx, tripID)
-		if cerr != nil {
-			return cerr
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return spErr
 		}
-		return apperror.ConflictError{Msg: fmt.Sprintf("el viaje esta en estado %s, no se puede finalizar", current)}
+		return fmt.Errorf("llamando sp_complete_trip: %w", err)
 	}
 	return nil
 }

@@ -1063,7 +1063,12 @@ func (h *AdminHandler) SeatAvailabilityReport(w http.ResponseWriter, r *http.Req
 		return
 	}
 	state := r.URL.Query().Get("state")
-	avail, err := h.svc.GetTripSeatAvailability(r.Context(), tripID, state)
+	extended := r.URL.Query().Get("extended")
+	if extended != "" && extended != "true" && extended != "false" {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "extended", Reason: "debe ser true o false"})
+		return
+	}
+	avail, err := h.svc.GetTripSeatAvailability(r.Context(), tripID, state, extended)
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return
