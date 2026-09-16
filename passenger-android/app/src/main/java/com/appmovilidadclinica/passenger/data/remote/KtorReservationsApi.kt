@@ -1,5 +1,6 @@
 package com.appmovilidadclinica.passenger.data.remote
 
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ExtendRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationRequestDto
@@ -38,6 +39,15 @@ class KtorReservationsApi(private val client: HttpClient) {
 
     suspend fun reportIncident(reservationId: Long, body: ReportIncidentRequestDto): HttpResponse =
         client.post("reservations/$reservationId/incidents") {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+
+    suspend fun getJourney(reservationId: Long): HttpResponse =
+        client.get("reservations/$reservationId/journey")
+
+    suspend fun extend(reservationId: Long, body: ExtendRequestDto): HttpResponse =
+        client.post("reservations/$reservationId/extend") {
             contentType(ContentType.Application.Json)
             setBody(body)
         }

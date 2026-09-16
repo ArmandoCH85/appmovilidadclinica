@@ -7,6 +7,9 @@ import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.passenger.data.remote.KtorApiClient
 import com.appmovilidadclinica.passenger.data.remote.safeApiCall
 import com.appmovilidadclinica.passenger.data.remote.safeApiCallUnit
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ExtendRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ExtendResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.JourneyStateDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentResponseDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
@@ -14,6 +17,8 @@ import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationReque
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationResponseDto
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.error.map
+import com.appmovilidadclinica.passenger.shared.domain.model.ExtendResult
+import com.appmovilidadclinica.passenger.shared.domain.model.JourneyState
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
 import com.appmovilidadclinica.passenger.domain.repository.ReservationTripContext
@@ -98,6 +103,44 @@ class ReservationsRepositoryImpl @Inject constructor(
             parseBody = { it.body() },
         )
         return result.map { it.id }
+    }
+
+    override suspend fun getJourney(reservationId: Long): AppResult<JourneyState> {
+        val result = safeApiCall<JourneyStateDto>(
+            errorMapper = errorMapper,
+            call = { apiClient.reservationsApi.getJourney(reservationId) },
+            parseBody = { it.body() },
+        )
+        if (result is AppResult.Success) {
+            // El journey es la fuente fresca del estado: sincronizamos Room para
+            // que el badge y el polling (keyed por status) reaccionen solos.
+            val current = reservationDao.getById(reservationId)
+            if (current != null && current.status != result.data.reservationStatus) {
+                reservationDao.updateStatus(reservationId, result.data.reservationStatus)
+            }
+        }
+        return result.map { it.toDomain() }
+    }
+
+    override suspend fun extend(
+        reservationId: Long,
+        newDestinationTripStopTimeId: Long,
+        tripSeatId: Long?,
+    ): AppResult<ExtendResult> {
+        val result = safeApiCall<ExtendResponseDto>(
+            errorMapper = errorMapper,
+            call = {
+                apiClient.reservationsApi.extend(
+                    reservationId,
+                    ExtendRequestDto(
+                        newDestinationTripStopTimeId = newDestinationTripStopTimeId,
+                        tripSeatId = tripSeatId,
+                    ),
+                )
+            },
+            parseBody = { it.body() },
+        )
+        return result.map { it.toDomain() }
     }
 
     override fun observeReservations(): Flow<List<Reservation>> =

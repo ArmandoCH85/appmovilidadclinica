@@ -532,6 +532,7 @@ CREATE TABLE reservations (
     destination_trip_stop_time_id BIGINT UNSIGNED NOT NULL,
     origin_stop_order           SMALLINT UNSIGNED NOT NULL,
     destination_stop_order      SMALLINT UNSIGNED NOT NULL,
+    original_destination_stop_order SMALLINT UNSIGNED NULL,
     status                      ENUM('CONFIRMED', 'BOARDED', 'COMPLETED', 'NO_SHOW')
                                     NOT NULL DEFAULT 'CONFIRMED',
     created_by_user_id          BIGINT UNSIGNED NOT NULL,
@@ -2381,7 +2382,11 @@ SELECT trip.id AS trip_id,
        inventory.reservation_id,
        reservation.reservation_code,
        inventory.reserved_at,
-       inventory.released_at
+       inventory.released_at,
+       CASE WHEN reservation.original_destination_stop_order IS NOT NULL
+            THEN 1 ELSE 0 END AS reservation_extended,
+       original_place.name AS original_destination_name,
+       current_place.name AS current_destination_name
   FROM trip_seat_segments inventory
   JOIN trip_seats seat
     ON seat.id = inventory.trip_seat_id
@@ -2400,7 +2405,16 @@ SELECT trip.id AS trip_id,
   JOIN transport_stops to_place
     ON to_place.id = to_stop.stop_id
   LEFT JOIN reservations reservation
-    ON reservation.id = inventory.reservation_id;
+    ON reservation.id = inventory.reservation_id
+  LEFT JOIN trip_stop_times original_stop
+    ON original_stop.trip_id = trip.id
+   AND original_stop.stop_order = reservation.original_destination_stop_order
+  LEFT JOIN transport_stops original_place
+    ON original_place.id = original_stop.stop_id
+  LEFT JOIN trip_stop_times current_stop
+    ON current_stop.id = reservation.destination_trip_stop_time_id
+  LEFT JOIN transport_stops current_place
+    ON current_place.id = current_stop.stop_id;
 
 -- Detecta asignaciones solapadas sin agregar tablas de bloques al MVP.
 CREATE VIEW vw_schedule_conflicts AS

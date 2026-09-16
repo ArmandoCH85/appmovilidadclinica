@@ -174,6 +174,12 @@ const SEAT_STATE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'BLOCKED', label: 'Bloqueado' },
 ]
 
+const EXTENDED_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todas' },
+  { value: 'true', label: 'Solo extendidas' },
+  { value: 'false', label: 'Solo no extendidas' },
+]
+
 const SEAT_STATE_SEVERITIES: Record<string, 'success' | 'danger' | 'warn' | 'info'> = {
   AVAILABLE: 'success',
   OCCUPIED_IN_REQUESTED_RANGE: 'danger',
@@ -191,7 +197,11 @@ const seatsLoading = ref(false)
 const seatsError = ref('')
 const seatsFieldError = ref('')
 const seatsSearched = ref(false)
-const seatFilter = reactive<{ tripId: number | null; state: string }>({ tripId: null, state: '' })
+const seatFilter = reactive<{ tripId: number | null; state: string; extended: string }>({
+  tripId: null,
+  state: '',
+  extended: '',
+})
 
 async function searchSeats(): Promise<void> {
   seatsFieldError.value = ''
@@ -204,6 +214,7 @@ async function searchSeats(): Promise<void> {
   seatsSearched.value = true
   const params = new URLSearchParams({ trip_id: String(seatFilter.tripId) })
   if (seatFilter.state) params.set('state', seatFilter.state)
+  if (seatFilter.extended) params.set('extended', seatFilter.extended)
   try {
     const res = await request<{ items: TripSeatAvailability[] }>(
       'GET',
@@ -460,6 +471,16 @@ onMounted(() => {
                 optionValue="value"
               />
             </div>
+            <div class="filter">
+              <label for="seats-extended">Extendida</label>
+              <Select
+                id="seats-extended"
+                v-model="seatFilter.extended"
+                :options="EXTENDED_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
             <div class="filter-actions">
               <Button type="submit" label="Buscar" icon="pi pi-search" :loading="seatsLoading" />
             </div>
@@ -495,6 +516,20 @@ onMounted(() => {
             <Column field="available_or_occupied_until" header="Hasta" />
             <Column field="reservation_code" header="Código de reserva">
               <template #body="{ data }">{{ formatCell(data.reservation_code) }}</template>
+            </Column>
+            <Column header="Extendida" style="width: 7rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="data.reservation_extended ? 'Sí' : 'No'"
+                  :severity="data.reservation_extended ? 'info' : 'secondary'"
+                />
+              </template>
+            </Column>
+            <Column header="Destino original → actual">
+              <template #body="{ data }">
+                {{ formatCell(data.original_destination_name) }} →
+                {{ formatCell(data.current_destination_name) }}
+              </template>
             </Column>
           </DataTable>
           <p v-else class="reports-hint">Ingresá un ID de viaje para ver la disponibilidad de sus asientos.</p>

@@ -1,6 +1,8 @@
 ﻿package com.appmovilidadclinica.passenger.domain.repository
 
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.model.ExtendResult
+import com.appmovilidadclinica.passenger.shared.domain.model.JourneyState
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +35,19 @@ interface ReservationsRepository {
      * 404/409 con mensaje accionable.
      */
     suspend fun reportIncident(reservationId: Long, incidentType: String, description: String): AppResult<Long>
+
+    /** GET /api/reservations/{id}/journey — estado de polling (semáforo + extensión). */
+    suspend fun getJourney(reservationId: Long): AppResult<JourneyState>
+
+    /**
+     * POST /api/reservations/{id}/extend — estira la reserva a un nuevo destino.
+     * `tripSeatId = null` conserva el asiento actual.
+     */
+    suspend fun extend(
+        reservationId: Long,
+        newDestinationTripStopTimeId: Long,
+        tripSeatId: Long? = null,
+    ): AppResult<ExtendResult>
 
     /** Reservas propias persistidas localmente (fuente de verdad: Room, no red). */
     fun observeReservations(): Flow<List<Reservation>>

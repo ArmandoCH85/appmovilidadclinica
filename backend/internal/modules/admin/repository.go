@@ -417,6 +417,10 @@ type SeatAvail struct {
 	ReservationCode *string    `json:"reservation_code,omitempty"`
 	ReservedAt      *time.Time `json:"reserved_at,omitempty"`
 	ReleasedAt      *time.Time `json:"released_at,omitempty"`
+
+	ReservationExtended     int     `json:"reservation_extended"`
+	OriginalDestinationName *string `json:"original_destination_name,omitempty"`
+	CurrentDestinationName  *string `json:"current_destination_name,omitempty"`
 }
 
 type VehicleSeat struct {
@@ -609,7 +613,7 @@ type AdminRepository interface {
 	// Reportes (vistas)
 	GetScheduleConflicts(ctx context.Context, resourceType, dateFrom, dateTo string) ([]Conflict, error)
 	GetRouteTimeMatrix(ctx context.Context, routeID int64, direction string, profileID int64) ([]MatrixEntry, error)
-	GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error)
+	GetTripSeatAvailability(ctx context.Context, tripID int64, state, extended string) ([]SeatAvail, error)
 }
 
 // adminRepository es la implementacion concreta con database/sql.
@@ -2265,7 +2269,7 @@ func (r *adminRepository) GetRouteTimeMatrix(ctx context.Context, routeID int64,
 // un viaje (trip_id obligatorio, era el filtro original) y opcionalmente
 // filtra por state (AVAILABLE|BLOCKED|OCCUPIED_IN_REQUESTED_RANGE|...).
 // '' = todos los estados.
-func (r *adminRepository) GetTripSeatAvailability(ctx context.Context, tripID int64, state string) ([]SeatAvail, error) {
+func (r *adminRepository) GetTripSeatAvailability(ctx context.Context, tripID int64, state, extended string) ([]SeatAvail, error) {
 	var conds []string
 	var fargs []any
 	conds = append(conds, "trip_id = ?")
@@ -2274,11 +2278,18 @@ func (r *adminRepository) GetTripSeatAvailability(ctx context.Context, tripID in
 		conds = append(conds, "state = ?")
 		fargs = append(fargs, state)
 	}
+	if extended == "true" {
+		conds = append(conds, "reservation_extended = 1")
+	} else if extended == "false" {
+		conds = append(conds, "reservation_extended = 0")
+	}
 	where := " WHERE " + strings.Join(conds, " AND ")
 	q := `SELECT trip_id, trip_code, service_date, direction, trip_seat_id,
                seat_number, seat_label, segment_order, available_or_occupied_from,
                available_or_occupied_until, state, reservation_id,
-               reservation_code, reserved_at, released_at
+               reservation_code, reserved_at, released_at,
+               reservation_extended, original_destination_name,
+               current_destination_name
           FROM vw_trip_segment_seat_availability` + where + `
          ORDER BY seat_number, segment_order`
 	rows, err := r.db.QueryContext(ctx, q, fargs...)
@@ -2293,16 +2304,19 @@ func (r *adminRepository) GetTripSeatAvailability(ctx context.Context, tripID in
 		var resID sql.NullInt64
 		var resCode sql.NullString
 		var resAt, relAt sql.NullTime
+		var origName, currName sql.NullString
 		if err := rows.Scan(&s.TripID, &s.TripCode, &s.ServiceDate, &s.Direction,
 			&s.TripSeatID, &s.SeatNumber, &s.SeatLabel, &s.SegmentOrder,
 			&s.AvailableFrom, &s.AvailableUntil, &s.State, &resID, &resCode,
-			&resAt, &relAt); err != nil {
+			&resAt, &relAt, &s.ReservationExtended, &origName, &currName); err != nil {
 			return nil, fmt.Errorf("escaneando disponibilidad de asientos: %w", err)
 		}
 		s.ReservationID = nullableInt(resID)
 		s.ReservationCode = nullableStr(resCode)
 		s.ReservedAt = nullableTime(resAt)
 		s.ReleasedAt = nullableTime(relAt)
+		s.OriginalDestinationName = nullableStr(origName)
+		s.CurrentDestinationName = nullableStr(currName)
 		avail = append(avail, s)
 	}
 	return avail, rows.Err()

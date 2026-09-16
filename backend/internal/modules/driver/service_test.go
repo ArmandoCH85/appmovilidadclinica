@@ -56,7 +56,7 @@ func (m *mockDriverRepo) StartTrip(_ context.Context, _ int64) error {
 	return m.startTripErr
 }
 
-func (m *mockDriverRepo) CompleteTrip(_ context.Context, _ int64) error {
+func (m *mockDriverRepo) CompleteTrip(_ context.Context, _, _ int64) error {
 	return m.completeTripErr
 }
 

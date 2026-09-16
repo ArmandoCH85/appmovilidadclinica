@@ -31,6 +31,15 @@ type BookingService interface {
 	// pasajero sobre su propia reserva activa. El worker_id sale del JWT.
 	// Devuelve el id de la fila creada en trip_incidents.
 	ReportPassengerIncident(ctx context.Context, reservationID int64, req ReportIncidentRequest) (int64, error)
+	GetJourney(ctx context.Context, reservationID int64) (JourneyState, error)
+	Extend(ctx context.Context, reservationID int64, req ExtendRequest) (ExtendResult, error)
+}
+
+// ExtendRequest es el cuerpo de POST /reservations/{id}/extend.
+// trip_seat_id es opcional: si no viene, se mantiene el asiento actual.
+type ExtendRequest struct {
+	NewDestinationTripStopTimeID int64 `json:"new_destination_trip_stop_time_id" validate:"required,gt=0"`
+	TripSeatID                   int64 `json:"trip_seat_id" validate:"omitempty,gt=0"`
 }
 
 // ConfirmRequest es el cuerpo de POST /reservations. El worker_id se toma
@@ -156,6 +165,29 @@ func (s *bookingService) ListForWorker(ctx context.Context) ([]ReservationListIt
 	return s.repo.ListReservationsByWorker(ctx, workerID)
 }
 
+// GetJourney devuelve el estado de polling del pasajero dueño de la reserva.
+func (s *bookingService) GetJourney(ctx context.Context, reservationID int64) (JourneyState, error) {
+	workerID, err := requireWorker(ctx)
+	if err != nil {
+		return JourneyState{}, err
+	}
+	return s.repo.GetJourneyState(ctx, reservationID, workerID)
+}
+
+// Extend estira la reserva del pasajero a un nuevo destino.
+func (s *bookingService) Extend(ctx context.Context, reservationID int64, req ExtendRequest) (ExtendResult, error) {
+	workerID, err := requireWorker(ctx)
+	if err != nil {
+		return ExtendResult{}, err
+	}
+	return s.repo.ExtendReservation(ctx, ExtendParams{
+		ReservationID:                reservationID,
+		WorkerID:                     workerID,
+		NewDestinationTripStopTimeID: req.NewDestinationTripStopTimeID,
+		TripSeatID:                   req.TripSeatID,
+	})
+}
+
 // RoleWORKER es el único rol que puede reportar incidencias de pasajero.
 const RoleWORKER = "WORKER"
 
@@ -172,7 +204,7 @@ func requireWorker(ctx context.Context) (int64, error) {
 		return 0, apperror.UnauthorizedError{Reason: "token sin rol"}
 	}
 	if role != RoleWORKER {
-		return 0, apperror.ForbiddenError{Reason: "solo el rol WORKER puede reportar incidencias de pasajero"}
+		return 0, apperror.ForbiddenError{Reason: "solo el rol WORKER puede acceder a las reservas"}
 	}
 	return workerID, nil
 }

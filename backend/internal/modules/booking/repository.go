@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/dberr"
 )
 
@@ -59,6 +60,45 @@ type ReservationIdentity struct {
 	Status   string
 }
 
+// JourneyState es el read-model de GET /reservations/{id}/journey (polling).
+type JourneyState struct {
+	ReservationID         int64           `json:"reservation_id"`
+	ReservationStatus     string          `json:"reservation_status"`
+	TripID                int64           `json:"trip_id"`
+	TripStatus            string          `json:"trip_status"`
+	LastDepartedStopOrder *int            `json:"last_departed_stop_order"`
+	DestinationStopOrder  int             `json:"destination_stop_order"`
+	Stops                 []JourneyStop   `json:"stops"`
+	CanExtend             bool            `json:"can_extend"`
+	Extension             *ExtensionOffer `json:"extension,omitempty"`
+}
+
+// JourneyStop es una parada del cronograma con su estado real.
+type JourneyStop struct {
+	TripStopTimeID       int64      `json:"trip_stop_time_id"`
+	StopID               int64      `json:"stop_id"`
+	StopName             string     `json:"stop_name"`
+	StopOrder            int        `json:"stop_order"`
+	ScheduledArrivalAt   time.Time  `json:"scheduled_arrival_at"`
+	ScheduledDepartureAt time.Time  `json:"scheduled_departure_at"`
+	Status               string     `json:"status"`
+	ActualArrivalAt      *time.Time `json:"actual_arrival_at,omitempty"`
+	ActualDepartureAt    *time.Time `json:"actual_departure_at,omitempty"`
+}
+
+// ExtensionOffer describe la oferta de extensión cuando can_extend = true.
+type ExtensionOffer struct {
+	CurrentSeatFree bool            `json:"current_seat_free"`
+	RemainingStops  []ExtensionStop `json:"remaining_stops"`
+}
+
+// ExtensionStop es un paradero al que el pasajero puede extender.
+type ExtensionStop struct {
+	TripStopTimeID int64  `json:"trip_stop_time_id"`
+	StopName       string `json:"stop_name"`
+	StopOrder      int    `json:"stop_order"`
+}
+
 // SelfCheckinResult es el resultado de sp_mark_reservation_boarded_self.
 // Solo expone lo que la app necesita para actualizar la UI (status +
 // boarded_at), sin filtrar el id interno.
@@ -66,6 +106,24 @@ type SelfCheckinResult struct {
 	ReservationID int64     `json:"reservation_id"`
 	Status        string    `json:"status"`
 	BoardedAt     time.Time `json:"boarded_at"`
+}
+
+// ExtendParams agrupa los campos para sp_extend_reservation.
+// TripSeatID = 0 significa "usar el asiento actual".
+type ExtendParams struct {
+	ReservationID                int64
+	WorkerID                     int64
+	NewDestinationTripStopTimeID int64
+	TripSeatID                   int64
+}
+
+// ExtendResult es el result set de sp_extend_reservation.
+type ExtendResult struct {
+	ReservationID        int64  `json:"reservation_id"`
+	DestinationStopOrder int    `json:"destination_stop_order"`
+	TripSeatID           int64  `json:"trip_seat_id"`
+	SeatLabel            string `json:"seat_label"`
+	Status               string `json:"status"`
 }
 
 // BookingRepository abstrae el acceso a BD del modulo.
@@ -93,6 +151,8 @@ type BookingRepository interface {
 	// devuelve su id. El trip_id ya viene resuelto por el servicio desde la
 	// reserva (el cliente nunca lo manda).
 	InsertIncident(ctx context.Context, tripID, reporterUserID int64, incidentType, description string) (int64, error)
+	GetJourneyState(ctx context.Context, reservationID, workerID int64) (JourneyState, error)
+	ExtendReservation(ctx context.Context, params ExtendParams) (ExtendResult, error)
 }
 
 // bookingRepository es la implementacion concreta con database/sql.
@@ -311,6 +371,183 @@ func (r *bookingRepository) InsertIncident(ctx context.Context, tripID, reporter
 		return 0, fmt.Errorf("leyendo id de incidencia: %w", err)
 	}
 	return id, nil
+}
+
+// GetJourneyState arma el estado de polling del pasajero: cronograma con su
+// semáforo y, si corresponde, la oferta de extensión. La elegibilidad NO se
+// persiste: se deriva en cada llamada.
+func (r *bookingRepository) GetJourneyState(ctx context.Context, reservationID, workerID int64) (JourneyState, error) {
+	const resQ = `
+        SELECT worker_id, trip_id, trip_seat_id, destination_trip_stop_time_id,
+               destination_stop_order, status
+          FROM reservations
+         WHERE id = ?`
+	var ownerID, tripID, seatID, destStopTimeID int64
+	var destOrder int
+	var status string
+	err := r.db.QueryRowContext(ctx, resQ, reservationID).Scan(
+		&ownerID, &tripID, &seatID, &destStopTimeID, &destOrder, &status,
+	)
+	if err != nil {
+		if nfErr := dberr.NotFound(err, "reserva", reservationID); nfErr != err {
+			return JourneyState{}, nfErr
+		}
+		return JourneyState{}, fmt.Errorf("cargando reserva para journey: %w", err)
+	}
+	if ownerID != workerID {
+		return JourneyState{}, apperror.NotFoundError{Entity: "reserva", ID: reservationID}
+	}
+
+	var tripStatus string
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT status FROM trip_instances WHERE id = ?`, tripID).Scan(&tripStatus); err != nil {
+		return JourneyState{}, fmt.Errorf("cargando estado del viaje: %w", err)
+	}
+
+	const stopsQ = `
+        SELECT tst.id, tst.stop_id, ts.name, tst.stop_order,
+               tst.scheduled_arrival_at, tst.scheduled_departure_at,
+               tst.status, tst.actual_arrival_at, tst.actual_departure_at
+          FROM trip_stop_times tst
+          JOIN transport_stops ts ON ts.id = tst.stop_id
+         WHERE tst.trip_id = ?
+         ORDER BY tst.stop_order`
+	rows, err := r.db.QueryContext(ctx, stopsQ, tripID)
+	if err != nil {
+		return JourneyState{}, fmt.Errorf("cargando paradas del journey: %w", err)
+	}
+	defer rows.Close()
+
+	stops := make([]JourneyStop, 0)
+	for rows.Next() {
+		var s JourneyStop
+		var arr, dep sql.NullTime
+		if err := rows.Scan(&s.TripStopTimeID, &s.StopID, &s.StopName, &s.StopOrder,
+			&s.ScheduledArrivalAt, &s.ScheduledDepartureAt, &s.Status, &arr, &dep); err != nil {
+			return JourneyState{}, fmt.Errorf("escaneando parada del journey: %w", err)
+		}
+		if arr.Valid {
+			t := arr.Time
+			s.ActualArrivalAt = &t
+		}
+		if dep.Valid {
+			t := dep.Time
+			s.ActualDepartureAt = &t
+		}
+		stops = append(stops, s)
+	}
+	if err := rows.Err(); err != nil {
+		return JourneyState{}, err
+	}
+
+	lastDepartedOrder := -1
+	for _, s := range stops {
+		if s.Status == "DEPARTED" && s.StopOrder > lastDepartedOrder {
+			lastDepartedOrder = s.StopOrder
+		}
+	}
+	var lastDeparted *int
+	if lastDepartedOrder >= 0 {
+		v := lastDepartedOrder
+		lastDeparted = &v
+	}
+
+	state := JourneyState{
+		ReservationID:         reservationID,
+		ReservationStatus:     status,
+		TripID:                tripID,
+		TripStatus:            tripStatus,
+		LastDepartedStopOrder: lastDeparted,
+		DestinationStopOrder:  destOrder,
+		Stops:                 stops,
+	}
+
+	if status != "BOARDED" || tripStatus != "IN_PROGRESS" || lastDeparted == nil ||
+		destOrder != *lastDeparted+1 {
+		return state, nil
+	}
+
+	remaining := make([]ExtensionStop, 0)
+	for _, s := range stops {
+		if s.StopOrder > destOrder && s.Status != "DEPARTED" {
+			remaining = append(remaining, ExtensionStop{
+				TripStopTimeID: s.TripStopTimeID,
+				StopName:       s.StopName,
+				StopOrder:      s.StopOrder,
+			})
+		}
+	}
+	if len(remaining) == 0 {
+		return state, nil
+	}
+
+	seats, err := r.listSeatAvailability(ctx, tripID, destStopTimeID, remaining[0].TripStopTimeID)
+	if err != nil {
+		return JourneyState{}, err
+	}
+	anyFree := false
+	currentSeatFree := false
+	for _, s := range seats {
+		if s.availability == "AVAILABLE" {
+			anyFree = true
+			if s.tripSeatID == seatID {
+				currentSeatFree = true
+			}
+		}
+	}
+	if !anyFree {
+		return state, nil
+	}
+
+	state.CanExtend = true
+	state.Extension = &ExtensionOffer{CurrentSeatFree: currentSeatFree, RemainingStops: remaining}
+	return state, nil
+}
+
+type seatAvailability struct {
+	tripSeatID   int64
+	seatLabel    string
+	availability string
+}
+
+// listSeatAvailability reusa sp_list_trip_seats para un tramo.
+func (r *bookingRepository) listSeatAvailability(ctx context.Context, tripID, originID, destID int64) ([]seatAvailability, error) {
+	rows, err := r.db.QueryContext(ctx, "CALL sp_list_trip_seats(?, ?, ?)", tripID, originID, destID)
+	if err != nil {
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return nil, spErr
+		}
+		return nil, fmt.Errorf("llamando sp_list_trip_seats: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]seatAvailability, 0)
+	for rows.Next() {
+		var s seatAvailability
+		var number int
+		if err := rows.Scan(&s.tripSeatID, &number, &s.seatLabel, &s.availability); err != nil {
+			return nil, fmt.Errorf("escaneando asientos del journey: %w", err)
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// ExtendReservation llama a sp_extend_reservation.
+func (r *bookingRepository) ExtendReservation(ctx context.Context, params ExtendParams) (ExtendResult, error) {
+	var res ExtendResult
+	err := r.db.QueryRowContext(ctx, "CALL sp_extend_reservation(?, ?, ?, ?)",
+		params.ReservationID, params.WorkerID,
+		params.NewDestinationTripStopTimeID, params.TripSeatID,
+	).Scan(&res.ReservationID, &res.DestinationStopOrder, &res.TripSeatID,
+		&res.SeatLabel, &res.Status)
+	if err != nil {
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return ExtendResult{}, spErr
+		}
+		return ExtendResult{}, fmt.Errorf("llamando sp_extend_reservation: %w", err)
+	}
+	return res, nil
 }
 
 // compile-time guard.

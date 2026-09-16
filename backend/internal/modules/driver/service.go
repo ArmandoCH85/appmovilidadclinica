@@ -135,7 +135,7 @@ func (s *driverService) CompleteTrip(ctx context.Context, tripID int64) error {
 	if err := s.ensureAssigned(ctx, driverID, tripID); err != nil {
 		return err
 	}
-	return s.repo.CompleteTrip(ctx, tripID)
+	return s.repo.CompleteTrip(ctx, tripID, driverID)
 }
 
 // MarkArrival marca la llegada del conductor a una parada. Se valida la

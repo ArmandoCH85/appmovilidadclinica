@@ -5,13 +5,17 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.appmovilidadclinica.passenger.shared.domain.error.AppError
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.model.ExtensionOffer
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
 import com.appmovilidadclinica.passenger.domain.repository.ReservationsRepository
 import com.appmovilidadclinica.passenger.domain.repository.TripsRepository
 import com.appmovilidadclinica.passenger.domain.usecase.GenerateQrUseCase
+import com.appmovilidadclinica.passenger.domain.usecase.ListSeatsUseCase
 import com.appmovilidadclinica.passenger.presentation.common.canSelfCheckin
 import com.appmovilidadclinica.passenger.presentation.common.toBitmap
 import com.appmovilidadclinica.passenger.presentation.navigation.Screen
@@ -36,6 +40,12 @@ data class MyReservationDetailUiState(
     val showCancelConfirm: Boolean = false,
     val stops: List<TripStop> = emptyList(),
     val loadingStops: Boolean = true,
+    val canExtend: Boolean = false,
+    val extension: ExtensionOffer? = null,
+    val extensionSeats: List<TripSeat> = emptyList(),
+    val loadingExtensionSeats: Boolean = false,
+    val extending: Boolean = false,
+    val extensionError: String? = null,
 )
 
 /**
@@ -50,6 +60,7 @@ class MyReservationDetailViewModel @Inject constructor(
     private val reservationsRepository: ReservationsRepository,
     private val tripsRepository: TripsRepository,
     private val generateQrUseCase: GenerateQrUseCase,
+    private val listSeatsUseCase: ListSeatsUseCase,
 ) : ViewModel() {
 
     private val route: Screen.MyReservationDetail = savedStateHandle.toRoute<Screen.MyReservationDetail>()
@@ -166,6 +177,74 @@ class MyReservationDetailViewModel @Inject constructor(
             }
         }
     }
+
+    /** Consulta el estado de polling. Lo llama el Screen desde repeatOnLifecycle. */
+    suspend fun refreshJourney() {
+        val reservation = uiState.value.reservation ?: return
+        when (val result = reservationsRepository.getJourney(reservation.reservationId)) {
+            is AppResult.Success -> {
+                val journey = result.data
+                _uiState.update {
+                    it.copy(
+                        stops = journey.stops,
+                        loadingStops = false,
+                        canExtend = journey.canExtend,
+                        extension = journey.extension,
+                    )
+                }
+                if (journey.canExtend) {
+                    journey.extension?.remainingStops?.firstOrNull()?.let {
+                        loadExtensionSeats(it.tripStopTimeId)
+                    }
+                }
+            }
+            is AppResult.Failure -> _uiState.update { it.copy(loadingStops = false) }
+        }
+    }
+
+    /** Carga los asientos libres para el tramo [destino actual, destino elegido]. */
+    fun loadExtensionSeats(tripStopTimeId: Long) {
+        val state = uiState.value
+        val reservation = state.reservation ?: return
+        val origin = state.stops.find { it.tripStopTimeId == reservation.destinationTripStopTimeId } ?: return
+        val destination = state.stops.find { it.tripStopTimeId == tripStopTimeId } ?: return
+        _uiState.update { it.copy(loadingExtensionSeats = true, extensionError = null) }
+        viewModelScope.launch {
+            when (val result = listSeatsUseCase(reservation.tripId, origin, destination)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(loadingExtensionSeats = false, extensionSeats = result.data)
+                }
+                is AppResult.Failure -> _uiState.update {
+                    it.copy(loadingExtensionSeats = false, extensionSeats = emptyList())
+                }
+            }
+        }
+    }
+
+    /** Confirma la extensión al destino elegido (y opcionalmente a otro asiento). */
+    fun extend(newDestinationTripStopTimeId: Long, tripSeatId: Long?) {
+        val reservationId = uiState.value.reservation?.reservationId ?: return
+        _uiState.update { it.copy(extending = true, extensionError = null) }
+        viewModelScope.launch {
+            when (val result = reservationsRepository.extend(
+                reservationId = reservationId,
+                newDestinationTripStopTimeId = newDestinationTripStopTimeId,
+                tripSeatId = tripSeatId,
+            )) {
+                is AppResult.Success -> {
+                    _uiState.update { it.copy(extending = false, extensionSeats = emptyList()) }
+                    refreshJourney()
+                }
+                is AppResult.Failure -> {
+                    val msg = (result.error as? AppError.Conflict)?.message
+                        ?: "No se pudo extender el viaje. Intente nuevamente."
+                    _uiState.update { it.copy(extending = false, extensionError = msg) }
+                }
+            }
+        }
+    }
+
+    fun dismissExtensionError() = _uiState.update { it.copy(extensionError = null) }
 
     private fun errorMessageFor(failure: AppResult.Failure): String =
         (failure.error as? com.appmovilidadclinica.passenger.shared.domain.error.AppError.Conflict)?.message

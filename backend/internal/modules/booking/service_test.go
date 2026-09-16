@@ -28,6 +28,11 @@ type mockBookingRepo struct {
 	identityErr    error
 	incidentID     int64
 	incidentErr    error
+	journey        JourneyState
+	journeyErr     error
+	extend         ExtendResult
+	extendErr      error
+	extendParams   ExtendParams
 }
 
 func (m *mockBookingRepo) CheckActiveReservation(_ context.Context, _, _ int64) (bool, error) {
@@ -60,6 +65,15 @@ func (m *mockBookingRepo) GetReservationIdentity(_ context.Context, _ int64) (Re
 
 func (m *mockBookingRepo) InsertIncident(_ context.Context, _, _ int64, _, _ string) (int64, error) {
 	return m.incidentID, m.incidentErr
+}
+
+func (m *mockBookingRepo) GetJourneyState(_ context.Context, _, _ int64) (JourneyState, error) {
+	return m.journey, m.journeyErr
+}
+
+func (m *mockBookingRepo) ExtendReservation(_ context.Context, p ExtendParams) (ExtendResult, error) {
+	m.extendParams = p
+	return m.extend, m.extendErr
 }
 
 // ctxWithWorker construye un context que simula un JWT valido con el worker_id
@@ -218,4 +232,59 @@ func TestReportPassengerIncident_NonWorkerRole_ReturnsForbidden(t *testing.T) {
 	require.Error(t, err)
 	var fe apperror.ForbiddenError
 	require.True(t, errors.As(err, &fe), "rol no-WORKER debe mapear a Forbidden")
+}
+
+func TestGetJourney_PropagatesWorkerIDAndState(t *testing.T) {
+	repo := &mockBookingRepo{journey: JourneyState{
+		ReservationID:     42,
+		ReservationStatus: "BOARDED",
+		CanExtend:         true,
+	}}
+	svc := NewService(repo)
+
+	got, err := svc.GetJourney(ctxWithWorker(t, 77), 42)
+	require.NoError(t, err)
+	assert.Equal(t, int64(42), got.ReservationID)
+	assert.True(t, got.CanExtend)
+}
+
+func TestGetJourney_NonWorkerRole_ReturnsForbidden(t *testing.T) {
+	svc := NewService(&mockBookingRepo{})
+
+	_, err := svc.GetJourney(ctxWithRole(t, 77, "DRIVER"), 42)
+	require.Error(t, err)
+	var fe apperror.ForbiddenError
+	require.True(t, errors.As(err, &fe), "rol no-WORKER debe mapear a Forbidden")
+}
+
+func TestExtend_PassesWorkerAndSeat(t *testing.T) {
+	repo := &mockBookingRepo{extend: ExtendResult{
+		ReservationID:        42,
+		DestinationStopOrder: 6,
+		TripSeatID:           33,
+		SeatLabel:            "12",
+		Status:               "BOARDED",
+	}}
+	svc := NewService(repo)
+
+	got, err := svc.Extend(ctxWithWorker(t, 77), 42, ExtendRequest{
+		NewDestinationTripStopTimeID: 55,
+		TripSeatID:                   33,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(33), got.TripSeatID)
+	assert.Equal(t, int64(42), repo.extendParams.ReservationID)
+	assert.Equal(t, int64(77), repo.extendParams.WorkerID)
+	assert.Equal(t, int64(55), repo.extendParams.NewDestinationTripStopTimeID)
+	assert.Equal(t, int64(33), repo.extendParams.TripSeatID)
+}
+
+func TestExtend_SeatTaken_ReturnsConflict(t *testing.T) {
+	repo := &mockBookingRepo{extendErr: apperror.ConflictError{Msg: "El asiento ya se asigno a otra persona para ese tramo"}}
+	svc := NewService(repo)
+
+	_, err := svc.Extend(ctxWithWorker(t, 77), 42, ExtendRequest{NewDestinationTripStopTimeID: 55})
+	require.Error(t, err)
+	var ce apperror.ConflictError
+	require.True(t, errors.As(err, &ce), "asiento tomado debe mapear a Conflict")
 }

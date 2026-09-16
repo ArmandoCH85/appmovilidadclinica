@@ -162,6 +162,47 @@ func (h *BookingHandler) ListMine(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(reservations)
 }
 
+// Journey maneja GET /reservations/{id}/journey — estado de polling del
+// pasajero: semáforo del cronograma y oferta de extensión.
+func (h *BookingHandler) Journey(w http.ResponseWriter, r *http.Request) {
+	reservationID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "id", Reason: "debe ser un entero positivo"})
+		return
+	}
+	res, err := h.svc.GetJourney(r.Context(), reservationID)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(res)
+}
+
+// Extend maneja POST /reservations/{id}/extend — estira la reserva a un nuevo
+// destino conservando (o cambiando) el asiento.
+func (h *BookingHandler) Extend(w http.ResponseWriter, r *http.Request) {
+	reservationID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "id", Reason: "debe ser un entero positivo"})
+		return
+	}
+	var req ExtendRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apperror.WriteJSONError(w, apperror.ValidationError{Field: "body", Reason: "json invalido"})
+		return
+	}
+	if err := validate.Default.Struct(req); err != nil {
+		apperror.WriteJSONError(w, validate.ToAppError(err))
+		return
+	}
+	res, err := h.svc.Extend(r.Context(), reservationID, req)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(res)
+}
+
 // RegisterRoutes monta los endpoints del modulo booking.
 func (h *BookingHandler) RegisterRoutes(r chi.Router) {
 	r.Get("/reservations", h.ListMine)
@@ -173,4 +214,6 @@ func (h *BookingHandler) RegisterRoutes(r chi.Router) {
 	// del QR por el chofer). Ver `desarrollo_pasajero.md` §5.1.
 	r.Post("/reservations/{id}/self-checkin", h.SelfCheckin)
 	r.Post("/reservations/{id}/incidents", h.ReportIncident)
+	r.Get("/reservations/{id}/journey", h.Journey)
+	r.Post("/reservations/{id}/extend", h.Extend)
 }

@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,8 +35,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
@@ -41,6 +51,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,12 +63,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.appmovilidadclinica.passenger.shared.domain.model.ExtensionStop
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStopStatus
+import com.appmovilidadclinica.passenger.presentation.common.SeatCell
 import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
 import com.appmovilidadclinica.passenger.presentation.common.toPeruTime
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +85,21 @@ fun MyReservationDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val reservation = state.reservation
+    var showExtensionSheet by remember { mutableStateOf(false) }
+
+    // Polling del estado del viaje mientras la reserva está abordada.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(state.reservation?.status) {
+        val status = state.reservation?.status
+        if (status == ReservationStatus.CONFIRMED || status == ReservationStatus.BOARDED) {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    viewModel.refreshJourney()
+                    delay(20_000)
+                }
+            }
+        }
+    }
 
     // Navegar atras automaticamente cuando el cancel es exitoso
     LaunchedEffect(state.cancelled) {
@@ -220,6 +255,38 @@ fun MyReservationDetailScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
+            // Oferta de extensión de viaje (un paradero antes del destino).
+            if (state.canExtend) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            if (state.extension?.currentSeatFree == true) {
+                                "Estás por llegar a tu destino. ¿Querés extender tu viaje?"
+                            } else {
+                                "Tu asiento ya se asignó a otra persona. Podés elegir otro para seguir viaje."
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = { showExtensionSheet = true },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Extender viaje")
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+            }
+
             // Botones de accion (solo si esta CONFIRMED)
             if (reservation.status == ReservationStatus.CONFIRMED) {
                 Button(
@@ -272,6 +339,124 @@ fun MyReservationDetailScreen(
                 TextButton(onClick = viewModel::dismissCancel) { Text("Volver") }
             },
         )
+    }
+
+    val offer = state.extension
+    if (showExtensionSheet && offer != null) {
+        ExtensionBottomSheet(
+            remainingStops = offer.remainingStops,
+            seats = state.extensionSeats,
+            loadingSeats = state.loadingExtensionSeats,
+            extending = state.extending,
+            errorMessage = state.extensionError,
+            onStopSelected = viewModel::loadExtensionSeats,
+            onConfirm = { tripStopTimeId, tripSeatId ->
+                viewModel.extend(tripStopTimeId, tripSeatId)
+                showExtensionSheet = false
+            },
+            onDismiss = {
+                showExtensionSheet = false
+                viewModel.dismissExtensionError()
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExtensionBottomSheet(
+    remainingStops: List<ExtensionStop>,
+    seats: List<TripSeat>,
+    loadingSeats: Boolean,
+    extending: Boolean,
+    errorMessage: String?,
+    onStopSelected: (Long) -> Unit,
+    onConfirm: (Long, Long?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selectedStopId by remember { mutableStateOf(remainingStops.firstOrNull()?.tripStopTimeId) }
+    var selectedSeatId by remember { mutableStateOf<Long?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                "Extender viaje",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(12.dp))
+
+            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                OutlinedTextField(
+                    value = remainingStops.find { it.tripStopTimeId == selectedStopId }?.stopName.orEmpty(),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Nuevo destino") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                )
+                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    remainingStops.forEach { stop ->
+                        DropdownMenuItem(
+                            text = { Text(stop.stopName) },
+                            onClick = {
+                                selectedStopId = stop.tripStopTimeId
+                                selectedSeatId = null
+                                expanded = false
+                                onStopSelected(stop.tripStopTimeId)
+                            },
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            if (loadingSeats) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+                ) {
+                    items(seats, key = { it.tripSeatId }) { seat ->
+                        SeatCell(
+                            seat = seat,
+                            selected = selectedSeatId == seat.tripSeatId,
+                            onClick = { selectedSeatId = seat.tripSeatId },
+                            modifier = Modifier.size(64.dp),
+                        )
+                    }
+                }
+            }
+
+            if (errorMessage != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    val stopId = selectedStopId
+                    if (stopId != null) onConfirm(stopId, selectedSeatId)
+                },
+                enabled = selectedStopId != null && !extending,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+            ) {
+                Text(if (extending) "Extendiendo…" else "Confirmar extensión")
+            }
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }
 

@@ -64,3 +64,57 @@ data class ReportIncidentRequestDto(
 
 @Serializable
 data class ReportIncidentResponseDto(val id: Long)
+
+@Serializable
+data class JourneyStateDto(
+    @SerialName("reservation_id") val reservationId: Long,
+    @SerialName("reservation_status") val reservationStatus: String,
+    @SerialName("trip_id") val tripId: Long,
+    @SerialName("trip_status") val tripStatus: String,
+    @SerialName("last_departed_stop_order") val lastDepartedStopOrder: Int? = null,
+    @SerialName("destination_stop_order") val destinationStopOrder: Int,
+    val stops: List<JourneyStopDto> = emptyList(),
+    @SerialName("can_extend") val canExtend: Boolean = false,
+    val extension: ExtensionOfferDto? = null,
+)
+
+@Serializable
+data class JourneyStopDto(
+    @SerialName("trip_stop_time_id") val tripStopTimeId: Long,
+    @SerialName("stop_id") val stopId: Long,
+    @SerialName("stop_name") val stopName: String,
+    @SerialName("stop_order") val stopOrder: Int,
+    @SerialName("scheduled_arrival_at") val scheduledArrivalAt: String,
+    @SerialName("scheduled_departure_at") val scheduledDepartureAt: String,
+    val status: String,
+    @SerialName("actual_arrival_at") val actualArrivalAt: String? = null,
+    @SerialName("actual_departure_at") val actualDepartureAt: String? = null,
+)
+
+@Serializable
+data class ExtensionOfferDto(
+    @SerialName("current_seat_free") val currentSeatFree: Boolean,
+    @SerialName("remaining_stops") val remainingStops: List<ExtensionStopDto> = emptyList(),
+)
+
+@Serializable
+data class ExtensionStopDto(
+    @SerialName("trip_stop_time_id") val tripStopTimeId: Long,
+    @SerialName("stop_name") val stopName: String,
+    @SerialName("stop_order") val stopOrder: Int,
+)
+
+@Serializable
+data class ExtendRequestDto(
+    @SerialName("new_destination_trip_stop_time_id") val newDestinationTripStopTimeId: Long,
+    @SerialName("trip_seat_id") val tripSeatId: Long? = null,
+)
+
+@Serializable
+data class ExtendResponseDto(
+    @SerialName("reservation_id") val reservationId: Long,
+    @SerialName("destination_stop_order") val destinationStopOrder: Int,
+    @SerialName("trip_seat_id") val tripSeatId: Long,
+    @SerialName("seat_label") val seatLabel: String,
+    val status: String,
+)

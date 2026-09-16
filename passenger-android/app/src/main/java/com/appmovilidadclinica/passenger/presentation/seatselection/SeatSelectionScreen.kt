@@ -1,8 +1,6 @@
 ﻿package com.appmovilidadclinica.passenger.presentation.seatselection
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -52,13 +50,13 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.presentation.common.SeatCell
 import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -172,68 +170,6 @@ fun SeatSelectionScreen(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun SeatCell(
-    modifier: Modifier = Modifier,
-    seat: TripSeat,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val background = when {
-        selected -> MaterialTheme.colorScheme.primary
-        seat.isSelectable -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
-    val textColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-    val stateDescription = when {
-        selected -> "seleccionado"
-        seat.isSelectable -> "disponible"
-        else -> "ocupado"
-    }
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(background)
-            .then(
-                if (selected) {
-                    Modifier.border(3.dp, MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(8.dp))
-                } else {
-                    Modifier
-                }
-            )
-            .clickable(enabled = true, onClick = {
-                android.util.Log.d("SeatCell", "click on seat ${seat.seatLabel} selectable=${seat.isSelectable}")
-                onClick()
-            })
-            .semantics { contentDescription = "Asiento ${seat.seatLabel}, $stateDescription" },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(seat.seatLabel, color = textColor, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-        if (selected) {
-            Icon(
-                Icons.Filled.Check,
-                contentDescription = null,
-                tint = textColor,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(2.dp)
-                    .size(14.dp),
-            )
-        } else if (!seat.isSelectable) {
-            Icon(
-                Icons.Filled.Lock,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(2.dp)
-                    .size(14.dp),
-            )
         }
     }
 }
