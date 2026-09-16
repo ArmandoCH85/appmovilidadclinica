@@ -185,8 +185,10 @@ SELECT 'TEST 3 - baja en destino nuevo' AS test,
 -- ---------------------------------------------------------------------------
 -- TEST 4: al completar el viaje, las reservas BOARDED que quedaron se cierran
 -- ---------------------------------------------------------------------------
-INSERT INTO trip_seat_segments (trip_seat_id, trip_segment_id, state, reservation_id, reserved_at)
-VALUES (201, 302, 'OCCUPIED', 2, NOW());
+-- El asiento 201/segmento 302 ya existe (TEST 3 lo dejo USED): se reusa.
+UPDATE trip_seat_segments
+   SET state = 'OCCUPIED', reservation_id = 2, reserved_at = NOW()
+ WHERE trip_seat_id = 201 AND trip_segment_id = 302;
 
 INSERT INTO reservations (id, trip_id, worker_id, trip_seat_id,
                           origin_trip_stop_time_id, destination_trip_stop_time_id,
