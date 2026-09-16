@@ -5,10 +5,14 @@ import com.appmovilidadclinica.passenger.data.mapper.toDomain
 import com.appmovilidadclinica.passenger.data.mapper.toEntity
 import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.passenger.data.remote.ReservationsApi
+import com.appmovilidadclinica.passenger.data.remote.dto.ExtendRequestDto
 import com.appmovilidadclinica.passenger.data.remote.dto.ReservationRequestDto
 import com.appmovilidadclinica.passenger.data.remote.safeApiCall
 import com.appmovilidadclinica.passenger.data.remote.safeApiCallUnit
 import com.appmovilidadclinica.passenger.domain.error.AppResult
+import com.appmovilidadclinica.passenger.domain.error.map
+import com.appmovilidadclinica.passenger.domain.model.ExtendResult
+import com.appmovilidadclinica.passenger.domain.model.JourneyState
 import com.appmovilidadclinica.passenger.domain.model.Reservation
 import com.appmovilidadclinica.passenger.domain.model.ReservationRequest
 import com.appmovilidadclinica.passenger.domain.repository.ReservationTripContext
@@ -71,9 +75,38 @@ class ReservationsRepositoryImpl @Inject constructor(
         return result as AppResult<Reservation>
     }
 
+    override suspend fun getJourney(reservationId: Long): AppResult<JourneyState> {
+        val result = safeApiCall(errorMapper) { reservationsApi.getJourney(reservationId) }
+        if (result is AppResult.Success) {
+            // El journey es la fuente fresca del estado: sincronizamos Room para
+            // que el badge y el polling (keyed por status) reaccionen solos.
+            val current = reservationDao.getById(reservationId)
+            if (current != null && current.status != result.data.reservationStatus) {
+                reservationDao.updateStatus(reservationId, result.data.reservationStatus)
+            }
+        }
+        return result.map { it.toDomain() }
+    }
+
+    override suspend fun extend(
+        reservationId: Long,
+        newDestinationTripStopTimeId: Long,
+        tripSeatId: Long?,
+    ): AppResult<ExtendResult> {
+        val result = safeApiCall(errorMapper) {
+            reservationsApi.extend(
+                reservationId,
+                ExtendRequestDto(
+                    newDestinationTripStopTimeId = newDestinationTripStopTimeId,
+                    tripSeatId = tripSeatId,
+                ),
+            )
+        }
+        return result.map { it.toDomain() }
+    }
+
     override fun observeReservations(): Flow<List<Reservation>> =
         reservationDao.observeAll().map { list -> list.map { it.toDomain() } }
-
     override fun observeReservation(reservationId: Long): Flow<Reservation?> =
         reservationDao.observeById(reservationId).map { it?.toDomain() }
 

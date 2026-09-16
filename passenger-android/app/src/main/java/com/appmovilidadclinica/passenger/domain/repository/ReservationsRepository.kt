@@ -1,6 +1,8 @@
 package com.appmovilidadclinica.passenger.domain.repository
 
 import com.appmovilidadclinica.passenger.domain.error.AppResult
+import com.appmovilidadclinica.passenger.domain.model.ExtendResult
+import com.appmovilidadclinica.passenger.domain.model.JourneyState
 import com.appmovilidadclinica.passenger.domain.model.Reservation
 import com.appmovilidadclinica.passenger.domain.model.ReservationRequest
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +28,19 @@ interface ReservationsRepository {
      * AppError.NotFound (404) real del servidor.
      */
     suspend fun selfCheckin(reservationId: Long): AppResult<Reservation>
+
+    /** GET /api/reservations/{id}/journey — estado de polling (semáforo + extensión). */
+    suspend fun getJourney(reservationId: Long): AppResult<JourneyState>
+
+    /**
+     * POST /api/reservations/{id}/extend — estira la reserva a un nuevo destino.
+     * `tripSeatId = null` conserva el asiento actual.
+     */
+    suspend fun extend(
+        reservationId: Long,
+        newDestinationTripStopTimeId: Long,
+        tripSeatId: Long? = null,
+    ): AppResult<ExtendResult>
 
     /** Reservas propias persistidas localmente (fuente de verdad: Room, no red). */
     fun observeReservations(): Flow<List<Reservation>>

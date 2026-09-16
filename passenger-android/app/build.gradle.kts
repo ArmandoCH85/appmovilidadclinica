@@ -17,8 +17,8 @@ android {
         // soporte legacy que no se necesita para este alcance (ver diseño).
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 20260916
+        versionName = "0.2.0"
     }
 
     buildTypes {

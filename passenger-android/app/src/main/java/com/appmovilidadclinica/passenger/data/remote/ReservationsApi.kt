@@ -1,5 +1,8 @@
 package com.appmovilidadclinica.passenger.data.remote
 
+import com.appmovilidadclinica.passenger.data.remote.dto.ExtendRequestDto
+import com.appmovilidadclinica.passenger.data.remote.dto.ExtendResponseDto
+import com.appmovilidadclinica.passenger.data.remote.dto.JourneyStateDto
 import com.appmovilidadclinica.passenger.data.remote.dto.ReservationListItemDto
 import com.appmovilidadclinica.passenger.data.remote.dto.ReservationRequestDto
 import com.appmovilidadclinica.passenger.data.remote.dto.ReservationResponseDto
@@ -35,4 +38,18 @@ interface ReservationsApi {
      */
     @POST("reservations/{id}/self-checkin")
     suspend fun selfCheckin(@Path("id") reservationId: Long): Response<SelfCheckinResponseDto>
+
+    /**
+     * Estado de polling del pasajero: cronograma con su semáforo y, si
+     * corresponde, la oferta de extensión de viaje.
+     */
+    @GET("reservations/{id}/journey")
+    suspend fun getJourney(@Path("id") reservationId: Long): Response<JourneyStateDto>
+
+    /** Estira la reserva a un nuevo destino. `trip_seat_id` null = mantener el actual. */
+    @POST("reservations/{id}/extend")
+    suspend fun extend(
+        @Path("id") reservationId: Long,
+        @Body body: ExtendRequestDto,
+    ): Response<ExtendResponseDto>
 }
