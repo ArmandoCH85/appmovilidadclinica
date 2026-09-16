@@ -5,11 +5,13 @@
 // real — el admin tenia que adivinar el ID. Fix: se trae `/admin/stops`
 // (mismo patron que vehiculos en VehicleSeatsView) y se arma un lookup +
 // Select buscable en vez de <input type=number>.
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -54,7 +56,52 @@ onMounted(async () => {
 function onPage(event: { page: number; rows: number }): void {
   page.value = event.page + 1
   pageSize.value = event.rows
-  list()
+  list(undefined, currentFilters())
+}
+
+// ---------------------------------------------------------------------------
+// Buscador — filtros server-side (GET /admin/users?q=&role=&active=).
+// Un solo watcher con debounce: evita N requests por cada tecla y carreras
+// entre filtros (el ultimo estado gana porque solo se dispara un list).
+// ---------------------------------------------------------------------------
+const searchQuery = ref('')
+const roleFilter = ref('')
+const activeFilter = ref('')
+
+const ACTIVE_FILTER_OPTIONS = [
+  { value: '', label: 'Todos' },
+  { value: '1', label: 'Activos' },
+  { value: '0', label: 'Inactivos' },
+]
+
+const hasActiveFilters = computed(
+  () => searchQuery.value.trim() !== '' || roleFilter.value !== '' || activeFilter.value !== '',
+)
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+function currentFilters(): Record<string, string | number> {
+  return { q: searchQuery.value.trim(), role: roleFilter.value, active: activeFilter.value }
+}
+
+watch([searchQuery, roleFilter, activeFilter], () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    page.value = 1
+    list(undefined, currentFilters())
+  }, 350)
+})
+
+function clearFilters(): void {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchQuery.value = ''
+  roleFilter.value = ''
+  activeFilter.value = ''
+  // El watcher recarga con debounce; si no habia filtros, recarga ya.
+  if (!hasActiveFilters.value) {
+    page.value = 1
+    list()
+  }
 }
 
 const ROLE_OPTIONS = [
@@ -62,6 +109,7 @@ const ROLE_OPTIONS = [
   { value: 'DRIVER', label: 'Conductor' },
   { value: 'WORKER', label: 'Trabajador' },
 ]
+const ROLE_FILTER_OPTIONS = [{ value: '', label: 'Todos los roles' }, ...ROLE_OPTIONS]
 
 function roleTagProps(role: User['role']) {
   if (role === 'ADMIN') return { value: 'Administrador', icon: 'pi pi-shield', severity: 'contrast' as const }
@@ -158,8 +206,8 @@ function validateClientSide(): boolean {
     fieldErrors.employee_code = LABELS.requiredField
     return false
   }
-  if (formData.employee_code.length > 30) {
-    fieldErrors.employee_code = 'Máximo 30 caracteres.'
+  if (formData.employee_code.length > 60) {
+    fieldErrors.employee_code = 'Máximo 60 caracteres.'
     return false
   }
   if (!formData.document_number.trim()) {
@@ -274,7 +322,7 @@ async function onSubmit(): Promise<void> {
       await update(editingId.value as number, body)
     }
     dialogVisible.value = false
-    await list()
+    await list(undefined, currentFilters())
     toast.add({ severity: 'success', summary: wasCreate ? LABELS.created : LABELS.updated, life: 4000 })
   } catch (err) {
     if (err instanceof ApiError && err.code === 422) {
@@ -310,7 +358,7 @@ async function confirmDeactivate(): Promise<void> {
   try {
     await softDelete(confirmTarget.value)
     confirmTarget.value = null
-    await list()
+    await list(undefined, currentFilters())
     toast.add({ severity: 'success', summary: LABELS.deactivated, life: 4000 })
   } catch (err) {
     toast.add({
@@ -337,7 +385,46 @@ async function confirmDeactivate(): Promise<void> {
 
     <p v-if="error" role="alert" class="users-error">
       {{ error }}
-      <Button label="Reintentar" text size="small" @click="list()" />
+      <Button label="Reintentar" text size="small" @click="list(undefined, currentFilters())" />
+    </p>
+
+    <div class="users-toolbar">
+      <IconField class="users-search">
+        <InputIcon class="pi pi-search" />
+        <InputText
+          v-model="searchQuery"
+          placeholder="Buscar por legajo, usuario, nombre o documento…"
+          aria-label="Buscar usuarios"
+        />
+      </IconField>
+      <Select
+        v-model="roleFilter"
+        :options="ROLE_FILTER_OPTIONS"
+        optionLabel="label"
+        optionValue="value"
+        aria-label="Filtrar por rol"
+        class="users-filter-select"
+      />
+      <Select
+        v-model="activeFilter"
+        :options="ACTIVE_FILTER_OPTIONS"
+        optionLabel="label"
+        optionValue="value"
+        aria-label="Filtrar por estado"
+        class="users-filter-select"
+      />
+      <Button
+        v-if="hasActiveFilters"
+        label="Limpiar"
+        icon="pi pi-filter-slash"
+        text
+        @click="clearFilters"
+      />
+    </div>
+
+    <p v-if="!loading && !error" class="users-count" aria-live="polite">
+      {{ total }} {{ total === 1 ? 'usuario' : 'usuarios' }}
+      <span v-if="hasActiveFilters">con los filtros aplicados</span>
     </p>
 
     <DataTable
@@ -355,8 +442,16 @@ async function confirmDeactivate(): Promise<void> {
       <template #empty>
         <div class="users-empty">
           <i class="pi pi-users users-empty-icon" aria-hidden="true"></i>
-          <p>Todavía no cargaste ningún usuario.</p>
-          <Button label="Nuevo usuario" icon="pi pi-plus" text @click="openCreate" />
+          <p v-if="hasActiveFilters">Sin resultados para los filtros aplicados.</p>
+          <p v-else>Todavía no cargaste ningún usuario.</p>
+          <Button
+            v-if="hasActiveFilters"
+            label="Limpiar filtros"
+            icon="pi pi-filter-slash"
+            text
+            @click="clearFilters"
+          />
+          <Button v-else label="Nuevo usuario" icon="pi pi-plus" text @click="openCreate" />
         </div>
       </template>
 
@@ -676,6 +771,26 @@ async function confirmDeactivate(): Promise<void> {
   color: #b91c1c;
   margin: 0;
 }
+.users-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  align-items: center;
+}
+.users-search {
+  flex: 1 1 16rem;
+}
+.users-search input {
+  width: 100%;
+}
+.users-filter-select {
+  flex: 0 1 11rem;
+}
+.users-count {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #52525b;
+}
 .users-code {
   font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
@@ -784,7 +899,8 @@ async function confirmDeactivate(): Promise<void> {
 
 @media (prefers-color-scheme: dark) {
   .users-subtitle,
-  .users-stop {
+  .users-stop,
+  .users-count {
     color: #a1a1aa;
   }
   .users-error,

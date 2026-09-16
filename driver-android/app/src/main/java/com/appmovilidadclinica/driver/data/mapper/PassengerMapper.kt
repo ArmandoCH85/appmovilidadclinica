@@ -4,6 +4,9 @@ import com.appmovilidadclinica.driver.data.remote.dto.PassengerDto
 import com.appmovilidadclinica.driver.domain.model.Passenger
 import com.appmovilidadclinica.driver.domain.model.ReservationStatus
 import java.time.Instant
+import java.time.OffsetDateTime
+
+private fun parseInstant(raw: String): Instant = OffsetDateTime.parse(raw).toInstant()
 
 fun PassengerDto.toDomain(): Passenger = Passenger(
     reservationId = reservationId,
@@ -17,6 +20,6 @@ fun PassengerDto.toDomain(): Passenger = Passenger(
     destinationStopOrder = destinationStopOrder,
     destinationStopName = destinationStopName,
     status = ReservationStatus.valueOf(status.uppercase()),
-    confirmedAt = confirmedAt?.let { Instant.parse(it) },
-    boardedAt = boardedAt?.let { Instant.parse(it) }
+    confirmedAt = confirmedAt?.let { parseInstant(it) },
+    boardedAt = boardedAt?.let { parseInstant(it) }
 )

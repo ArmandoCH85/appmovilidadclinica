@@ -27,7 +27,7 @@ type AdminService interface {
 	UpdateStop(ctx context.Context, id int64, p StopUpdateParams) error
 
 	// Usuarios
-	ListUsers(ctx context.Context, pg types.PaginationParams) ([]User, int, error)
+	ListUsers(ctx context.Context, pg types.PaginationParams, f UserListFilter) ([]User, int, error)
 	CreateUser(ctx context.Context, p UserCreateParams) (User, error)
 	UpdateUser(ctx context.Context, id int64, p UserUpdateParams) error
 
@@ -166,12 +166,12 @@ func (s *adminService) UpdateStop(ctx context.Context, id int64, p StopUpdatePar
 // Usuarios
 // ----------------------------------------------------------------------------
 
-// ListUsers lista usuarios.
-func (s *adminService) ListUsers(ctx context.Context, pg types.PaginationParams) ([]User, int, error) {
+// ListUsers lista usuarios con filtros opcionales (buscador).
+func (s *adminService) ListUsers(ctx context.Context, pg types.PaginationParams, f UserListFilter) ([]User, int, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
-	return s.repo.ListUsers(ctx, pg)
+	return s.repo.ListUsers(ctx, pg, f)
 }
 
 // CreateUser crea un usuario. Recibe la password en texto plano (TLS) y la

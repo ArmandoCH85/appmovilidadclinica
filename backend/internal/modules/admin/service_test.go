@@ -58,7 +58,7 @@ func (m *mockAdminRepo) CreateStop(_ context.Context, p StopCreateParams) (Stop,
 func (m *mockAdminRepo) UpdateStop(_ context.Context, _ int64, _ StopUpdateParams) error {
 	return nil
 }
-func (m *mockAdminRepo) ListUsers(_ context.Context, _ types.PaginationParams) ([]User, int, error) {
+func (m *mockAdminRepo) ListUsers(_ context.Context, _ types.PaginationParams, _ UserListFilter) ([]User, int, error) {
 	return nil, 0, nil
 }
 func (m *mockAdminRepo) CreateUser(_ context.Context, p UserCreateParams) (User, error) {

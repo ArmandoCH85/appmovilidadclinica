@@ -77,7 +77,7 @@ type User struct {
 // servicio la hashea con bcrypt antes de invocar al repositorio, que ya
 // recibe el hash listo para persistir.
 type UserCreateParams struct {
-	EmployeeCode    string  `json:"employee_code" validate:"required,max=30"`
+	EmployeeCode    string  `json:"employee_code" validate:"required,max=60"`
 	DocumentNumber  string  `json:"document_number" validate:"required,max=20"`
 	Username        *string `json:"username,omitempty" validate:"omitempty,max=60"`
 	Password        string  `json:"password" validate:"required"`
@@ -97,7 +97,7 @@ type UserCreateParams struct {
 // si llega vacia no se modifica el hash existente; si llega, el servicio la
 // hashea antes de pasarla al repositorio.
 type UserUpdateParams struct {
-	EmployeeCode    string  `json:"employee_code" validate:"required,max=30"`
+	EmployeeCode    string  `json:"employee_code" validate:"required,max=60"`
 	DocumentNumber  string  `json:"document_number" validate:"required,max=20"`
 	Username        *string `json:"username,omitempty" validate:"omitempty,max=60"`
 	Password        string  `json:"password,omitempty"`
@@ -689,7 +689,7 @@ type AdminRepository interface {
 	UpdateStop(ctx context.Context, id int64, p StopUpdateParams) error
 
 	// Usuarios
-	ListUsers(ctx context.Context, pg types.PaginationParams) ([]User, int, error)
+	ListUsers(ctx context.Context, pg types.PaginationParams, f UserListFilter) ([]User, int, error)
 	CreateUser(ctx context.Context, p UserCreateParams) (User, error)
 	UpdateUser(ctx context.Context, id int64, p UserUpdateParams) error
 
@@ -859,21 +859,35 @@ func (r *adminRepository) UpdateStop(ctx context.Context, id int64, p StopUpdate
 	return ensureAffected(res, "parada", id)
 }
 
+// UserListFilter concentra los filtros opcionales de GET /admin/users.
+// Los tres son aditivos y opcionales: vacio/nil significa "sin filtro".
+//   Q: texto libre que matchea legajo, usuario, documento o nombre (LIKE).
+//   Role: ADMIN, DRIVER o WORKER exacto (otro valor se ignora).
+//   Active: != nil filtra por estado (activos/inactivos).
+type UserListFilter struct {
+	Q      string
+	Role   string
+	Active *bool
+}
+
 // ----------------------------------------------------------------------------
 // Usuarios (users)
 // ----------------------------------------------------------------------------
 
 // ListUsers devuelve la pagina de usuarios (sin password_hash).
-func (r *adminRepository) ListUsers(ctx context.Context, pg types.PaginationParams) ([]User, int, error) {
+func (r *adminRepository) ListUsers(ctx context.Context, pg types.PaginationParams, f UserListFilter) ([]User, int, error) {
 	pg.Normalize()
-	const q = `
+	where, filterArgs := userListWhere(f)
+	const sel = `
         SELECT id, employee_code, document_number, username, full_name, role,
                department, ceco, phone, personal_email, management, site,
                preferred_stop_id, active
-          FROM users
+          FROM users`
+	q := sel + where + `
          ORDER BY id
          LIMIT ? OFFSET ?`
-	rows, err := r.db.QueryContext(ctx, q, pg.Limit(), pg.Offset())
+	args := append(filterArgs, pg.Limit(), pg.Offset())
+	rows, err := r.db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("listando usuarios: %w", err)
 	}
@@ -903,11 +917,38 @@ func (r *adminRepository) ListUsers(ctx context.Context, pg types.PaginationPara
 	if err := rows.Err(); err != nil {
 		return nil, 0, err
 	}
-	total, err := r.count(ctx, "users", "")
+	total, err := r.count(ctx, "users", strings.TrimPrefix(where, " WHERE "), filterArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
 	return users, total, nil
+}
+
+// userListWhere traduce UserListFilter a clausula SQL. Devuelve "" (sin
+// filtro) o " WHERE <cond>" con sus args, en orden. El LIKE cubre legajo,
+// usuario, documento y nombre; el rol solo acepta los 3 valores validos
+// (cualquier otro se ignora en vez de devolver 0 filas por typo).
+func userListWhere(f UserListFilter) (string, []any) {
+	var conds []string
+	var args []any
+	if q := strings.TrimSpace(f.Q); q != "" {
+		like := "%" + q + "%"
+		conds = append(conds, "(employee_code LIKE ? OR username LIKE ? OR document_number LIKE ? OR full_name LIKE ?)")
+		args = append(args, like, like, like, like)
+	}
+	switch f.Role {
+	case "ADMIN", "DRIVER", "WORKER":
+		conds = append(conds, "role = ?")
+		args = append(args, f.Role)
+	}
+	if f.Active != nil {
+		conds = append(conds, "active = ?")
+		args = append(args, *f.Active)
+	}
+	if len(conds) == 0 {
+		return "", nil
+	}
+	return " WHERE " + strings.Join(conds, " AND "), args
 }
 
 // CreateUser inserta un usuario y devuelve la fila creada (sin password_hash).

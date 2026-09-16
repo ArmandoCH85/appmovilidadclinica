@@ -105,7 +105,7 @@ export const usersConfig: CrudResourceConfig = {
     { key: 'active', label: 'Activo' },
   ],
   fields: [
-    { key: 'employee_code', label: 'Legajo', type: 'text', required: true, maxLength: 30 },
+    { key: 'employee_code', label: 'Legajo', type: 'text', required: true, maxLength: 60 },
     { key: 'document_number', label: 'Número de documento', type: 'text', required: true, maxLength: 20 },
     // required:'create' — ver comentario en CrudField sobre este campo.
     { key: 'password', label: 'Contraseña', type: 'password', required: 'create' },

@@ -4,7 +4,11 @@ import com.appmovilidadclinica.driver.data.remote.dto.DriverTripDto
 import com.appmovilidadclinica.driver.domain.model.Direction
 import com.appmovilidadclinica.driver.domain.model.DriverTrip
 import com.appmovilidadclinica.driver.domain.model.TripStatus
-import java.time.Instant
+import java.time.OffsetDateTime
+
+/** El backend manda offset Lima (`-05:00`); `Instant.parse` solo acepta `Z`.
+ *  `OffsetDateTime` acepta ambos y normaliza a UTC. */
+private fun parseInstant(raw: String): Instant = OffsetDateTime.parse(raw).toInstant()
 
 fun DriverTripDto.toDomain(): DriverTrip = DriverTrip(
     id = id,
@@ -14,8 +18,8 @@ fun DriverTripDto.toDomain(): DriverTrip = DriverTrip(
         "VUELTA" -> Direction.VUELTA
         else -> Direction.IDA
     },
-    scheduledStartAt = Instant.parse(scheduledStartAt),
-    scheduledEndAt = Instant.parse(scheduledEndAt),
+    scheduledStartAt = parseInstant(scheduledStartAt),
+    scheduledEndAt = parseInstant(scheduledEndAt),
     vehicleCode = vehicleCode,
     plate = plate,
     seatCapacity = seatCapacity,

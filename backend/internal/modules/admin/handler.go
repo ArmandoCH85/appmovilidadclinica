@@ -132,10 +132,22 @@ func (h *AdminHandler) UpdateStop(w http.ResponseWriter, r *http.Request) {
 // Usuarios (users)
 // ----------------------------------------------------------------------------
 
-// ListUsers maneja GET /admin/users.
+// ListUsers maneja GET /admin/users. Filtros opcionales por query string:
+// q (texto en legajo/usuario/documento/nombre), role (ADMIN/DRIVER/WORKER)
+// y active (1/true activos, 0/false inactivos). Sin filtros = paginado puro.
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	pg := parsePagination(r)
-	users, total, err := h.svc.ListUsers(r.Context(), pg)
+	q := r.URL.Query().Get("q")
+	f := UserListFilter{Q: q, Role: r.URL.Query().Get("role")}
+	switch a := r.URL.Query().Get("active"); a {
+	case "1", "true":
+		t := true
+		f.Active = &t
+	case "0", "false":
+		t := false
+		f.Active = &t
+	}
+	users, total, err := h.svc.ListUsers(r.Context(), pg, f)
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return
