@@ -61,7 +61,24 @@ func TestUpdateTripStatus_OtherStatus_KeepsPlainUpdate(t *testing.T) {
 	defer db.Close()
 
 	mock.ExpectExec(`UPDATE trip_instances`).
-		WithArgs("IN_PROGRESS", int64(33)).
+		WithArgs("PUBLISHED", int64(33)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	repo := &adminRepository{db: db}
+	require.NoError(t, repo.UpdateTripStatus(ctx, 33, "PUBLISHED", 77))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// IN_PROGRESS registra actual_start_at: sin eso los reportes de duracion y de
+// demora de salida quedan vacios (filtran por esa columna).
+func TestUpdateTripStatus_InProgress_SetsActualStartAt(t *testing.T) {
+	ctx := context.Background()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectExec(`(?s)UPDATE trip_instances.*actual_start_at = COALESCE`).
+		WithArgs(int64(33)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	repo := &adminRepository{db: db}

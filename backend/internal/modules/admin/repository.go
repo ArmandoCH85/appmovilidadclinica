@@ -2317,6 +2317,8 @@ func (r *adminRepository) UpdateTripStatus(ctx context.Context, tripID int64, st
 		return r.closeTripFromAdmin(ctx, tripID, actorUserID)
 	case "CANCELLED":
 		return r.cancelTripFromAdmin(ctx, tripID, actorUserID)
+	case "IN_PROGRESS":
+		return r.startTripFromAdmin(ctx, tripID)
 	}
 
 	res, err := r.db.ExecContext(ctx, `
@@ -2324,6 +2326,21 @@ func (r *adminRepository) UpdateTripStatus(ctx context.Context, tripID int64, st
            SET status = ?
          WHERE id = ?`,
 		status, tripID)
+	if err != nil {
+		return dberr.TranslatePlainSQL(err, "viaje", "")
+	}
+	return ensureAffected(res, "viaje", tripID)
+}
+
+// startTripFromAdmin marca el viaje en curso y registra actual_start_at, que
+// es lo que alimentan los reportes de duracion y demora de salida. Antes solo se
+// cambiaba el estado, asi que esos reportes quedaban vacios.
+func (r *adminRepository) startTripFromAdmin(ctx context.Context, tripID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+        UPDATE trip_instances
+           SET status = 'IN_PROGRESS',
+               actual_start_at = COALESCE(actual_start_at, CURRENT_TIMESTAMP)
+         WHERE id = ?`, tripID)
 	if err != nil {
 		return dberr.TranslatePlainSQL(err, "viaje", "")
 	}

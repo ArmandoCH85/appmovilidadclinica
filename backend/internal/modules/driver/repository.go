@@ -341,13 +341,18 @@ func (r *driverRepository) getTripStatus(ctx context.Context, tripID int64) (str
 	return status, nil
 }
 
-// StartTrip pasa el viaje a IN_PROGRESS. El UPDATE solo afecta filas en
-// PUBLISHED o BOARDING; si no afecta ninguna, se resuelve el estado actual
-// para devolver un ConflictError con mensaje util en vez de un 404 generico.
+// StartTrip pasa el viaje a IN_PROGRESS y registra actual_start_at, que es
+// lo que alimenta los reportes de desviacion de duracion y de demora de salida
+// (vw_duration_deviation / vw_delays_by_route_day filtran por esa columna).
+// El UPDATE solo afecta filas en PUBLISHED o BOARDING; si no afecta ninguna, se
+// resuelve el estado actual para devolver un ConflictError con mensaje util en
+// vez de un 404 generico. COALESCE conserva el primer inicio si el viaje se
+// reinicia.
 func (r *driverRepository) StartTrip(ctx context.Context, tripID int64) error {
 	res, err := r.db.ExecContext(ctx, `
         UPDATE trip_instances
-           SET status = 'IN_PROGRESS'
+           SET status = 'IN_PROGRESS',
+               actual_start_at = COALESCE(actual_start_at, CURRENT_TIMESTAMP)
          WHERE id = ?
            AND status IN ('PUBLISHED', 'BOARDING')`, tripID)
 	if err != nil {
