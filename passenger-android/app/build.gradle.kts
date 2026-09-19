@@ -22,13 +22,13 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.appmovilidadclinica.passenger"
+        applicationId = "com.sitech.clinica.empleados"
         // minSdk 26: cobertura >95% del parque activo real, sin cargar
         // soporte legacy que no se necesita para este alcance (ver diseño).
         minSdk = 26
         targetSdk = 35
-        versionCode = 20260916
-        versionName = "0.2.0"
+        versionCode = 20260919
+        versionName = "0.2.1"
     }
 
     signingConfigs {
