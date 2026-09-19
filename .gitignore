@@ -41,8 +41,6 @@ npm-debug.log*
 backend/backend.exe
 
 # Backups locales de archivos versionados (*.bak, *.bak.20260919, etc).
-# Ojo: backend/migrations/0003_active_reservation_guard.up.sql.bak YA esta
-# trackeado en el repo; este patron no lo destrackea, solo evita agregar nuevos.
 *.bak
 *.bak.*
 
