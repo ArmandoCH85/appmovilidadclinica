@@ -1,0 +1,166 @@
+package com.appmovilidadclinica.driver.shared.ui.screens.tripdetail
+
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.model.DriverTrip
+import com.appmovilidadclinica.driver.shared.domain.model.Passenger
+import com.appmovilidadclinica.driver.shared.domain.model.TripStatus
+import com.appmovilidadclinica.driver.shared.domain.model.TripStop
+import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class TripDetailUiState(
+    val trip: DriverTrip? = null,
+    val passengers: List<Passenger> = emptyList(),
+    val stops: List<TripStop> = emptyList(),
+    val loading: Boolean = true,
+    val errorMessage: String? = null,
+    val stopsErrorMessage: String? = null,
+    val toastMessage: String? = null,
+    val pendingActionId: Long? = null,
+)
+
+class TripDetailViewModel(
+    private val tripId: Long,
+    initialTrip: DriverTrip? = null,
+    private val driverRepository: DriverRepository,
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val _uiState = MutableStateFlow(TripDetailUiState(trip = initialTrip?.takeIf { it.id == tripId }))
+    val uiState: StateFlow<TripDetailUiState> = _uiState
+
+    fun load() {
+        _uiState.update { it.copy(loading = true, errorMessage = null, stopsErrorMessage = null) }
+        scope.launch {
+            // Refresca el estado del viaje desde el backend: al re-entrar a la
+            // pantalla (p.ej. despues de registrar un invitado en el mapa de
+            // asientos) el snapshot de navegacion puede estar desactualizado y
+            // el boton Iniciar/Finalizar viaje mostraria el estado viejo.
+            val tripResult = driverRepository.getTrip(tripId)
+            // Pasajeros y paradas son independientes: si el backend de paradas
+            // todavia no esta desplegado (o falla), igual mostramos la lista de
+            // pasajeros en vez de tapar toda la pantalla con un error.
+            val passengersResult = driverRepository.getPassengers(tripId)
+            val stopsResult = driverRepository.getTripStops(tripId)
+
+            val passengersError = passengersResult.exceptionOrNull()
+            if (passengersError != null) {
+                _uiState.update { it.copy(loading = false, errorMessage = messageFor(passengersError)) }
+                return@launch
+            }
+
+            _uiState.update {
+                it.copy(
+                    loading = false,
+                    trip = tripResult.getOrNull() ?: it.trip,
+                    passengers = passengersResult.getOrDefault(emptyList())
+                        .sortedBy { p -> p.originStopOrder },
+                    stops = stopsResult.getOrDefault(emptyList()).sortedBy { s -> s.stopOrder },
+                    stopsErrorMessage = stopsResult.exceptionOrNull()?.let(::messageFor),
+                )
+            }
+        }
+    }
+
+    fun startTrip() {
+        _uiState.update { it.copy(pendingActionId = tripId) }
+        scope.launch {
+            val result = driverRepository.startTrip(tripId)
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            pendingActionId = null,
+                            toastMessage = "Viaje iniciado",
+                            trip = it.trip?.copy(status = TripStatus.IN_PROGRESS),
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(pendingActionId = null, toastMessage = messageFor(error)) }
+                },
+            )
+        }
+    }
+
+    fun completeTrip() {
+        _uiState.update { it.copy(pendingActionId = tripId) }
+        scope.launch {
+            val result = driverRepository.completeTrip(tripId)
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            pendingActionId = null,
+                            toastMessage = "Viaje finalizado",
+                            trip = it.trip?.copy(status = TripStatus.COMPLETED),
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(pendingActionId = null, toastMessage = messageFor(error)) }
+                },
+            )
+        }
+    }
+
+    fun board(reservationId: Long) = runAction(reservationId, "Pasajero abordado") {
+        driverRepository.markBoarded(reservationId)
+    }
+
+    fun noShow(reservationId: Long) = runAction(reservationId, "No presentado registrado") {
+        driverRepository.markNoShow(reservationId)
+    }
+
+    fun alight(reservationId: Long) = runAction(reservationId, "Bajada registrada") {
+        driverRepository.markAlighted(reservationId)
+    }
+
+    fun markArrival(tripStopTimeId: Long) = runAction(tripStopTimeId, "Llegada marcada") {
+        driverRepository.markArrival(tripStopTimeId)
+    }
+
+    fun markDeparture(tripStopTimeId: Long) = runAction(tripStopTimeId, "Salida marcada") {
+        driverRepository.markDeparture(tripStopTimeId)
+    }
+
+    fun dismissToast() {
+        _uiState.update { it.copy(toastMessage = null) }
+    }
+
+    private fun runAction(actionId: Long, successMessage: String, action: suspend () -> Result<Unit>) {
+        _uiState.update { it.copy(pendingActionId = actionId) }
+        scope.launch {
+            val result = action()
+            result.fold(
+                onSuccess = {
+                    _uiState.update { it.copy(pendingActionId = null, toastMessage = successMessage) }
+                    load()
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(pendingActionId = null, toastMessage = messageFor(error))
+                    }
+                },
+            )
+        }
+    }
+
+    fun dispose() {
+        scope.cancel()
+    }
+
+    private fun messageFor(error: Throwable): String = when (error) {
+        is AppError.Conflict -> error.message
+        is AppError.Forbidden -> "No está asignado a este viaje."
+        is AppError.Network -> "Sin conexión a internet."
+        else -> "Ocurrió un error inesperado."
+    }
+}

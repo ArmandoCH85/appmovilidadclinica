@@ -1,0 +1,121 @@
+// Modulo KMP (Fase 1 de la migracion a multiplatform).
+// Target actual: Android (source set commonMain + androidMain).
+// iOS target se agrega en Fase 5 (requiere macOS para validar build).
+//
+// Contiene: HTTP client (Ktor), DTOs, modelos de dominio, repositorios.
+// Por ahora NO contiene UI (Fase 3) ni storage local (Fase 4) — el app
+// Android sigue usando Retrofit/CameraX/MLKit durante la transicion.
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
+    id("com.android.library")
+    id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.compose")
+}
+
+kotlin {
+    androidTarget {
+        compilations.all {
+            kotlinOptions.jvmTarget = "17"
+        }
+    }
+
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            // Core
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+
+            // HTTP - Ktor API (multiplatform)
+            implementation("io.ktor:ktor-client-core:3.0.3")
+            implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
+            implementation("io.ktor:ktor-client-auth:3.0.3")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
+            implementation("io.ktor:ktor-client-logging:3.0.3")
+
+            // Logging
+            implementation("co.touchlab:kermit:2.0.5")
+
+            // Multiplatform Settings (Fase 4 — DataStore replacement)
+            implementation("com.russhwolf:multiplatform-settings:1.1.1")
+
+            // DI (Fase 2)
+            api("io.insert-koin:koin-core:4.0.0")
+
+            // Compose Multiplatform (Fase 3) — api para que el app Android
+            // compile contra la UI que vive aca.
+            api(compose.runtime)
+            api(compose.foundation)
+            api(compose.material3)
+            api(compose.materialIconsExtended)
+            api(compose.ui)
+
+            // kotlinx-datetime (Fase 4.5 — reemplazo multiplatform de java.time.LocalDate)
+            api("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+
+            // Navigation Compose KMP (Fase 3)
+            api("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha10")
+
+            // Koin Compose Multiplatform (Fase 4 — koinInject, koinViewModel opcional)
+            api("io.insert-koin:koin-compose:4.0.0")
+        }
+
+        androidMain.dependencies {
+            // Engine HTTP nativo de Android (OkHttp)
+            implementation("io.ktor:ktor-client-okhttp:3.0.3")
+
+            // Koin Android (para androidContext() en platformModule)
+            implementation("io.insert-koin:koin-android:4.0.0")
+
+            // Google Play Services Location (Fase 4 — AndroidLocationService)
+            implementation("com.google.android.gms:play-services-location:21.3.0")
+
+            // javax.inject (anotaciones @Singleton / @Inject usadas por RepositoryImpl)
+            implementation("javax.inject:javax.inject:1")
+
+            // CameraX (Fase 4.5 — CameraQrScannerContent + QrCodeAnalyzer)
+            implementation("androidx.camera:camera-core:1.4.1")
+            implementation("androidx.camera:camera-camera2:1.4.1")
+            implementation("androidx.camera:camera-lifecycle:1.4.1")
+            implementation("androidx.camera:camera-view:1.4.1")
+
+            // MLKit Barcode Scanning (Fase 4.5 — mismo)
+            implementation("com.google.mlkit:barcode-scanning:17.3.0")
+        }
+
+        iosMain.dependencies {
+            // Engine HTTP nativo de iOS (Darwin)
+            implementation("io.ktor:ktor-client-darwin:3.0.3")
+        }
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+        }
+    }
+}
+
+android {
+    namespace = "com.appmovilidadclinica.driver.shared"
+    compileSdk = 34
+
+    defaultConfig {
+        minSdk = 26
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}

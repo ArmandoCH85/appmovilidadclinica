@@ -1,0 +1,16 @@
+package com.appmovilidadclinica.driver.shared.domain.model
+
+import kotlinx.datetime.Instant
+
+data class DriverTrip(
+    val id: Long,
+    val tripCode: String,
+    val routeName: String,
+    val direction: Direction,
+    val scheduledStartAt: Instant,
+    val scheduledEndAt: Instant,
+    val vehicleCode: String,
+    val plate: String,
+    val seatCapacity: Int,
+    val status: TripStatus
+)

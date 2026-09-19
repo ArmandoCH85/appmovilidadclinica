@@ -1,0 +1,91 @@
+package com.appmovilidadclinica.driver.shared.ui.screens.login
+
+import com.appmovilidadclinica.driver.shared.domain.model.AppError
+import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class LoginUiState(
+    val documentNumber: String = "",
+    val password: String = "",
+    val submitting: Boolean = false,
+    val errorMessage: String? = null,
+)
+
+sealed interface LoginEvent {
+    data object Authenticated : LoginEvent
+}
+
+/**
+ * Login ViewModel multiplatform. No extiende androidx.lifecycle.ViewModel
+ * (no es KMP-friendly); usa su propio CoroutineScope. Se instancia via
+ * `remember { LoginViewModel(...) }` en la Compose Screen. El State
+ * observable es [uiState] StateFlow.
+ */
+class LoginViewModel(
+    private val authRepository: AuthRepository,
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState: StateFlow<LoginUiState> = _uiState
+
+    private val _events = Channel<LoginEvent>(Channel.BUFFERED)
+    val events: Flow<LoginEvent> = _events.receiveAsFlow()
+
+    fun onDocumentNumberChange(value: String) {
+        _uiState.update { it.copy(documentNumber = value, errorMessage = null) }
+    }
+
+    fun onPasswordChange(value: String) {
+        _uiState.update { it.copy(password = value, errorMessage = null) }
+    }
+
+    fun submit() {
+        val state = _uiState.value
+        if (state.documentNumber.isBlank() || state.password.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Complete el usuario y la contraseña.") }
+            return
+        }
+        _uiState.update { it.copy(submitting = true, errorMessage = null) }
+        scope.launch {
+            val result = authRepository.login(state.documentNumber.trim(), state.password)
+            result.fold(
+                onSuccess = { authResult ->
+                    if (authResult.user.role != "DRIVER") {
+                        authRepository.clearSession()
+                        _uiState.update {
+                            it.copy(submitting = false, errorMessage = "Esta app es para conductores")
+                        }
+                    } else {
+                        _uiState.update { it.copy(submitting = false) }
+                        _events.send(LoginEvent.Authenticated)
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(submitting = false, errorMessage = messageFor(error)) }
+                },
+            )
+        }
+    }
+
+    fun dispose() {
+        scope.cancel()
+    }
+
+    private fun messageFor(error: Throwable): String = when (error) {
+        is AppError.Unauthorized -> "Usuario o contraseña incorrectos."
+        is AppError.Forbidden -> error.message
+        is AppError.Network -> "No se pudo conectar con el servidor. Verifique su conexión."
+        else -> "Ocurrió un error inesperado. Intente nuevamente."
+    }
+}
