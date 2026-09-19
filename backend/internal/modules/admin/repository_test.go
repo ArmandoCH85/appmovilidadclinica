@@ -272,7 +272,7 @@ func TestRepository_DuplicateKey_MapsToConflict(t *testing.T) {
 			name:  "UpdateTripStatus",
 			sqlRe: `UPDATE trip_instances`,
 			call: func(r *adminRepository) error {
-				return r.UpdateTripStatus(ctx, 1, "PUBLISHED")
+				return r.UpdateTripStatus(ctx, 1, "PUBLISHED", 1)
 			},
 		},
 	}
@@ -283,8 +283,11 @@ func TestRepository_DuplicateKey_MapsToConflict(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
+			// Sin WithArgs: sqlmock acepta cualquier lista de argumentos. El
+			// WithArgs(sqlmock.AnyArg()) anterior exigia exactamente UN
+			// argumento, asi que todos los INSERT/UPDATE con mas de uno
+			// fallaban con "arguments do not match" y el test nunca pasaba.
 			mock.ExpectExec(tc.sqlRe).
-				WithArgs(sqlmock.AnyArg()).
 				WillReturnError(duplicateEntry)
 
 			repo := &adminRepository{db: db}

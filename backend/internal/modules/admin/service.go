@@ -687,11 +687,20 @@ func (s *adminService) GetGenerationRun(ctx context.Context, id int64) (Generati
 // ----------------------------------------------------------------------------
 // Operaciones de viajes
 // ----------------------------------------------------------------------------
+// UpdateTripStatus cambia el estado de un viaje. El actor de auditoria se lee
+// del contexto (JWT) y viaja al repositorio: COMPLETED y CANCELLED se derivan a
+// las SPs de dominio, que lo registran en reservation_events.
 func (s *adminService) UpdateTripStatus(ctx context.Context, tripID int64, status string) error {
 	if err := requireAdmin(ctx); err != nil {
 		return err
 	}
-	return s.repo.UpdateTripStatus(ctx, tripID, status)
+
+	actorUserID, err := authctx.UserIDFromContext(ctx)
+	if err != nil {
+		return apperror.UnauthorizedError{Reason: "token sin identidad"}
+	}
+
+	return s.repo.UpdateTripStatus(ctx, tripID, status, actorUserID)
 }
 
 // TriggerManualGeneration dispara la generacion manual de un viaje.

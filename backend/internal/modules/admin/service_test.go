@@ -149,7 +149,7 @@ func (m *mockAdminRepo) CreateRouteSegmentTravelTime(_ context.Context, _ RouteS
 func (m *mockAdminRepo) UpdateRouteSegmentTravelTime(_ context.Context, _ int64, _ RouteSegmentTravelTimeUpdateParams) error {
 	return nil
 }
-func (m *mockAdminRepo) UpdateTripStatus(_ context.Context, _ int64, _ string) error {
+func (m *mockAdminRepo) UpdateTripStatus(_ context.Context, _ int64, _ string, _ int64) error {
 	m.updateTripStatusCalls++
 	return m.updateTripStatusErr
 }

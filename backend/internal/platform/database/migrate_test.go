@@ -2,6 +2,9 @@ package database
 
 import "testing"
 
+// El splitter recorta el delimitador final de TODA sentencia, no solo el
+// custom ($$): el driver ejecuta una sentencia por vez, asi que el `;` final es
+// opcional para MySQL/MariaDB. Por eso las sentencias planas salen sin `;`.
 func TestSplitStatements_DelimiterStripped(t *testing.T) {
 	content := "CREATE TABLE t (id INT);\n" +
 		"DELIMITER $$\n" +
@@ -16,14 +19,14 @@ func TestSplitStatements_DelimiterStripped(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("esperaba 3 sentencias, obtuve %d: %#v", len(got), got)
 	}
-	if got[0] != "CREATE TABLE t (id INT);" {
+	if got[0] != "CREATE TABLE t (id INT)" {
 		t.Errorf("sentencia 0 = %q", got[0])
 	}
 	want1 := "CREATE PROCEDURE p()\nBEGIN\n    SELECT 1;\nEND"
 	if got[1] != want1 {
 		t.Errorf("sentencia 1 = %q, want %q (no debe terminar en $$)", got[1], want1)
 	}
-	if got[2] != "DROP TABLE t;" {
+	if got[2] != "DROP TABLE t" {
 		t.Errorf("sentencia 2 = %q", got[2])
 	}
 }

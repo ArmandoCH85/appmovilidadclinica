@@ -758,7 +758,7 @@ type AdminRepository interface {
 	GetGenerationRun(ctx context.Context, id int64) (GenerationRun, []TripInstance, error)
 
 	// Operaciones de viajes
-	UpdateTripStatus(ctx context.Context, tripID int64, status string) error
+	UpdateTripStatus(ctx context.Context, tripID int64, status string, actorUserID int64) error
 	TriggerManualGeneration(ctx context.Context, templateID int64, serviceDate string) error
 
 	// Reportes (vistas)
@@ -2306,7 +2306,19 @@ func (r *adminRepository) ListTripsByGenerationRun(ctx context.Context, runID in
 
 // UpdateTripStatus cambia el estado de un viaje. El estado se valida contra el
 // ENUM de la columna trip_instances.status en la BD.
-func (r *adminRepository) UpdateTripStatus(ctx context.Context, tripID int64, status string) error {
+//
+// COMPLETED y CANCELLED no se escriben directo: cierran el manifiesto (reservas
+// e invitados que quedaron arriba, con sus segmentos de asiento) y esa logica
+// vive en las SPs de dominio. Un UPDATE pelado dejaba reservas BOARDED y
+// asientos OCCUPIED colgados para siempre: paso en los viajes 133 y 195.
+func (r *adminRepository) UpdateTripStatus(ctx context.Context, tripID int64, status string, actorUserID int64) error {
+	switch status {
+	case "COMPLETED":
+		return r.closeTripFromAdmin(ctx, tripID, actorUserID)
+	case "CANCELLED":
+		return r.cancelTripFromAdmin(ctx, tripID, actorUserID)
+	}
+
 	res, err := r.db.ExecContext(ctx, `
         UPDATE trip_instances
            SET status = ?
@@ -2316,6 +2328,36 @@ func (r *adminRepository) UpdateTripStatus(ctx context.Context, tripID int64, st
 		return dberr.TranslatePlainSQL(err, "viaje", "")
 	}
 	return ensureAffected(res, "viaje", tripID)
+}
+
+// closeTripFromAdmin completa el viaje con sp_admin_close_trip (0021), que cierra
+// las reservas y los invitados BOARDED y marca sus segmentos como USED. No usa
+// sp_complete_trip porque esa exige estado IN_PROGRESS y que el actor sea el
+// conductor asignado: aca el actor es el ADMIN que opera el panel.
+func (r *adminRepository) closeTripFromAdmin(ctx context.Context, tripID, actorUserID int64) error {
+	_, err := r.db.ExecContext(ctx, "CALL sp_admin_close_trip(?, ?)", tripID, actorUserID)
+	if err != nil {
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return spErr
+		}
+		return fmt.Errorf("llamando sp_admin_close_trip: %w", err)
+	}
+	return nil
+}
+
+// cancelTripFromAdmin cancela el viaje con sp_cancel_trip (0002/0021), que
+// cancela las reservas activas, libera los asientos y cierra a los invitados.
+func (r *adminRepository) cancelTripFromAdmin(ctx context.Context, tripID, actorUserID int64) error {
+	const reason = "Cancelado desde el panel de administracion"
+
+	_, err := r.db.ExecContext(ctx, "CALL sp_cancel_trip(?, ?, ?)", tripID, reason, actorUserID)
+	if err != nil {
+		if spErr := dberr.TranslateSP(err); spErr != err {
+			return spErr
+		}
+		return fmt.Errorf("llamando sp_cancel_trip: %w", err)
+	}
+	return nil
 }
 
 // TriggerManualGeneration invoca sp_generate_trip_instance para una fecha

@@ -3,6 +3,7 @@ module github.com/ArmandoCH85/appmovilidadclinica/backend
 go 1.25.0
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-chi/jwtauth/v5 v5.4.0
 	github.com/go-playground/validator/v10 v10.30.3
