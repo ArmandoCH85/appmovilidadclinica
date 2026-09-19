@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/authctx"
@@ -18,6 +19,7 @@ const RoleDRIVER = "DRIVER"
 // verdad para la secuencia CONFIRMED -> BOARDED -> COMPLETED / NO_SHOW).
 type DriverService interface {
 	ListTrips(ctx context.Context, serviceDate string) ([]DriverTrip, error)
+	GetTrip(ctx context.Context, tripID int64) (DriverTrip, error)
 	ListPassengers(ctx context.Context, tripID int64) ([]Passenger, error)
 	ListTripStops(ctx context.Context, tripID int64) ([]TripStop, error)
 	StartTrip(ctx context.Context, tripID int64) error
@@ -84,6 +86,26 @@ func (s *driverService) ListTrips(ctx context.Context, serviceDate string) ([]Dr
 		return nil, err
 	}
 	return s.repo.GetDriverTrips(ctx, driverID, serviceDate)
+}
+
+// GetTrip devuelve un viaje puntual del conductor autenticado. Valida que el
+// conductor este asignado al viaje; si no existe devuelve NotFoundError.
+func (s *driverService) GetTrip(ctx context.Context, tripID int64) (DriverTrip, error) {
+	driverID, err := requireDriver(ctx)
+	if err != nil {
+		return DriverTrip{}, err
+	}
+	if err := s.ensureAssigned(ctx, driverID, tripID); err != nil {
+		return DriverTrip{}, err
+	}
+	trip, err := s.repo.GetTripByID(ctx, tripID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return DriverTrip{}, apperror.NotFoundError{Entity: "viaje", ID: tripID}
+		}
+		return DriverTrip{}, err
+	}
+	return trip, nil
 }
 
 // ListPassengers lista los pasajeros de un viaje. Valida que el conductor

@@ -57,6 +57,21 @@ func (h *DriverHandler) ListTrips(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, trips)
 }
 
+// GetTrip maneja GET /driver/trips/{id}. Devuelve un viaje puntual para que
+// la app refresque su estado (p.ej. al re-entrar al detalle del viaje).
+func (h *DriverHandler) GetTrip(w http.ResponseWriter, r *http.Request) {
+	tripID, ok := parseID(w, r, "id")
+	if !ok {
+		return
+	}
+	trip, err := h.svc.GetTrip(r.Context(), tripID)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, trip)
+}
+
 // ListPassengers maneja GET /driver/trips/{id}/passengers.
 func (h *DriverHandler) ListPassengers(w http.ResponseWriter, r *http.Request) {
 	tripID, ok := parseID(w, r, "id")
@@ -259,6 +274,7 @@ func (h *DriverHandler) RegisterGuest(w http.ResponseWriter, r *http.Request) {
 func (h *DriverHandler) RegisterRoutes(r chi.Router) {
 	r.Route("/driver", func(r chi.Router) {
 		r.Get("/trips", h.ListTrips)
+		r.Get("/trips/{id}", h.GetTrip)
 		r.Get("/trips/{id}/passengers", h.ListPassengers)
 		r.Get("/trips/{id}/stops", h.ListStops)
 		r.Post("/trips/{id}/start", h.StartTrip)

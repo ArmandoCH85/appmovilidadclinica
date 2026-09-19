@@ -102,6 +102,11 @@ type DriverRepository interface {
 	// stop_order.
 	GetTripStops(ctx context.Context, tripID int64) ([]TripStop, error)
 
+	// GetTripByID devuelve un viaje puntual. Usado por el servicio para
+	// refrescar el estado del viaje en el detalle (la app lo pide al
+	// re-entrar a la pantalla). Devuelve sql.ErrNoRows si no existe.
+	GetTripByID(ctx context.Context, tripID int64) (DriverTrip, error)
+
 	// StartTrip pasa el viaje a IN_PROGRESS. Solo valido desde PUBLISHED o
 	// BOARDING.
 	StartTrip(ctx context.Context, tripID int64) error
@@ -191,6 +196,34 @@ func (r *driverRepository) GetDriverTrips(ctx context.Context, driverID int64, s
 		trips = append(trips, t)
 	}
 	return trips, rows.Err()
+}
+
+// GetTripByID devuelve un viaje puntual con la misma forma que GetDriverTrips.
+// El servicio valida que el conductor este asignado antes de exponerlo.
+func (r *driverRepository) GetTripByID(ctx context.Context, tripID int64) (DriverTrip, error) {
+	const q = `
+        SELECT trip.id, trip.trip_code, trip.route_id, route.code, route.name,
+               route.direction, trip.service_date, trip.scheduled_start_at,
+               trip.scheduled_end_at, trip.vehicle_id, vehicle.internal_code,
+               vehicle.plate, trip.seat_capacity_snapshot, trip.status
+          FROM trip_instances trip
+          JOIN transport_routes route ON route.id = trip.route_id
+          JOIN vehicles vehicle ON vehicle.id = trip.vehicle_id
+         WHERE trip.id = ?`
+
+	var t DriverTrip
+	err := r.db.QueryRowContext(ctx, q, tripID).Scan(
+		&t.ID, &t.TripCode, &t.RouteID, &t.RouteCode, &t.RouteName,
+		&t.Direction, &t.ServiceDate, &t.ScheduledStartAt, &t.ScheduledEndAt,
+		&t.VehicleID, &t.VehicleCode, &t.Plate, &t.SeatCapacity, &t.Status,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return DriverTrip{}, sql.ErrNoRows
+		}
+		return DriverTrip{}, fmt.Errorf("obteniendo viaje %d: %w", tripID, err)
+	}
+	return t, nil
 }
 
 // GetTripPassengers lista los pasajeros CONFIRMED o BOARDED de un viaje. El
