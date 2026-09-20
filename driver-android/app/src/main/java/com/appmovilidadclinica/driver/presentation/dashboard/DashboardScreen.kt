@@ -179,17 +179,34 @@ private fun TripCard(trip: DriverTrip, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Hora de salida prominente: es lo que el conductor usa para
+            // reconocer de un vistazo cuál viaje le toca.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    trip.routeName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        Icons.Default.Schedule,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        trip.scheduledStartAt.toPeruTime(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "→ ${trip.scheduledEndAt.toPeruTime()}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     trip.status.label(),
                     style = MaterialTheme.typography.labelMedium,
@@ -198,14 +215,15 @@ private fun TripCard(trip: DriverTrip, onClick: () -> Unit) {
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
 
-            InfoRow(
-                icon = Icons.Default.Schedule,
-                text = "${trip.scheduledStartAt.toPeruTime()} – ${trip.scheduledEndAt.toPeruTime()}",
+            Text(
+                trip.routeName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
             )
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(10.dp))
 
             InfoRow(
                 icon = Icons.Default.DirectionsBus,
