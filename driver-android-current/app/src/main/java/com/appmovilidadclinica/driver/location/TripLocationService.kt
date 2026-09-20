@@ -39,12 +39,28 @@ class TripLocationService : Service() {
     private val logger = Logger.withTag("TripLocationService")
     private lateinit var client: FusedLocationProviderClient
     private lateinit var callback: LocationCallback
+    private var tracking = false
 
     override fun onCreate() {
         super.onCreate()
         client = LocationServices.getFusedLocationProviderClient(this)
         createChannel()
+
+        // Sin permiso de ubicacion NO se puede arrancar un FGS tipo location:
+        // startForeground lanza SecurityException y mata la app. Si no esta
+        // concedido, no arrancamos (la UI lo pide antes de iniciar el viaje).
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            logger.w { "ACCESS_FINE_LOCATION no concedido: no arranco el tracking" }
+            stopSelf()
+            return
+        }
+
         startForeground(NOTIFICATION_ID, buildNotification())
+        tracking = true
         callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.lastLocation?.let { location ->
@@ -59,7 +75,7 @@ class TripLocationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
+        return if (tracking) START_STICKY else START_NOT_STICKY
     }
 
     override fun onDestroy() {
