@@ -14,7 +14,6 @@ CREATE DATABASE IF NOT EXISTS transporte_corporativo_mvp
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE transporte_corporativo_mvp;
 
 -- --------------------------------------------------------------------------
 -- LIMPIEZA PARA EJECUCIÓN REPETIBLE

@@ -17,7 +17,6 @@
 -- Trackeada por schema_migrations (ya existen 0000..0008 aplicadas).
 -- ============================================================================
 
-USE transporte_corporativo_mvp;
 
 ALTER TABLE users
     ADD COLUMN username       VARCHAR(60)  NULL AFTER document_number,

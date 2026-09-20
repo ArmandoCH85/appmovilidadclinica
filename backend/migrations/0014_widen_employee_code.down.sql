@@ -7,6 +7,5 @@
 -- o dar de baja esos legajos.
 -- ============================================================================
 
-USE transporte_corporativo_mvp;
 
 ALTER TABLE users MODIFY COLUMN employee_code VARCHAR(30) NOT NULL;

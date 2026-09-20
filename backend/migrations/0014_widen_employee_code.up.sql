@@ -14,6 +14,5 @@
 -- Trackeada por schema_migrations (0000..0013 ya aplicadas).
 -- ============================================================================
 
-USE transporte_corporativo_mvp;
 
 ALTER TABLE users MODIFY COLUMN employee_code VARCHAR(60) NOT NULL;
