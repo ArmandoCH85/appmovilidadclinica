@@ -39,6 +39,8 @@ import type {
   ReservationChangeRow,
   TripIncidentReportRow,
   UserReservationActivityRow,
+  TripStopArrivalRow,
+  Vehicle,
 } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -1217,6 +1219,297 @@ const activityActionTotals = computed(() => {
 })
 
 // ---------------------------------------------------------------------------
+// Tab 11: Llegadas por sede/paradero (#0023, vw_trip_stop_arrivals)
+// Detalle por parada: hora programada vs real de llegada de cada bus a cada
+// sede/paradero. Cubre turnos de mañana y de noche; el filtro de fechas es
+// por día operativo (service_date), así un viaje nocturno que llega después
+// de medianoche sigue apareciendo bajo el día en que se operó.
+// ---------------------------------------------------------------------------
+
+const STOP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'SEDE', label: 'Sede' },
+  { value: 'PARADERO', label: 'Paradero' },
+]
+
+const STOP_TYPE_LABELS: Record<string, string> = {
+  SEDE: 'Sede',
+  PARADERO: 'Paradero',
+}
+
+const STOP_TYPE_SEVERITIES: Record<string, 'info' | 'warn'> = {
+  SEDE: 'info',
+  PARADERO: 'warn',
+}
+
+// MANANA va sin tilde a propósito: es el literal ASCII que expone la vista.
+const TIME_SLOT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'MADRUGADA', label: 'Madrugada (00–05)' },
+  { value: 'MANANA', label: 'Mañana (06–11)' },
+  { value: 'TARDE', label: 'Tarde (12–17)' },
+  { value: 'NOCHE', label: 'Noche (18–23)' },
+]
+
+const TIME_SLOT_LABELS: Record<string, string> = {
+  MADRUGADA: 'Madrugada',
+  MANANA: 'Mañana',
+  TARDE: 'Tarde',
+  NOCHE: 'Noche',
+}
+
+const STOP_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pendiente',
+  ARRIVED: 'Arribó',
+  DEPARTED: 'Salió',
+  SKIPPED: 'Omitida',
+}
+
+const STOP_STATUS_SEVERITIES: Record<string, 'secondary' | 'success' | 'info' | 'warn'> = {
+  PENDING: 'secondary',
+  ARRIVED: 'success',
+  DEPARTED: 'info',
+  SKIPPED: 'warn',
+}
+
+/** Convierte el ISO del backend (RFC3339 con offset -05:00) a Date local. */
+function parseIso(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** HH:mm en hora local del operador. '—' si no hay valor. */
+function formatClock(value: string | null | undefined): string {
+  const d = parseIso(value)
+  if (!d) return '—'
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
+/** YYYY-MM-DD HH:mm (para tooltips/Excel legible). */
+function formatClockFull(value: string | null | undefined): string {
+  const d = parseIso(value)
+  if (!d) return '—'
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
+/** Severidad del desvío: a tiempo/anticipado verde, +1..5 ámbar, >5 rojo.
+ *  Un desvío de más de 6 h no es creíble (casi siempre es una marca hecha en
+ *  otra fecha de servicio): se muestra como sospechoso, no como puntualidad. */
+const IMPLAUSIBLE_DELAY_MINUTES = 360
+
+function isImplausibleDelay(row: TripStopArrivalRow): boolean {
+  const d = row.arrival_delay_minutes
+  return d !== null && d !== undefined && Math.abs(d) > IMPLAUSIBLE_DELAY_MINUTES
+}
+
+function arrivalDelaySeverity(row: TripStopArrivalRow): 'success' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+  const d = row.arrival_delay_minutes
+  if (d === null || d === undefined) return 'secondary'
+  if (isImplausibleDelay(row)) return 'contrast'
+  if (d <= 0) return 'success'
+  if (d <= 5) return 'warn'
+  return 'danger'
+}
+
+function arrivalDelayLabel(row: TripStopArrivalRow): string {
+  const d = row.arrival_delay_minutes
+  if (d === null || d === undefined) return '—'
+  const text = `${d > 0 ? '+' : ''}${d} min`
+  return isImplausibleDelay(row) ? `⚠ ${text}` : text
+}
+
+function arrivalDelayTooltip(row: TripStopArrivalRow): string {
+  if (isImplausibleDelay(row)) {
+    return 'Desvío no creíble: la marca de llegada parece de otra fecha de servicio. Revisar la operación.'
+  }
+  return `Llegada real: ${formatClockFull(row.actual_arrival_at)}`
+}
+
+function todayDate(): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+const arrivals = ref<TripStopArrivalRow[]>([])
+const arrivalsLoading = ref(false)
+const arrivalsError = ref('')
+// Por defecto acotamos al día operativo de hoy: el detalle por parada puede
+// ser voluminoso y "todo el histórico" no es lo que el operador quiere al
+// entrar. Se puede ampliar el rango desde los filtros.
+const arrivalsFilter = reactive<{
+  routeID: number | null
+  stopID: number | null
+  vehicleID: number | null
+  direction: string
+  stopType: string
+  timeSlot: string
+  dateFrom: Date | null
+  dateTo: Date | null
+}>({
+  routeID: null,
+  stopID: null,
+  vehicleID: null,
+  direction: '',
+  stopType: '',
+  timeSlot: '',
+  dateFrom: todayDate(),
+  dateTo: todayDate(),
+})
+
+// Selector de bus: cargamos el catálogo de vehículos para filtrar por placa o
+// código interno en vez de tener que memorizar el ID numérico. Es opcional:
+// si falla, el reporte se sigue pudiendo usar sin ese filtro.
+const arrivalVehicles = ref<Vehicle[]>([])
+const arrivalVehiclesLoading = ref(false)
+let arrivalVehiclesLoaded = false
+
+async function loadArrivalVehicles(): Promise<void> {
+  if (arrivalVehiclesLoaded) return
+  arrivalVehiclesLoading.value = true
+  try {
+    const res = await request<{ items: Vehicle[] }>('GET', '/admin/vehicles?page=1&page_size=200')
+    // Solo buses activos: no tiene sentido filtrar por un vehículo dado de baja.
+    arrivalVehicles.value = res.items.filter((v) => v.active)
+    arrivalVehiclesLoaded = true
+  } catch {
+    arrivalVehicles.value = []
+  } finally {
+    arrivalVehiclesLoading.value = false
+  }
+}
+
+const arrivalVehicleOptions = computed(() => [
+  { value: null as number | null, label: 'Todos los buses' },
+  ...arrivalVehicles.value.map((v) => ({
+    value: v.id as number | null,
+    label: `${v.plate} — ${v.internal_code}`,
+  })),
+])
+
+async function loadArrivals(): Promise<void> {
+  void loadArrivalVehicles()
+  arrivalsLoading.value = true
+  arrivalsError.value = ''
+  const params = new URLSearchParams()
+  if (arrivalsFilter.routeID && arrivalsFilter.routeID > 0) params.set('route_id', String(arrivalsFilter.routeID))
+  if (arrivalsFilter.stopID && arrivalsFilter.stopID > 0) params.set('stop_id', String(arrivalsFilter.stopID))
+  if (arrivalsFilter.vehicleID && arrivalsFilter.vehicleID > 0) params.set('vehicle_id', String(arrivalsFilter.vehicleID))
+  if (arrivalsFilter.direction) params.set('direction', arrivalsFilter.direction)
+  if (arrivalsFilter.stopType) params.set('stop_type', arrivalsFilter.stopType)
+  if (arrivalsFilter.timeSlot) params.set('time_slot', arrivalsFilter.timeSlot)
+  const fromStr = ymd(arrivalsFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(arrivalsFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: TripStopArrivalRow[] }>(
+      'GET',
+      `/admin/reports/trip-stop-arrivals${qs ? `?${qs}` : ''}`,
+    )
+    arrivals.value = res.items
+  } catch (err) {
+    arrivalsError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    arrivals.value = []
+  } finally {
+    arrivalsLoading.value = false
+  }
+}
+
+function clearArrivalsFilters(): void {
+  arrivalsFilter.routeID = null
+  arrivalsFilter.stopID = null
+  arrivalsFilter.vehicleID = null
+  arrivalsFilter.direction = ''
+  arrivalsFilter.stopType = ''
+  arrivalsFilter.timeSlot = ''
+  arrivalsFilter.dateFrom = todayDate()
+  arrivalsFilter.dateTo = todayDate()
+}
+
+const hasArrivalsFilters = computed(
+  () =>
+    Boolean(
+      (arrivalsFilter.routeID && arrivalsFilter.routeID > 0) ||
+        (arrivalsFilter.stopID && arrivalsFilter.stopID > 0) ||
+        (arrivalsFilter.vehicleID && arrivalsFilter.vehicleID > 0) ||
+        arrivalsFilter.direction ||
+        arrivalsFilter.stopType ||
+        arrivalsFilter.timeSlot ||
+        arrivalsFilter.dateFrom ||
+        arrivalsFilter.dateTo,
+    ),
+)
+
+// Resumen para el pie de la tabla: cuántas llegadas hubo a tiempo, tarde y
+// cuántas siguen pendientes de marca por el conductor.
+const arrivalsSummary = computed(() => {
+  let onTime = 0
+  let late = 0
+  let pending = 0
+  let suspicious = 0
+  for (const row of arrivals.value) {
+    if (row.arrival_classification === 'PENDING') pending++
+    else if (isImplausibleDelay(row)) suspicious++
+    else if (row.arrival_classification === 'LATE') late++
+    else onTime++
+  }
+  return { total: arrivals.value.length, onTime, late, pending, suspicious }
+})
+
+// --- Export a Excel del tab Llegadas por sede/paradero ---
+const arrivalsExcelColumns: ExcelColumn[] = [
+  { key: 'service_date',         label: 'Fecha',              width: 12 },
+  { key: 'timeSlotLabel',        label: 'Turno',              width: 12 },
+  { key: 'route_code',           label: 'Código ruta',        width: 14 },
+  { key: 'route_name',           label: 'Nombre ruta',        width: 28 },
+  { key: 'direction',            label: 'Sentido',            width: 8 },
+  { key: 'trip_code',            label: 'Viaje',              width: 16 },
+  { key: 'vehicle_plate',        label: 'Bus (placa)',        width: 14 },
+  { key: 'vehicle_internal_code', label: 'Bus (código)',      width: 14 },
+  { key: 'driver_name',          label: 'Conductor',          width: 26 },
+  { key: 'stop_order',           label: '# parada',           format: 'number', width: 9 },
+  { key: 'stop_code',            label: 'Código parada',      width: 16 },
+  { key: 'stop_name',            label: 'Sede / paradero',    width: 28 },
+  { key: 'stopTypeLabel',        label: 'Tipo',               width: 12 },
+  { key: 'scheduled_arrival_at', label: 'Llegada programada', format: 'datetime', width: 20 },
+  { key: 'actual_arrival_at',    label: 'Llegada real',       format: 'datetime', width: 20 },
+  { key: 'arrival_delay_minutes', label: 'Desvío (min)',      format: 'number', width: 12 },
+  { key: 'arrival_classification', label: 'Clasificación',    width: 14 },
+  { key: 'stopStatusLabel',      label: 'Estado de parada',   width: 16 },
+]
+
+function exportArrivals(): void {
+  const parts: string[] = []
+  if (arrivalsFilter.routeID && arrivalsFilter.routeID > 0) parts.push(`Ruta ID=${arrivalsFilter.routeID}`)
+  if (arrivalsFilter.stopID && arrivalsFilter.stopID > 0) parts.push(`Parada ID=${arrivalsFilter.stopID}`)
+  if (arrivalsFilter.vehicleID && arrivalsFilter.vehicleID > 0) parts.push(`Vehículo ID=${arrivalsFilter.vehicleID}`)
+  if (arrivalsFilter.direction) parts.push(`Sentido=${arrivalsFilter.direction}`)
+  if (arrivalsFilter.stopType) parts.push(`Tipo=${arrivalsFilter.stopType}`)
+  if (arrivalsFilter.timeSlot) parts.push(`Turno=${arrivalsFilter.timeSlot}`)
+  if (arrivalsFilter.dateFrom || arrivalsFilter.dateTo) {
+    parts.push(`Rango=${ymd(arrivalsFilter.dateFrom) ?? '*'} a ${ymd(arrivalsFilter.dateTo) ?? '*'}`)
+  }
+  // Derivamos etiquetas legibles sin mutar las filas de la tabla.
+  const rows = arrivals.value.map((r) => ({
+    ...r,
+    timeSlotLabel: TIME_SLOT_LABELS[r.time_slot] ?? r.time_slot,
+    stopTypeLabel: STOP_TYPE_LABELS[r.stop_type] ?? r.stop_type,
+    stopStatusLabel: STOP_STATUS_LABELS[r.stop_status] ?? r.stop_status,
+  }))
+  exportRowsToExcel(rows, arrivalsExcelColumns, {
+    filename: timestampedFilename('reporte_llegadas_paradas'),
+    sheetName: 'Llegadas por parada',
+    title: 'Reporte #29: Llegadas de buses por sede/paradero',
+    filterDescription: parts.join(', ') || undefined,
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Tabs (lazy load: cada tab dispara su consulta al activarse por primera vez)
 // ---------------------------------------------------------------------------
 
@@ -1232,6 +1525,7 @@ type ReportTab =
   | 'changes'
   | 'incidents'
   | 'activity'
+  | 'arrivals'
 
 const activeTab = ref<ReportTab>('conflicts')
 const conflictsLoaded = ref(false)
@@ -1244,6 +1538,7 @@ const delaysLoaded = ref(false)
 const changesLoaded = ref(false)
 const incidentsLoaded = ref(false)
 const activityLoaded = ref(false)
+const arrivalsLoaded = ref(false)
 
 function onTabChange(value: string | number | undefined): void {
   const tab = String(value ?? '') as ReportTab
@@ -1278,6 +1573,9 @@ function onTabChange(value: string | number | undefined): void {
   } else if (tab === 'activity' && !activityLoaded.value) {
     activityLoaded.value = true
     loadActivity()
+  } else if (tab === 'arrivals' && !arrivalsLoaded.value) {
+    arrivalsLoaded.value = true
+    loadArrivals()
   }
 }
 
@@ -1346,6 +1644,10 @@ onMounted(() => {
         <Tab value="activity">
           <i class="pi pi-users tab-icon" aria-hidden="true"></i>
           Actividad por usuario
+        </Tab>
+        <Tab value="arrivals">
+          <i class="pi pi-map-marker tab-icon" aria-hidden="true"></i>
+          Llegadas por sede/paradero
         </Tab>
       </TabList>
 
@@ -2305,6 +2607,193 @@ onMounted(() => {
             </p>
           </section>
         </TabPanel>
+
+        <!-- Tab 11: Llegadas por sede/paradero (#0023) -->
+        <TabPanel value="arrivals">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="arr-from">Desde</label>
+              <DatePicker id="arr-from" v-model="arrivalsFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="arr-to">Hasta</label>
+              <DatePicker id="arr-to" v-model="arrivalsFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="arr-slot">Turno</label>
+              <Select
+                id="arr-slot"
+                v-model="arrivalsFilter.timeSlot"
+                :options="TIME_SLOT_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="arr-type">Tipo de parada</label>
+              <Select
+                id="arr-type"
+                v-model="arrivalsFilter.stopType"
+                :options="STOP_TYPE_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="arr-direction">Sentido</label>
+              <Select
+                id="arr-direction"
+                v-model="arrivalsFilter.direction"
+                :options="DIRECTION_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="arr-route">ID de ruta</label>
+              <InputNumber inputId="arr-route" v-model="arrivalsFilter.routeID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="arr-stop">ID de sede/paradero</label>
+              <InputNumber inputId="arr-stop" v-model="arrivalsFilter.stopID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="arr-vehicle">Bus</label>
+              <Select
+                id="arr-vehicle"
+                v-model="arrivalsFilter.vehicleID"
+                :options="arrivalVehicleOptions"
+                optionLabel="label"
+                optionValue="value"
+                :loading="arrivalVehiclesLoading"
+                filter
+                placeholder="Todos los buses"
+                class="filter-select-wide"
+              />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="arrivalsLoading" @click="loadArrivals" />
+              <Button
+                v-if="hasArrivalsFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearArrivalsFilters"
+              />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="arrivals.length === 0"
+                @click="exportArrivals"
+              />
+            </div>
+          </div>
+
+          <p v-if="arrivalsError" role="alert" class="reports-error">
+            {{ arrivalsError }}
+            <Button label="Reintentar" text size="small" @click="loadArrivals" />
+          </p>
+
+          <DataTable
+            :value="arrivals"
+            :loading="arrivalsLoading"
+            paginator
+            :rows="20"
+            :rowsPerPageOptions="[20, 50, 100]"
+            scrollable
+            class="reports-table"
+          >
+            <template #empty>
+              <p class="reports-empty">
+                Sin llegadas para los filtros aplicados. Recuerda que el rango de fechas usa el día operativo del
+                viaje (un viaje nocturno que llega tras medianoche aparece bajo el día en que salió).
+              </p>
+            </template>
+            <Column field="service_date" header="Fecha" style="width: 7rem" frozen />
+            <Column header="Turno" style="width: 7rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="TIME_SLOT_LABELS[data.time_slot] ?? data.time_slot"
+                  :severity="data.time_slot === 'NOCHE' || data.time_slot === 'MADRUGADA' ? 'contrast' : 'info'"
+                />
+              </template>
+            </Column>
+            <Column header="Ruta" style="width: 12rem">
+              <template #body="{ data }">
+                <strong>{{ data.route_code }}</strong>
+                <div class="cell-sub">{{ data.route_name }}</div>
+              </template>
+            </Column>
+            <Column field="direction" header="Sentido" style="width: 5rem" />
+            <Column field="trip_code" header="Viaje" style="width: 8rem" />
+            <Column header="Bus" style="width: 8rem">
+              <template #body="{ data }">
+                <strong>{{ data.vehicle_plate }}</strong>
+                <div class="cell-sub">{{ data.vehicle_internal_code }}</div>
+              </template>
+            </Column>
+            <Column field="driver_name" header="Conductor" style="width: 12rem" />
+            <Column header="Parada" style="width: 15rem">
+              <template #body="{ data }">
+                <span class="stop-order">#{{ data.stop_order }}</span>
+                {{ data.stop_name }}
+                <div class="cell-sub">{{ data.stop_code }}</div>
+              </template>
+            </Column>
+            <Column header="Tipo" style="width: 6rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="STOP_TYPE_LABELS[data.stop_type] ?? data.stop_type"
+                  :severity="STOP_TYPE_SEVERITIES[data.stop_type] ?? 'secondary'"
+                />
+              </template>
+            </Column>
+            <Column header="Llegada prog." style="width: 7rem">
+              <template #body="{ data }">
+                <span :title="formatClockFull(data.scheduled_arrival_at)">{{ formatClock(data.scheduled_arrival_at) }}</span>
+              </template>
+            </Column>
+            <Column header="Llegada real" style="width: 7rem">
+              <template #body="{ data }">
+                <span
+                  v-if="data.actual_arrival_at"
+                  :title="formatClockFull(data.actual_arrival_at)"
+                >{{ formatClock(data.actual_arrival_at) }}</span>
+                <span v-else class="cell-muted">—</span>
+              </template>
+            </Column>
+            <Column header="Desvío" style="width: 6rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="arrivalDelayLabel(data)"
+                  :severity="arrivalDelaySeverity(data)"
+                  :title="arrivalDelayTooltip(data)"
+                />
+              </template>
+            </Column>
+            <Column header="Estado" style="width: 7rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="STOP_STATUS_LABELS[data.stop_status] ?? data.stop_status"
+                  :severity="STOP_STATUS_SEVERITIES[data.stop_status] ?? 'secondary'"
+                />
+              </template>
+            </Column>
+          </DataTable>
+
+          <p v-if="!arrivalsLoading && !arrivalsError" class="reports-total">
+            <strong>{{ arrivalsSummary.total }}</strong> llegada(s):
+            <strong class="count-pos">{{ arrivalsSummary.onTime }}</strong> a tiempo,
+            <strong class="count-pending">{{ arrivalsSummary.late }}</strong> con retraso,
+            <strong class="count-zero">{{ arrivalsSummary.pending }}</strong> pendiente(s) de marca
+            <template v-if="arrivalsSummary.suspicious > 0">
+              ·
+              <strong class="count-zero">{{ arrivalsSummary.suspicious }}</strong> con desvío no creíble (⚠)
+            </template>
+          </p>
+        </TabPanel>
       </TabPanels>
     </Tabs>
   </section>
@@ -2352,6 +2841,9 @@ onMounted(() => {
   display: flex;
   gap: 0.5rem;
 }
+.filter-select-wide {
+  min-width: 15rem;
+}
 
 .reports-table :deep(.p-datatable-tbody td) {
   vertical-align: middle;
@@ -2377,6 +2869,21 @@ onMounted(() => {
   margin: 1rem 0;
   color: #71717a;
 }
+/* Celda secundaria dentro de una fila de la tabla (nombre bajo el código). */
+.cell-sub {
+  font-size: 0.78rem;
+  color: #71717a;
+}
+.cell-muted {
+  color: #a1a1aa;
+}
+.stop-order {
+  display: inline-block;
+  min-width: 1.5rem;
+  margin-right: 0.25rem;
+  font-weight: 600;
+  color: #52525b;
+}
 
 .required-mark {
   color: #b91c1c;
@@ -2399,6 +2906,11 @@ onMounted(() => {
   .reports-empty,
   .reports-total,
   .reports-hint {
+    color: #a1a1aa;
+  }
+  .cell-sub,
+  .cell-muted,
+  .stop-order {
     color: #a1a1aa;
   }
   .filter label {

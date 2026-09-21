@@ -46,6 +46,11 @@ type mockAdminRepo struct {
 	createCalendarErr    error
 	createCalendarCalls  int
 	updateCalendarCalls  int
+
+	// Stubs configurables para tests del reporte de llegadas por parada.
+	tripStopArrivalsResult        []TripStopArrival
+	tripStopArrivalsErr           error
+	receivedTripStopArrivalFilter TripStopArrivalFilter
 }
 
 func (m *mockAdminRepo) ListStops(_ context.Context, _ types.PaginationParams) ([]Stop, int, error) {
@@ -185,6 +190,10 @@ func (m *mockAdminRepo) GetReservationChanges(_ context.Context, _ int64, _, _, 
 }
 func (m *mockAdminRepo) GetTripIncidents(_ context.Context, _ int64, _, _, _, _ string) ([]TripIncidentReport, error) {
 	return nil, nil
+}
+func (m *mockAdminRepo) GetTripStopArrivals(_ context.Context, f TripStopArrivalFilter) ([]TripStopArrival, error) {
+	m.receivedTripStopArrivalFilter = f
+	return m.tripStopArrivalsResult, m.tripStopArrivalsErr
 }
 func (m *mockAdminRepo) GetUserReservationActivity(_ context.Context, _, _, _, _, _ string) ([]UserReservationActivity, error) {
 	return nil, nil
@@ -560,6 +569,74 @@ func TestUpdateIncident_NonAdminRole_ReturnsForbidden(t *testing.T) {
 	svc := NewService(&mockAdminRepo{})
 
 	_, err := svc.UpdateIncident(ctxWithRole(t, "WORKER"), 1, "OPEN", nil)
+	require.Error(t, err)
+	var fe apperror.ForbiddenError
+	require.True(t, errors.As(err, &fe), "rol no ADMIN debe mapear a ForbiddenError")
+}
+
+// --- Reporte de llegadas por sede/paradero (vw_trip_stop_arrivals) ---
+
+func TestGetTripStopArrivals_AdminRole_DelegatesToRepo(t *testing.T) {
+	repo := &mockAdminRepo{tripStopArrivalsResult: []TripStopArrival{{TripStopTimeID: 1}}}
+	svc := NewService(repo)
+
+	f := TripStopArrivalFilter{
+		RouteID: 3, StopID: 7, VehicleID: 2, Direction: "IDA",
+		StopType: "SEDE", TimeSlot: "NOCHE",
+		DateFrom: "2026-02-10", DateTo: "2026-02-10",
+	}
+	out, err := svc.GetTripStopArrivals(ctxWithRole(t, RoleADMIN), f)
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	assert.Equal(t, f, repo.receivedTripStopArrivalFilter, "los filtros deben llegar intactos al repo")
+}
+
+func TestGetTripStopArrivals_InvalidEnums_ReturnValidationError(t *testing.T) {
+	cases := []struct {
+		name  string
+		f     TripStopArrivalFilter
+		field string
+	}{
+		{"direction", TripStopArrivalFilter{Direction: "SIDEWAYS"}, "direction"},
+		{"stop_type", TripStopArrivalFilter{StopType: "BODEGA"}, "stop_type"},
+		{"time_slot", TripStopArrivalFilter{TimeSlot: "MADRUGADA2"}, "time_slot"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &mockAdminRepo{}
+			svc := NewService(repo)
+			_, err := svc.GetTripStopArrivals(ctxWithRole(t, RoleADMIN), tc.f)
+			require.Error(t, err)
+			var ve apperror.ValidationError
+			require.True(t, errors.As(err, &ve), "enum invalido debe mapear a ValidationError (422)")
+			assert.Equal(t, tc.field, ve.Field)
+		})
+	}
+}
+
+func TestGetTripStopArrivals_InvalidDates_ReturnValidationError(t *testing.T) {
+	repo := &mockAdminRepo{}
+	svc := NewService(repo)
+
+	_, err := svc.GetTripStopArrivals(ctxWithRole(t, RoleADMIN), TripStopArrivalFilter{DateFrom: "10/02/2026"})
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve))
+	assert.Equal(t, "date_from", ve.Field)
+
+	_, err = svc.GetTripStopArrivals(ctxWithRole(t, RoleADMIN), TripStopArrivalFilter{
+		DateFrom: "2026-02-11", DateTo: "2026-02-10",
+	})
+	require.Error(t, err)
+	require.True(t, errors.As(err, &ve))
+	assert.Equal(t, "date_to", ve.Field)
+}
+
+func TestGetTripStopArrivals_NonAdminRole_ReturnsForbidden(t *testing.T) {
+	repo := &mockAdminRepo{}
+	svc := NewService(repo)
+
+	_, err := svc.GetTripStopArrivals(ctxWithRole(t, "WORKER"), TripStopArrivalFilter{})
 	require.Error(t, err)
 	var fe apperror.ForbiddenError
 	require.True(t, errors.As(err, &fe), "rol no ADMIN debe mapear a ForbiddenError")

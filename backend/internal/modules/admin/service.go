@@ -106,6 +106,7 @@ ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
 	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
 	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
+	GetTripStopArrivals(ctx context.Context, f TripStopArrivalFilter) ([]TripStopArrival, error)
 
 	// Reportes nuevos (migration 0005/0006)
 	GetUserReservationActivity(ctx context.Context, role, active, department, dateFrom, dateTo string) ([]UserReservationActivity, error)
@@ -820,6 +821,43 @@ func (s *adminService) GetTripIncidents(ctx context.Context, routeID int64, inci
 	return s.repo.GetTripIncidents(ctx, routeID, incidentType, status, dateFrom, dateTo)
 }
 
+// GetTripStopArrivals lista la llegada de cada bus a cada sede/paradero
+// (vista vw_trip_stop_arrivals, migration 0023). Detalle por parada: hora
+// programada vs real y desvío en minutos.
+//
+// Valida enums y fechas para devolver 422 explícito en lugar de un 200 vacío
+// que confunde al operador. El filtro de fechas usa service_date (día
+// operativo), así los viajes nocturnos que llegan tras medianoche siguen
+// cayendo bajo el día en que se operaron.
+func (s *adminService) GetTripStopArrivals(ctx context.Context, f TripStopArrivalFilter) ([]TripStopArrival, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if f.Direction != "" && f.Direction != "IDA" && f.Direction != "VUELTA" {
+		return nil, apperror.ValidationError{Field: "direction", Reason: "debe ser IDA o VUELTA"}
+	}
+	if f.StopType != "" && f.StopType != "SEDE" && f.StopType != "PARADERO" {
+		return nil, apperror.ValidationError{Field: "stop_type", Reason: "debe ser SEDE o PARADERO"}
+	}
+	if f.TimeSlot != "" && !validTimeSlot(f.TimeSlot) {
+		return nil, apperror.ValidationError{Field: "time_slot", Reason: "debe ser MADRUGADA, MANANA, TARDE o NOCHE"}
+	}
+	if f.DateFrom != "" {
+		if _, err := time.Parse("2006-01-02", f.DateFrom); err != nil {
+			return nil, apperror.ValidationError{Field: "date_from", Reason: "formato invalido, use YYYY-MM-DD"}
+		}
+	}
+	if f.DateTo != "" {
+		if _, err := time.Parse("2006-01-02", f.DateTo); err != nil {
+			return nil, apperror.ValidationError{Field: "date_to", Reason: "formato invalido, use YYYY-MM-DD"}
+		}
+	}
+	if f.DateFrom != "" && f.DateTo != "" && f.DateFrom > f.DateTo {
+		return nil, apperror.ValidationError{Field: "date_to", Reason: "debe ser igual o posterior a date_from"}
+	}
+	return s.repo.GetTripStopArrivals(ctx, f)
+}
+
 // GetUserReservationActivity devuelve el reporte #28 (actividad de reservas
 // por usuario, vista vw_user_reservation_activity de la migration 0005,
 // ampliada con last_activity_at y filtros de fecha en 0006).
@@ -891,6 +929,16 @@ func validIncidentType(s string) bool {
 func validIncidentStatus(s string) bool {
 	switch s {
 	case "OPEN", "IN_REVIEW", "RESOLVED":
+		return true
+	}
+	return false
+}
+
+// validTimeSlot acepta los turnos que expone vw_trip_stop_arrivals.time_slot.
+// MANANA va sin tilde a propósito (mismo literal ASCII que la vista).
+func validTimeSlot(s string) bool {
+	switch s {
+	case "MADRUGADA", "MANANA", "TARDE", "NOCHE":
 		return true
 	}
 	return false
