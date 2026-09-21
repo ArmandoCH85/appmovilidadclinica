@@ -1190,6 +1190,43 @@ func (h *AdminHandler) UserReservationActivityReport(w http.ResponseWriter, r *h
 	writeJSON(w, map[string]any{"items": orEmpty(rows, userActivitySlice)})
 }
 
+// TripStopArrivalsReport maneja GET /admin/reports/trip-stop-arrivals.
+// Reporte de llegadas por sede/paradero (vw_trip_stop_arrivals, migration
+// 0023): una fila por (viaje × parada) con hora programada vs real.
+// Filtros opcionales: route_id, stop_id, vehicle_id (>0), direction
+// (IDA|VUELTA), stop_type (SEDE|PARADERO), time_slot
+// (MADRUGADA|MANANA|TARDE|NOCHE), date_from, date_to (YYYY-MM-DD).
+func (h *AdminHandler) TripStopArrivalsReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	routeID, _ := strconv.ParseInt(q.Get("route_id"), 10, 64)
+	if routeID < 0 {
+		routeID = 0
+	}
+	stopID, _ := strconv.ParseInt(q.Get("stop_id"), 10, 64)
+	if stopID < 0 {
+		stopID = 0
+	}
+	vehicleID, _ := strconv.ParseInt(q.Get("vehicle_id"), 10, 64)
+	if vehicleID < 0 {
+		vehicleID = 0
+	}
+	rows, err := h.svc.GetTripStopArrivals(r.Context(), TripStopArrivalFilter{
+		RouteID:   routeID,
+		StopID:    stopID,
+		VehicleID: vehicleID,
+		Direction: q.Get("direction"),
+		StopType:  q.Get("stop_type"),
+		TimeSlot:  q.Get("time_slot"),
+		DateFrom:  q.Get("date_from"),
+		DateTo:    q.Get("date_to"),
+	})
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, tripStopArrivalSlice)})
+}
+
 // ----------------------------------------------------------------------------
 // Registro de rutas
 // ----------------------------------------------------------------------------
@@ -1284,8 +1321,8 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/reports/reservation-changes", h.ReservationChangesReport)
 		r.Get("/reports/incidents", h.TripIncidentsReport)
 
-		// Reportes nuevos (migration 0005)
-		r.Get("/reports/user-reservation-activity", h.UserReservationActivityReport)
+		// Reportes nuevos (migration 0023)
+		r.Get("/reports/trip-stop-arrivals", h.TripStopArrivalsReport)
 	})
 }
 
@@ -1322,6 +1359,7 @@ const (
 	tripInstanceSlice
 	tripIncidentSlice
 	generationRunSlice
+	tripStopArrivalSlice
 )
 
 // orEmpty devuelve el slice recibido o un slice vacio tipado si es nil.
@@ -1454,6 +1492,11 @@ func orEmpty(v any, kind sliceKind) any {
 			return s
 		}
 		return []UserReservationActivity{}
+	case tripStopArrivalSlice:
+		if s, ok := v.([]TripStopArrival); ok && s != nil {
+			return s
+		}
+		return []TripStopArrival{}
 	}
 	return v
 }

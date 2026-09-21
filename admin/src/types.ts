@@ -419,3 +419,48 @@ export interface UserReservationActivityRow {
 
   last_activity_at?: string | null
 }
+
+/**
+ * vw_trip_stop_arrivals — GET /admin/reports/trip-stop-arrivals (migration 0023).
+ * Reporte de llegadas por sede/paradero: una fila por (viaje × parada) con la
+ * hora programada y la real de llegada de cada bus.
+ *
+ * Filtros opcionales: route_id, stop_id, vehicle_id, direction, stop_type,
+ * time_slot, date_from, date_to (todos por service_date).
+ *
+ * Notas de dominio:
+ *   - arrival_delay_minutes es null mientras no haya llegada real (PENDING).
+ *     Negativo = llegó antes; positivo = llegó tarde.
+ *   - arrival_classification: ON_TIME | LATE | PENDING.
+ *   - time_slot es el turno del viaje (derivado de la hora de salida): un
+ *     viaje nocturno que cruza medianoche sigue siendo NOCHE.
+ */
+export interface TripStopArrivalRow {
+  trip_stop_time_id: number
+  trip_id: number
+  trip_code: string
+  service_date: string
+  trip_status: string
+  route_id: number
+  route_code: string
+  route_name: string
+  direction: 'IDA' | 'VUELTA'
+  vehicle_id: number
+  vehicle_internal_code: string
+  vehicle_plate: string
+  driver_id: number
+  driver_name: string
+  stop_id: number
+  stop_code: string
+  stop_name: string
+  stop_type: 'SEDE' | 'PARADERO'
+  stop_order: number
+  scheduled_arrival_at: string
+  scheduled_departure_at: string
+  actual_arrival_at?: string | null
+  actual_departure_at?: string | null
+  arrival_delay_minutes?: number | null
+  arrival_classification: 'ON_TIME' | 'LATE' | 'PENDING'
+  time_slot: 'MADRUGADA' | 'MANANA' | 'TARDE' | 'NOCHE'
+  stop_status: 'PENDING' | 'ARRIVED' | 'DEPARTED' | 'SKIPPED'
+}

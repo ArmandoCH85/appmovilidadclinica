@@ -488,6 +488,62 @@ type DelayByRouteDay struct {
 	OnTimeTripCount   int     `json:"on_time_trip_count"`
 }
 
+// TripStopArrival refleja una fila de vw_trip_stop_arrivals — el reporte
+// "Llegadas por sede/paradero". Una fila por (viaje × parada): la hora
+// programada y la real de llegada de cada bus a cada sede/paradero.
+//
+// ArrivalDelayMinutes es NULL mientras no haya llegada real (PENDING).
+// Negativo = llegó antes de lo programado; positivo = llegó tarde.
+// ArrivalClassification resume lo anterior en ON_TIME / LATE / PENDING.
+// TimeSlot es el turno del viaje (MADRUGADA | MANANA | TARDE | NOCHE),
+// derivado de la hora de salida — un viaje nocturno que cruza medianoche
+// sigue siendo NOCHE aunque su llegada caiga en la madrugada.
+type TripStopArrival struct {
+	TripStopTimeID       int64      `json:"trip_stop_time_id"`
+	TripID               int64      `json:"trip_id"`
+	TripCode             string     `json:"trip_code"`
+	ServiceDate          string     `json:"service_date"`
+	TripStatus           string     `json:"trip_status"`
+	RouteID              int64      `json:"route_id"`
+	RouteCode            string     `json:"route_code"`
+	RouteName            string     `json:"route_name"`
+	Direction            string     `json:"direction"`
+	VehicleID            int64      `json:"vehicle_id"`
+	VehicleInternalCode  string     `json:"vehicle_internal_code"`
+	VehiclePlate         string     `json:"vehicle_plate"`
+	DriverID             int64      `json:"driver_id"`
+	DriverName           string     `json:"driver_name"`
+	StopID               int64      `json:"stop_id"`
+	StopCode             string     `json:"stop_code"`
+	StopName             string     `json:"stop_name"`
+	StopType             string     `json:"stop_type"`
+	StopOrder            int        `json:"stop_order"`
+	ScheduledArrivalAt   time.Time  `json:"scheduled_arrival_at"`
+	ScheduledDepartureAt time.Time  `json:"scheduled_departure_at"`
+	ActualArrivalAt      *time.Time `json:"actual_arrival_at,omitempty"`
+	ActualDepartureAt    *time.Time `json:"actual_departure_at,omitempty"`
+	ArrivalDelayMinutes  *int       `json:"arrival_delay_minutes,omitempty"`
+	ArrivalClass         string     `json:"arrival_classification"`
+	TimeSlot             string     `json:"time_slot"`
+	StopStatus           string     `json:"stop_status"`
+}
+
+// TripStopArrivalFilter agrupa los filtros del reporte de llegadas por
+// sede/paradero. Cero/"" = sin filtrar. DateFrom/DateTo acotan por
+// service_date (día operativo), no por la fecha de la llegada: así un viaje
+// nocturno que llega después de medianoche sigue apareciendo bajo el día
+// en que se operó.
+type TripStopArrivalFilter struct {
+	RouteID   int64
+	StopID    int64
+	VehicleID int64
+	Direction string // '' | IDA | VUELTA
+	StopType  string // '' | SEDE | PARADERO
+	TimeSlot  string // '' | MADRUGADA | MANANA | TARDE | NOCHE
+	DateFrom  string // YYYY-MM-DD
+	DateTo    string // YYYY-MM-DD
+}
+
 // ReservationChange refleja una fila de vw_reservation_changes (#26).
 // Una fila por evento del historial (CONFIRMED, BOARDED, ALIGHTED, NO_SHOW,
 // SEGMENTS_RELEASED, CANCELLED, etc.).
@@ -773,6 +829,7 @@ type AdminRepository interface {
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
 	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
 	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
+	GetTripStopArrivals(ctx context.Context, f TripStopArrivalFilter) ([]TripStopArrival, error)
 
 	// Reportes nuevos (migration 0005/0006)
 	GetUserReservationActivity(ctx context.Context, role, active, department, dateFrom, dateTo string) ([]UserReservationActivity, error)
@@ -2737,6 +2794,101 @@ func (r *adminRepository) GetDelaysByRouteDay(ctx context.Context, routeID int64
 			return nil, fmt.Errorf("escaneando retrasos por ruta/dia: %w", err)
 		}
 		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// GetTripStopArrivals consulta vw_trip_stop_arrivals — reporte de llegadas
+// por sede/paradero. Una fila por (viaje × parada), ordenada por fecha de
+// servicio, hora programada de llegada, ruta y orden de parada, de modo que
+// los viajes de mañana y de noche quedan en su secuencia natural.
+func (r *adminRepository) GetTripStopArrivals(ctx context.Context, f TripStopArrivalFilter) ([]TripStopArrival, error) {
+	var conds []string
+	var fargs []any
+	if f.RouteID > 0 {
+		conds = append(conds, "route_id = ?")
+		fargs = append(fargs, f.RouteID)
+	}
+	if f.StopID > 0 {
+		conds = append(conds, "stop_id = ?")
+		fargs = append(fargs, f.StopID)
+	}
+	if f.VehicleID > 0 {
+		conds = append(conds, "vehicle_id = ?")
+		fargs = append(fargs, f.VehicleID)
+	}
+	if f.Direction != "" {
+		conds = append(conds, "direction = ?")
+		fargs = append(fargs, f.Direction)
+	}
+	if f.StopType != "" {
+		conds = append(conds, "stop_type = ?")
+		fargs = append(fargs, f.StopType)
+	}
+	if f.TimeSlot != "" {
+		conds = append(conds, "time_slot = ?")
+		fargs = append(fargs, f.TimeSlot)
+	}
+	if f.DateFrom != "" {
+		conds = append(conds, "service_date >= ?")
+		fargs = append(fargs, f.DateFrom)
+	}
+	if f.DateTo != "" {
+		conds = append(conds, "service_date <= ?")
+		fargs = append(fargs, f.DateTo)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT trip_stop_time_id, trip_id, trip_code, service_date, trip_status,
+               route_id, route_code, route_name, direction,
+               vehicle_id, vehicle_internal_code, vehicle_plate,
+               driver_id, driver_name,
+               stop_id, stop_code, stop_name, stop_type, stop_order,
+               scheduled_arrival_at, scheduled_departure_at,
+               actual_arrival_at, actual_departure_at, arrival_delay_minutes,
+               arrival_classification, time_slot, stop_status
+          FROM vw_trip_stop_arrivals` + where + `
+         ORDER BY service_date DESC, scheduled_arrival_at, route_code, stop_order`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_trip_stop_arrivals: %w", err)
+	}
+	defer rows.Close()
+
+	var out []TripStopArrival
+	for rows.Next() {
+		var a TripStopArrival
+		var svcDate time.Time
+		var actualArr, actualDep sql.NullTime
+		var delay sql.NullInt64
+		if err := rows.Scan(&a.TripStopTimeID, &a.TripID, &a.TripCode,
+			&svcDate, &a.TripStatus, &a.RouteID, &a.RouteCode,
+			&a.RouteName, &a.Direction, &a.VehicleID, &a.VehicleInternalCode,
+			&a.VehiclePlate, &a.DriverID, &a.DriverName, &a.StopID,
+			&a.StopCode, &a.StopName, &a.StopType, &a.StopOrder,
+			&a.ScheduledArrivalAt, &a.ScheduledDepartureAt, &actualArr,
+			&actualDep, &delay, &a.ArrivalClass, &a.TimeSlot, &a.StopStatus); err != nil {
+			return nil, fmt.Errorf("escaneando llegada por parada: %w", err)
+		}
+		// El driver (parseTime=true) entrega la DATE como time.Time; la
+		// formateamos a YYYY-MM-DD para que el JSON sea limpio y el filtro de
+		// fechas del frontend no tenga que lidiar con un RFC3339 a medianoche.
+		a.ServiceDate = svcDate.Format("2006-01-02")
+		if actualArr.Valid {
+			v := actualArr.Time
+			a.ActualArrivalAt = &v
+		}
+		if actualDep.Valid {
+			v := actualDep.Time
+			a.ActualDepartureAt = &v
+		}
+		if delay.Valid {
+			v := int(delay.Int64)
+			a.ArrivalDelayMinutes = &v
+		}
+		out = append(out, a)
 	}
 	return out, rows.Err()
 }
