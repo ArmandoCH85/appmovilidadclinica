@@ -24,6 +24,10 @@
 
 USE transporte_corporativo_mvp;
 
+-- Forzar utf8mb4 en la conexion: sin esto el cliente puede conectar en
+-- utf8mb3 y el COLLATE utf8mb4_unicode_ci de mas abajo falla.
+SET NAMES utf8mb4;
+
 SET @vehicle_code = 'CJI-579';
 -- Colación explícita: la variable de usuario hereda utf8mb4_general_ci y la
 -- columna es utf8mb4_unicode_ci; sin esto MySQL/MariaDB tira "Illegal mix of
