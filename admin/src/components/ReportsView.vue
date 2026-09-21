@@ -1219,7 +1219,7 @@ const activityActionTotals = computed(() => {
 })
 
 // ---------------------------------------------------------------------------
-// Tab 11: Llegadas por sede/paradero (#0023, vw_trip_stop_arrivals)
+// Tab: Llegadas por sede/paradero (#0025, vw_trip_stop_arrivals)
 // Detalle por parada: hora programada vs real de llegada de cada bus a cada
 // sede/paradero. Cubre turnos de mañana y de noche; el filtro de fechas es
 // por día operativo (service_date), así un viaje nocturno que llega después
@@ -2608,7 +2608,7 @@ onMounted(() => {
           </section>
         </TabPanel>
 
-        <!-- Tab 11: Llegadas por sede/paradero (#0023) -->
+        <!-- Tab: Llegadas por sede/paradero (#0025) -->
         <TabPanel value="arrivals">
           <div class="report-filters">
             <div class="filter">

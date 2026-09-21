@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0023_trip_stop_arrivals.up.sql
+-- 0025_trip_stop_arrivals.up.sql
 -- Vista SQL de solo lectura para el reporte "Llegadas por sede/paradero".
 --
 -- Una fila por (viaje × parada): la hora programada y la hora real de llegada
