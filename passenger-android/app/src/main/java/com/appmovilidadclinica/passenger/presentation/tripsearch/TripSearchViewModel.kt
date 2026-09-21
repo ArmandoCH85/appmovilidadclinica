@@ -105,12 +105,10 @@ class TripSearchViewModel @Inject constructor(
 
         _uiState.update { it.copy(searching = true, errorMessage = null) }
         viewModelScope.launch {
-            // Para sede→sede (ambas direcciones posibles), lanzamos las
-            // dos búsquedas en paralelo y mergearos. El backend SP es la
-            // fuente de verdad: devuelve lo que exista según la
-            // configuración de rutas del admin. Para combos unívocos
-            // (paradero→sede = solo IDA, sede→paradero = solo VUELTA)
-            // se hace una sola llamada.
+            // Lanzamos en paralelo todas las direcciones posibles para el
+            // par elegido. El backend (sp_search_trips) es la fuente de
+            // verdad: devuelve lo que exista según la configuración de rutas
+            // del admin. Ver deriveDirections para qué direcciones pedimos.
             val results = directions.map { dir ->
                 async { tripsRepository.search(state.date, dir, originId, destinationId) }
             }.awaitAll()
@@ -132,27 +130,29 @@ class TripSearchViewModel @Inject constructor(
     }
 
     /**
-     * Devuelve las direcciones a buscar para la combinación de paradas
-     * elegida, según las reglas del negocio (ver `desarrollo_pasajero.md`
-     * §2.1):
-     *   - PARADERO → SEDE = [IDA]
-     *   - SEDE → PARADERO = [VUELTA]
-     *   - SEDE → SEDE = [IDA, VUELTA] — ambigua: el destino es sede (IDA)
-     *     y el origen también es sede (VUELTA). El admin pudo haber
-     *     configurado la ruta como cualquiera de las dos, así que
-     *     buscamos ambas y el SP decide.
-     *   - PARADERO → PARADERO = [] — no válida según las reglas
-     *     estrictas del negocio (subida en paradero solo en IDA, y en
-     *     IDA el destino debe ser sede).
+     * Devuelve las direcciones a probar para la combinación de paradas
+     * elegida. La regla direccional vive en el backend (`sp_search_trips`)
+     * y hoy es:
+     *   - IDA    -> el DESTINO debe ser SEDE.
+     *   - VUELTA -> sin restricción de tipo de origen (migración 0011:
+     *               permite subir también en paraderos, no solo en sedes).
+     *
+     * Por eso pedimos IDA solo cuando el destino es SEDE, y VUELTA siempre.
+     * El SP filtra lo que realmente exista (orden en la ruta, pickup/dropoff
+     * permitidos, estado del viaje); no duplicamos esa lógica en el cliente
+     * para que un cambio de regla en el backend no deje al app desactualizado.
+     *
+     *   - SEDE     -> SEDE     = [IDA, VUELTA]
+     *   - SEDE     -> PARADERO = [VUELTA]
+     *   - PARADERO -> SEDE     = [IDA, VUELTA]
+     *   - PARADERO -> PARADERO = [VUELTA]
      */
-    private fun deriveDirections(origin: Stop, destination: Stop): List<TripDirection> = when {
-        origin.stopType == StopType.PARADERO && destination.stopType == StopType.SEDE ->
-            listOf(TripDirection.IDA)
-        origin.stopType == StopType.SEDE && destination.stopType == StopType.PARADERO ->
-            listOf(TripDirection.VUELTA)
-        origin.stopType == StopType.SEDE && destination.stopType == StopType.SEDE ->
-            listOf(TripDirection.IDA, TripDirection.VUELTA)
-        else -> emptyList()
+    private fun deriveDirections(origin: Stop, destination: Stop): List<TripDirection> {
+        if (origin.id == destination.id) return emptyList()
+        val directions = mutableListOf<TripDirection>()
+        if (destination.stopType == StopType.SEDE) directions += TripDirection.IDA
+        directions += TripDirection.VUELTA
+        return directions
     }
 
     private fun errorMessageFor(error: AppError): String = when (error) {
