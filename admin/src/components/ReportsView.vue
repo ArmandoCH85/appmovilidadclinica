@@ -32,6 +32,7 @@ import type {
   RouteTimeMatrixEntry,
   TripSeatAvailability,
   RouteOccupancyRow,
+  BoardingByStopRow,
   TripStatusSummaryRow,
   DurationDeviationRow,
   DelayByRouteDayRow,
@@ -399,6 +400,107 @@ const hasOccupancyFilters = computed(
       (occupancyFilter.routeID && occupancyFilter.routeID > 0) ||
         occupancyFilter.dateFrom ||
         occupancyFilter.dateTo,
+    ),
+)
+
+// ---------------------------------------------------------------------------
+// Tab 4b: Abordajes por parada (vw_boardings_by_stop)
+// ---------------------------------------------------------------------------
+
+const boardings = ref<BoardingByStopRow[]>([])
+const boardingsLoading = ref(false)
+const boardingsError = ref('')
+const boardingsFilter = reactive<{
+  routeID: number | null
+  direction: string
+  stopID: number | null
+  dateFrom: Date | null
+  dateTo: Date | null
+}>({
+  routeID: null,
+  direction: '',
+  stopID: null,
+  dateFrom: null,
+  dateTo: null,
+})
+
+const directionOptions = [
+  { label: 'Todas', value: '' },
+  { label: 'Ida', value: 'IDA' },
+  { label: 'Vuelta', value: 'VUELTA' },
+]
+
+async function loadBoardings(): Promise<void> {
+  boardingsLoading.value = true
+  boardingsError.value = ''
+  const params = new URLSearchParams()
+  if (boardingsFilter.routeID && boardingsFilter.routeID > 0) params.set('route_id', String(boardingsFilter.routeID))
+  if (boardingsFilter.direction) params.set('direction', boardingsFilter.direction)
+  if (boardingsFilter.stopID && boardingsFilter.stopID > 0) params.set('stop_id', String(boardingsFilter.stopID))
+  const fromStr = ymd(boardingsFilter.dateFrom)
+  if (fromStr) params.set('date_from', fromStr)
+  const toStr = ymd(boardingsFilter.dateTo)
+  if (toStr) params.set('date_to', toStr)
+  const qs = params.toString()
+  try {
+    const res = await request<{ items: BoardingByStopRow[] }>(
+      'GET',
+      `/admin/reports/boardings-by-stop${qs ? `?${qs}` : ''}`,
+    )
+    boardings.value = res.items
+  } catch (err) {
+    boardingsError.value = err instanceof ApiError ? err.message : 'No se pudo cargar el reporte.'
+    boardings.value = []
+  } finally {
+    boardingsLoading.value = false
+  }
+}
+
+function clearBoardingsFilters(): void {
+  boardingsFilter.routeID = null
+  boardingsFilter.direction = ''
+  boardingsFilter.stopID = null
+  boardingsFilter.dateFrom = null
+  boardingsFilter.dateTo = null
+}
+
+// --- Export a Excel del tab Abordajes por parada ---
+const boardingsExcelColumns: ExcelColumn[] = [
+  { key: 'service_date',     label: 'Fecha',       format: 'date', width: 12 },
+  { key: 'route_code',       label: 'Ruta',        width: 14 },
+  { key: 'route_name',       label: 'Nombre ruta', width: 28 },
+  { key: 'direction',        label: 'Sentido',     width: 8 },
+  { key: 'stop_name',        label: 'Parada',      width: 22 },
+  { key: 'stop_type',        label: 'Tipo',        width: 10 },
+  { key: 'app_passengers',   label: 'App',         format: 'number', width: 8 },
+  { key: 'guest_passengers', label: 'Invitados',   format: 'number', width: 10 },
+  { key: 'total_passengers', label: 'Total',       format: 'number', width: 8 },
+]
+
+function exportBoardings(): void {
+  const parts: string[] = []
+  if (boardingsFilter.routeID && boardingsFilter.routeID > 0) parts.push(`Ruta ID=${boardingsFilter.routeID}`)
+  if (boardingsFilter.direction) parts.push(`Sentido=${boardingsFilter.direction}`)
+  if (boardingsFilter.stopID && boardingsFilter.stopID > 0) parts.push(`Parada ID=${boardingsFilter.stopID}`)
+  if (boardingsFilter.dateFrom || boardingsFilter.dateTo) {
+    parts.push(`Rango=${ymd(boardingsFilter.dateFrom) ?? '*'} a ${ymd(boardingsFilter.dateTo) ?? '*'}`)
+  }
+  exportRowsToExcel(boardings.value, boardingsExcelColumns, {
+    filename: timestampedFilename('reporte_abordajes_por_parada'),
+    sheetName: 'Abordajes por parada',
+    title: 'Reporte: Abordajes por parada',
+    filterDescription: parts.join(', ') || undefined,
+  })
+}
+
+const hasBoardingsFilters = computed(
+  () =>
+    Boolean(
+      (boardingsFilter.routeID && boardingsFilter.routeID > 0) ||
+        boardingsFilter.direction ||
+        (boardingsFilter.stopID && boardingsFilter.stopID > 0) ||
+        boardingsFilter.dateFrom ||
+        boardingsFilter.dateTo,
     ),
 )
 
@@ -1123,6 +1225,7 @@ type ReportTab =
   | 'matrix'
   | 'seats'
   | 'occupancy'
+  | 'boardings'
   | 'tripsStatus'
   | 'duration'
   | 'delays'
@@ -1134,6 +1237,7 @@ const activeTab = ref<ReportTab>('conflicts')
 const conflictsLoaded = ref(false)
 const matrixLoaded = ref(false)
 const occupancyLoaded = ref(false)
+const boardingsLoaded = ref(false)
 const tripsStatusLoaded = ref(false)
 const durationLoaded = ref(false)
 const delaysLoaded = ref(false)
@@ -1153,6 +1257,9 @@ function onTabChange(value: string | number | undefined): void {
   } else if (tab === 'occupancy' && !occupancyLoaded.value) {
     occupancyLoaded.value = true
     loadOccupancy()
+  } else if (tab === 'boardings' && !boardingsLoaded.value) {
+    boardingsLoaded.value = true
+    loadBoardings()
   } else if (tab === 'tripsStatus' && !tripsStatusLoaded.value) {
     tripsStatusLoaded.value = true
     loadTripsStatus()
@@ -1211,6 +1318,10 @@ onMounted(() => {
         <Tab value="occupancy">
           <i class="pi pi-chart-line tab-icon" aria-hidden="true"></i>
           Ocupación por ruta
+        </Tab>
+        <Tab value="boardings">
+          <i class="pi pi-users tab-icon" aria-hidden="true"></i>
+          Abordajes por parada
         </Tab>
         <Tab value="tripsStatus">
           <i class="pi pi-list-check tab-icon" aria-hidden="true"></i>
@@ -1567,6 +1678,80 @@ onMounted(() => {
 
           <p v-if="!occupancyLoading && !occupancyError" class="reports-total">
             {{ occupancy.length }} fila(s) de ocupación
+          </p>
+        </TabPanel>
+
+        <!-- Tab 4b: Abordajes por parada -->
+        <TabPanel value="boardings">
+          <div class="report-filters">
+            <div class="filter">
+              <label for="bd-route">ID de ruta</label>
+              <InputNumber inputId="bd-route" v-model="boardingsFilter.routeID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="bd-direction">Sentido</label>
+              <Select
+                id="bd-direction"
+                v-model="boardingsFilter.direction"
+                :options="directionOptions"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="bd-stop">ID de parada</label>
+              <InputNumber inputId="bd-stop" v-model="boardingsFilter.stopID" :min="0" placeholder="Todas" />
+            </div>
+            <div class="filter">
+              <label for="bd-from">Desde</label>
+              <DatePicker id="bd-from" v-model="boardingsFilter.dateFrom" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter">
+              <label for="bd-to">Hasta</label>
+              <DatePicker id="bd-to" v-model="boardingsFilter.dateTo" date-format="yy-mm-dd" show-icon />
+            </div>
+            <div class="filter-actions">
+              <Button label="Aplicar" icon="pi pi-search" :loading="boardingsLoading" @click="loadBoardings" />
+              <Button
+                v-if="hasBoardingsFilters"
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                severity="secondary"
+                text
+                @click="clearBoardingsFilters"
+              />
+              <Button
+                label="Exportar Excel"
+                icon="pi pi-download"
+                severity="secondary"
+                :disabled="boardings.length === 0"
+                @click="exportBoardings"
+              />
+            </div>
+          </div>
+
+          <p v-if="boardingsError" role="alert" class="reports-error">
+            {{ boardingsError }}
+            <Button label="Reintentar" text size="small" @click="loadBoardings" />
+          </p>
+
+          <DataTable :value="boardings" :loading="boardingsLoading" paginator :rows="15" class="reports-table">
+            <template #empty>
+              <p class="reports-empty">Sin abordajes para los filtros aplicados.</p>
+            </template>
+            <Column field="service_date" header="Fecha" style="width: 7rem" />
+            <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column field="route_name" header="Nombre" />
+            <Column field="direction" header="Sentido" style="width: 5rem" />
+            <Column field="stop_name" header="Parada" />
+            <Column field="stop_type" header="Tipo" style="width: 6rem" />
+            <Column field="app_passengers" header="App" style="width: 4rem" />
+            <Column field="guest_passengers" header="Invitados" style="width: 5rem" />
+            <Column field="total_passengers" header="Total" style="width: 4rem" />
+          </DataTable>
+
+          <p v-if="!boardingsLoading && !boardingsError" class="reports-total">
+            {{ boardings.length }} fila(s) de abordajes
           </p>
         </TabPanel>
 

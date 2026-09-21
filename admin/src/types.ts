@@ -298,7 +298,26 @@ export interface RouteOccupancyRow {
   trip_count: number
   seats_offered: number
   seats_reserved: number
+  guest_seats: number
   occupancy_pct: number
+}
+
+/** vw_boardings_by_stop — GET /admin/reports/boardings-by-stop.
+ * Abordajes por parada (sede/paradero): app (reservas con abordaje confirmado)
+ * vs invitados (registrados por el conductor).
+ * Filtros opcionales: date_from, date_to, route_id, direction, stop_id. */
+export interface BoardingByStopRow {
+  service_date: string
+  route_id: number
+  route_code: string
+  route_name: string
+  direction: 'IDA' | 'VUELTA'
+  stop_id: number
+  stop_name: string
+  stop_type: 'SEDE' | 'PARADERO'
+  app_passengers: number
+  guest_passengers: number
+  total_passengers: number
 }
 
 /** vw_trips_status_summary — GET /admin/reports/trips-status-summary (#11).

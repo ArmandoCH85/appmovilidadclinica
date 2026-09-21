@@ -100,6 +100,7 @@ ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string
 
 	// Reportes nuevos (migration 0004)
 	GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error)
+	GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64) ([]BoardingByStop, error)
 	GetTripsStatusSummary(ctx context.Context, dateFrom, dateTo, status string) ([]TripStatusSummary, error)
 	GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error)
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
@@ -754,6 +755,15 @@ func (s *adminService) GetRouteOccupancy(ctx context.Context, routeID int64, dat
 		return nil, err
 	}
 	return s.repo.GetRouteOccupancy(ctx, routeID, dateFrom, dateTo)
+}
+
+// GetBoardingsByStop devuelve abordajes por parada (sede/paradero).
+// dateFrom/dateTo ('') y direction ('') opcionales; routeID/stopID 0 = todas.
+func (s *adminService) GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64) ([]BoardingByStop, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	return s.repo.GetBoardingsByStop(ctx, dateFrom, dateTo, routeID, direction, stopID)
 }
 
 // GetTripsStatusSummary devuelve conteo de viajes por status (#11).

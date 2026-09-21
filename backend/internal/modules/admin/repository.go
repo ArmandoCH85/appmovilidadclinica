@@ -440,7 +440,26 @@ type RouteOccupancy struct {
 	TripCount     int     `json:"trip_count"`
 	SeatsOffered  int     `json:"seats_offered"`
 	SeatsReserved int     `json:"seats_reserved"`
+	GuestSeats    int     `json:"guest_seats"`
 	OccupancyPct  float64 `json:"occupancy_pct"`
+}
+
+// BoardingByStop refleja una fila de vw_boardings_by_stop: abordajes por
+// parada (sede/paradero), separando usuarios de la app (con confirmacion de
+// abordaje) de invitados registrados por el conductor.
+// Una fila por (fecha, ruta, sentido, parada).
+type BoardingByStop struct {
+	ServiceDate     string `json:"service_date"`
+	RouteID         int64  `json:"route_id"`
+	RouteCode       string `json:"route_code"`
+	RouteName       string `json:"route_name"`
+	Direction       string `json:"direction"`
+	StopID          int64  `json:"stop_id"`
+	StopName        string `json:"stop_name"`
+	StopType        string `json:"stop_type"`
+	AppPassengers   int    `json:"app_passengers"`
+	GuestPassengers int    `json:"guest_passengers"`
+	TotalPassengers int    `json:"total_passengers"`
 }
 
 // TripStatusSummary refleja una fila de vw_trips_status_summary (#11).
@@ -768,6 +787,9 @@ type AdminRepository interface {
 
 	// Reportes nuevos (migration 0004)
 	GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error)
+
+	// GetBoardingsByStop consulta vw_boardings_by_stop con filtros opcionales.
+	GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64) ([]BoardingByStop, error)
 	GetTripsStatusSummary(ctx context.Context, dateFrom, dateTo, status string) ([]TripStatusSummary, error)
 	GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error)
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
@@ -2594,6 +2616,60 @@ func (r *adminRepository) GetRouteOccupancy(ctx context.Context, routeID int64, 
 			return nil, fmt.Errorf("escaneando ocupacion de ruta: %w", err)
 		}
 		out = append(out, o)
+	}
+	return out, rows.Err()
+}
+
+// GetBoardingsByStop consulta vw_boardings_by_stop (abordajes por parada).
+// Filtros opcionales: dateFrom/dateTo (''), routeID (0=todas), direction ('')
+// y stopID (0=todas).
+func (r *adminRepository) GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64) ([]BoardingByStop, error) {
+	var conds []string
+	var fargs []any
+	if dateFrom != "" {
+		conds = append(conds, "service_date >= ?")
+		fargs = append(fargs, dateFrom)
+	}
+	if dateTo != "" {
+		conds = append(conds, "service_date <= ?")
+		fargs = append(fargs, dateTo)
+	}
+	if routeID > 0 {
+		conds = append(conds, "route_id = ?")
+		fargs = append(fargs, routeID)
+	}
+	if direction != "" {
+		conds = append(conds, "direction = ?")
+		fargs = append(fargs, direction)
+	}
+	if stopID > 0 {
+		conds = append(conds, "stop_id = ?")
+		fargs = append(fargs, stopID)
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	q := `SELECT service_date, route_id, route_code, route_name, direction,
+               stop_id, stop_name, stop_type, app_passengers, guest_passengers,
+               total_passengers
+          FROM vw_boardings_by_stop` + where + `
+         ORDER BY service_date DESC, route_code, direction, stop_name`
+	rows, err := r.db.QueryContext(ctx, q, fargs...)
+	if err != nil {
+		return nil, fmt.Errorf("consultando vw_boardings_by_stop: %w", err)
+	}
+	defer rows.Close()
+
+	var out []BoardingByStop
+	for rows.Next() {
+		var b BoardingByStop
+		if err := rows.Scan(&b.ServiceDate, &b.RouteID, &b.RouteCode, &b.RouteName,
+			&b.Direction, &b.StopID, &b.StopName, &b.StopType,
+			&b.AppPassengers, &b.GuestPassengers, &b.TotalPassengers); err != nil {
+			return nil, fmt.Errorf("escaneando abordajes por parada: %w", err)
+		}
+		out = append(out, b)
 	}
 	return out, rows.Err()
 }

@@ -168,6 +168,9 @@ func (m *mockAdminRepo) GetTripSeatAvailability(_ context.Context, _ int64, _, _
 func (m *mockAdminRepo) GetRouteOccupancy(_ context.Context, _ int64, _, _ string) ([]RouteOccupancy, error) {
 	return nil, nil
 }
+func (m *mockAdminRepo) GetBoardingsByStop(_ context.Context, _, _ string, _ int64, _ string, _ int64) ([]BoardingByStop, error) {
+	return nil, nil
+}
 func (m *mockAdminRepo) GetTripsStatusSummary(_ context.Context, _, _, _ string) ([]TripStatusSummary, error) {
 	return nil, nil
 }

@@ -1096,6 +1096,29 @@ func (h *AdminHandler) OccupancyByRouteReport(w http.ResponseWriter, r *http.Req
 	writeJSON(w, map[string]any{"items": orEmpty(rows, routeOccupancySlice)})
 }
 
+// BoardingsByStopReport maneja GET /admin/reports/boardings-by-stop.
+// Abordajes por parada (sede/paradero), separando app (reservas con abordaje
+// confirmado) de invitados (registrados por el conductor).
+// Filtros opcionales: date_from, date_to (YYYY-MM-DD), route_id, direction
+// (IDA/VUELTA) y stop_id.
+func (h *AdminHandler) BoardingsByStopReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	routeID, _ := strconv.ParseInt(q.Get("route_id"), 10, 64)
+	if routeID < 0 {
+		routeID = 0
+	}
+	stopID, _ := strconv.ParseInt(q.Get("stop_id"), 10, 64)
+	if stopID < 0 {
+		stopID = 0
+	}
+	rows, err := h.svc.GetBoardingsByStop(r.Context(), q.Get("date_from"), q.Get("date_to"), routeID, q.Get("direction"), stopID)
+	if err != nil {
+		apperror.WriteJSONError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"items": orEmpty(rows, boardingByStopSlice)})
+}
+
 // TripsStatusSummaryReport maneja GET /admin/reports/trips-status-summary.
 // Filtros opcionales: date_from, date_to, status.
 func (h *AdminHandler) TripsStatusSummaryReport(w http.ResponseWriter, r *http.Request) {
@@ -1278,6 +1301,7 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 
 		// Reportes nuevos (migration 0004)
 		r.Get("/reports/occupancy-by-route", h.OccupancyByRouteReport)
+		r.Get("/reports/boardings-by-stop", h.BoardingsByStopReport)
 		r.Get("/reports/trips-status-summary", h.TripsStatusSummaryReport)
 		r.Get("/reports/duration-deviation", h.DurationDeviationReport)
 		r.Get("/reports/delays-by-route-day", h.DelaysByRouteDayReport)
@@ -1313,6 +1337,7 @@ const (
 	vehicleSeatSlice
 	calendarExceptionSlice
 	routeOccupancySlice
+	boardingByStopSlice
 	tripsStatusSummarySlice
 	durationDeviationSlice
 	delayByRouteDaySlice
@@ -1424,6 +1449,11 @@ func orEmpty(v any, kind sliceKind) any {
 			return s
 		}
 		return []RouteOccupancy{}
+	case boardingByStopSlice:
+		if s, ok := v.([]BoardingByStop); ok && s != nil {
+			return s
+		}
+		return []BoardingByStop{}
 	case tripsStatusSummarySlice:
 		if s, ok := v.([]TripStatusSummary); ok && s != nil {
 			return s
