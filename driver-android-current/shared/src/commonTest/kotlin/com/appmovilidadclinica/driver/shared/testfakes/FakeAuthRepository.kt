@@ -6,6 +6,7 @@ import com.appmovilidadclinica.driver.shared.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 
 /**
  * Fake de [AuthRepository] para tests. El campo [loginResult] mutable
@@ -50,6 +51,8 @@ open class FakeAuthRepository(
         userState.value = null
         cleared = true
     }
+
+    override fun observeSessionExpired(): Flow<Unit> = emptyFlow()
 }
 
 /** Builder rapido para tests. */

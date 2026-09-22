@@ -1,6 +1,7 @@
 package com.appmovilidadclinica.driver.shared.data.remote
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpCallValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
@@ -9,6 +10,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.encodedPath
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
@@ -41,6 +43,7 @@ object KtorClientFactory {
         baseUrl: String = NETWORK_BASE_URL,
         tokenProvider: KtorTokenProvider? = null,
         enableLogging: Boolean = true,
+        onUnauthorized: (() -> Unit)? = null,
     ): HttpClient = HttpClient(httpEngineFactory()) {
         expectSuccess = false
 
@@ -71,6 +74,22 @@ object KtorClientFactory {
                     sendWithoutRequest { request ->
                         // Solo mandar token en endpoints protegidos (no en /auth/login).
                         !request.url.encodedPath.contains("/auth/")
+                    }
+                }
+            }
+        }
+
+        // 401 en endpoint autenticado => sesion expirada o usuario suspendido
+        // (el backend ahora valida users.active por request). Avisa a la UI
+        // para forzar logout. Se excluye /auth/ para no disparar en un login
+        // fallido (401 de credenciales).
+        if (onUnauthorized != null) {
+            install(HttpCallValidator) {
+                validateResponse { response ->
+                    if (response.status == HttpStatusCode.Unauthorized &&
+                        !response.call.request.url.encodedPath.contains("/auth/")
+                    ) {
+                        onUnauthorized()
                     }
                 }
             }

@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/platform/database"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/platform/jobs"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/platform/server"
+	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -98,6 +100,20 @@ func main() {
 		AdminHandler:   adminHandler,
 		TokenAuth:      tokenAuth,
 		Logger:         slog.Default(),
+		// Suspension inmediata: en cada request se valida contra la BD que el
+		// usuario siga activo (active=1). Suspender (active=0) corta la sesion
+		// al instante en cualquier app, sin esperar a que expire el JWT.
+		UserActiveChecker: func(ctx context.Context, userID int64) (bool, error) {
+			_, err := authRepo.GetUserByID(ctx, userID)
+			if err != nil {
+				var nf apperror.NotFoundError
+				if errors.As(err, &nf) {
+					return false, nil // suspendido o inexistente
+				}
+				return false, err
+			}
+			return true, nil
+		},
 	})
 
 	// 6. Jobs en segundo plano. Un context raiz cancelable les permite

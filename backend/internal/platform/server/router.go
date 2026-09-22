@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/booking"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/driver"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/trips"
+	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/authctx"
 )
 
 // RouterDeps agrupa las dependencias que NewRouter cablea: los handlers de
@@ -27,7 +29,15 @@ type RouterDeps struct {
 	AdminHandler   *admin.AdminHandler
 	TokenAuth      *jwtauth.JWTAuth
 	Logger         *slog.Logger
+
+	// UserActiveChecker verifica en la BD si el usuario sigue activo. Si es
+	// nil, no se aplica el guard de suspension. Se inyecta desde main.go para
+	// que el router no dependa de la BD directamente.
+	UserActiveChecker UserActiveChecker
 }
+
+// UserActiveChecker consulta si un usuario sigue activo (no suspendido).
+type UserActiveChecker func(ctx context.Context, userID int64) (bool, error)
 
 // NewRouter construye el router raiz del API. Encadena platform middleware,
 // rate limit, CORS y verificacion JWT, y monta los seis modulos bajo /api.
@@ -52,6 +62,11 @@ func NewRouter(deps RouterDeps) http.Handler {
 	r.Use(CORS)
 	r.Use(jwtauth.Verifier(deps.TokenAuth))
 	r.Use(authenticator(deps.TokenAuth, log))
+	// Guard de suspension: consulta la BD por request para que poner
+	// users.active=0 corte la sesion al instante en cualquier app.
+	if deps.UserActiveChecker != nil {
+		r.Use(activeUserGuard(deps.UserActiveChecker, log))
+	}
 
 	r.Route("/api", func(r chi.Router) {
 		// Healthcheck para balanceadores y docker. No toca la BD.
@@ -115,6 +130,41 @@ func authenticator(tokenAuth *jwtauth.JWTAuth, log *slog.Logger) func(http.Handl
 				return
 			}
 			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// activeUserGuard rechaza con 401 las peticiones de usuarios suspendidos
+// (users.active = 0) o inexistentes. Consulta la BD por request: asi, poner
+// active=0 corta la sesion al instante en cualquier app, sin esperar a que
+// expire el JWT. Las rutas publicas (login/health) quedan exentas.
+func activeUserGuard(check UserActiveChecker, log *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isPublicRoute(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			userID, err := authctx.UserIDFromContext(r.Context())
+			if err == nil {
+				var active bool
+				active, err = check(r.Context(), userID)
+				if err == nil && active {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			if err != nil {
+				log.Warn("guard de usuario activo: rechazando", "error", err)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"error": map[string]any{
+					"code":    http.StatusUnauthorized,
+					"message": "usuario suspendido o inexistente",
+				},
+			})
 		})
 	}
 }

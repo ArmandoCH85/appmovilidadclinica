@@ -3,6 +3,7 @@ package com.appmovilidadclinica.driver.shared.data.repository
 import com.appmovilidadclinica.driver.shared.data.mapper.toDomain
 import com.appmovilidadclinica.driver.shared.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.shared.data.remote.KtorApiClient
+import com.appmovilidadclinica.driver.shared.data.remote.SessionExpiredNotifier
 import com.appmovilidadclinica.driver.shared.data.local.SessionStore
 import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.driver.shared.data.remote.dto.LoginResponseDto
@@ -24,6 +25,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val apiClient: KtorApiClient,
     private val sessionStore: SessionStore,
     private val apiErrorMapper: ApiErrorMapper,
+    private val sessionExpiredNotifier: SessionExpiredNotifier,
 ) : AuthRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -87,6 +89,8 @@ class AuthRepositoryImpl @Inject constructor(
         sessionStore.clearSession()
         clearCachedToken()
     }
+
+    override fun observeSessionExpired(): Flow<Unit> = sessionExpiredNotifier.events
 
     private fun parseTokenExpiration(token: String): Long {
         // Stub: expira en 24h. En realidad debería decodificar el JWT

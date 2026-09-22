@@ -47,6 +47,14 @@ fun DriverNavGraph(
             }
         }
 
+        // Sesion expirada o usuario suspendido (401): logout forzado + Login.
+        LaunchedEffect(Unit) {
+            authRepository.observeSessionExpired().collect {
+                authRepository.logout()
+                navState.replace(Route.Login)
+            }
+        }
+
         val stack by navState.stack.collectAsState()
         val current = stack.lastOrNull() ?: Route.Login
         when (current) {

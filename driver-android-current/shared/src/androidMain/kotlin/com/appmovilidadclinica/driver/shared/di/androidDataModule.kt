@@ -4,6 +4,7 @@ import com.appmovilidadclinica.driver.shared.data.remote.ApiErrorMapper
 import com.appmovilidadclinica.driver.shared.data.remote.KtorApiClient
 import com.appmovilidadclinica.driver.shared.data.remote.KtorClientFactory
 import com.appmovilidadclinica.driver.shared.data.remote.KtorTokenProvider
+import com.appmovilidadclinica.driver.shared.data.remote.SessionExpiredNotifier
 import com.appmovilidadclinica.driver.shared.data.repository.AuthRepositoryImpl
 import com.appmovilidadclinica.driver.shared.data.repository.BookingRepositoryImpl
 import com.appmovilidadclinica.driver.shared.data.repository.DriverRepositoryImpl
@@ -25,9 +26,13 @@ val androidDataModule: Module = module {
     single {
         KtorTokenProvider { (get<SessionStore>()).currentToken() }
     }
+    single { SessionExpiredNotifier() }
     single {
         KtorApiClient(
-            KtorClientFactory.create(tokenProvider = get()),
+            KtorClientFactory.create(
+                tokenProvider = get(),
+                onUnauthorized = { get<SessionExpiredNotifier>().notifySessionExpired() },
+            ),
         )
     }
     single { ApiErrorMapper() }
@@ -36,6 +41,7 @@ val androidDataModule: Module = module {
             apiClient = get(),
             sessionStore = get(),
             apiErrorMapper = get(),
+            sessionExpiredNotifier = get(),
         )
     }
     single<DriverRepository> {

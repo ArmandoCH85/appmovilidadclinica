@@ -11,4 +11,8 @@ interface AuthRepository {
     fun getCurrentUser(): Flow<com.appmovilidadclinica.driver.shared.domain.model.User?>
     fun getToken(): Flow<String?>
     suspend fun clearSession()
+
+    /** Emite cuando una request autenticada recibe 401 (sesion expirada o
+     *  usuario suspendido). La UI raiz observa y fuerza logout + Login. */
+    fun observeSessionExpired(): Flow<Unit>
 }
