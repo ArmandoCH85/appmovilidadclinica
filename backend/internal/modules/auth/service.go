@@ -11,8 +11,11 @@ import (
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
 )
 
-// tokenTTL define la vigencia del JWT. Sin refresh token en el MVP: 24h.
-const tokenTTL = 24 * time.Hour
+// tokenTTL define la vigencia del JWT. 1 año: la sesion no debe vencer sola
+// (los conductores usan la app todo el dia). La revocacion es inmediata via
+// el guard de users.active (middleware activeUserGuard): suspender a un
+// usuario corta su sesion al instante aunque el token siga vigente.
+const tokenTTL = 365 * 24 * time.Hour
 
 // AuthService define las operaciones de dominio del modulo.
 type AuthService interface {

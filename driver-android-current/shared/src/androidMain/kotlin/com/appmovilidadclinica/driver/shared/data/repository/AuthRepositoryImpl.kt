@@ -17,6 +17,9 @@ import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -92,9 +95,25 @@ class AuthRepositoryImpl @Inject constructor(
 
     override fun observeSessionExpired(): Flow<Unit> = sessionExpiredNotifier.events
 
+    /**
+     * Lee el `exp` real del JWT (payload base64url, sin verificar firma: solo
+     * para la UI). Antes era un stub fijo de 24h; con el TTL de 1 año eso
+     * echaba al conductor a las 24h aunque el token siguiera vigente.
+     * Fallback: 1 año si el token no se puede parsear.
+     */
     private fun parseTokenExpiration(token: String): Long {
-        // Stub: expira en 24h. En realidad debería decodificar el JWT
-        // y leer el `exp` field. Para Fase 4 alcanza.
-        return System.currentTimeMillis() / 1000 + 24 * 60 * 60
+        val fallback = System.currentTimeMillis() / 1000 + 365L * 24 * 60 * 60
+        val parts = token.split(".")
+        if (parts.size != 3) return fallback
+        return runCatching {
+            val payloadBytes = android.util.Base64.decode(
+                parts[1],
+                android.util.Base64.URL_SAFE or
+                    android.util.Base64.NO_PADDING or
+                    android.util.Base64.NO_WRAP,
+            )
+            val payload = json.parseToJsonElement(String(payloadBytes, Charsets.UTF_8)).jsonObject
+            payload["exp"]?.jsonPrimitive?.longOrNull
+        }.getOrNull() ?: fallback
     }
 }
