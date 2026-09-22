@@ -48,6 +48,7 @@ import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
 import com.appmovilidadclinica.passenger.presentation.common.canSelfCheckin
 import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +63,10 @@ fun MyReservationsScreen(
 
     LaunchedEffect(Unit) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.sync()
+            while (true) {
+                viewModel.sync()
+                delay(20_000)
+            }
         }
     }
 
