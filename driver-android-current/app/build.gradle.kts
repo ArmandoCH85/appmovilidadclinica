@@ -23,8 +23,8 @@ android {
         applicationId = "com.sitech.clinica.conductor"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20260921
-        versionName = "1.0.7"
+        versionCode = 20260922
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
