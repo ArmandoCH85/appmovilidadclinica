@@ -277,11 +277,16 @@ type ReservationListItem struct {
 	ConfirmedAt               time.Time `json:"confirmed_at"`
 	TripCode                  string    `json:"trip_code"`
 	ScheduledStartAt          time.Time `json:"scheduled_start_at"`
-	OriginName                string    `json:"origin_name"`
-	DestinationName           string    `json:"destination_name"`
-	SeatLabel                 string    `json:"seat_label"`
-	VehicleCode               string    `json:"vehicle_code"`
-	Plate                     string    `json:"plate"`
+	// OriginDepartureAt es la salida programada de la PARADA DE ORIGEN de la
+	// reserva (origin_tst.scheduled_departure_at), no el inicio del viaje.
+	// La ventana de self-checkin (±30 min) se calcula sobre este valor, asi
+	// que para paradas que no son la primera scheduled_start_at no sirve.
+	OriginDepartureAt time.Time `json:"origin_departure_at"`
+	OriginName        string    `json:"origin_name"`
+	DestinationName   string    `json:"destination_name"`
+	SeatLabel         string    `json:"seat_label"`
+	VehicleCode       string    `json:"vehicle_code"`
+	Plate             string    `json:"plate"`
 }
 
 // ListReservationsByWorker devuelve todas las reservas (cualquier status) del
@@ -300,6 +305,7 @@ func (r *bookingRepository) ListReservationsByWorker(ctx context.Context, worker
                r.origin_trip_stop_time_id, r.destination_trip_stop_time_id,
                r.status, r.confirmed_at,
                t.trip_code, t.scheduled_start_at,
+               origin_tst.scheduled_departure_at,
                origin_stop.name, dest_stop.name,
                ts.seat_label,
                v.internal_code, v.plate
@@ -327,6 +333,7 @@ func (r *bookingRepository) ListReservationsByWorker(ctx context.Context, worker
 			&it.OriginTripStopTimeID, &it.DestinationTripStopTimeID,
 			&it.Status, &it.ConfirmedAt,
 			&it.TripCode, &it.ScheduledStartAt,
+			&it.OriginDepartureAt,
 			&it.OriginName, &it.DestinationName,
 			&it.SeatLabel,
 			&it.VehicleCode, &it.Plate,

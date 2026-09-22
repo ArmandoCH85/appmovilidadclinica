@@ -54,7 +54,7 @@ fun ReservationListItemDto.toEntity(
     routeName = tripCode,
     originName = originName,
     destinationName = destinationName,
-    originDepartureAtEpochMillis = OffsetDateTime.parse(scheduledStartAt).toInstant().toEpochMilli(),
+    originDepartureAtEpochMillis = OffsetDateTime.parse(originDepartureAt ?: scheduledStartAt).toInstant().toEpochMilli(),
     seatLabel = seatLabel,
     vehicleCode = vehicleCode,
     plate = plate,
