@@ -79,7 +79,13 @@ class TripLocationService : Service() {
     }
 
     override fun onDestroy() {
-        client.removeLocationUpdates(callback)
+        // callback queda sin inicializar cuando onCreate sale temprano por falta
+        // de permiso de ubicacion (stopSelf + return antes de asignarlo).
+        // Accederlo sin chequear tira UninitializedPropertyAccessException y
+        // cierra la app justo al iniciar el viaje.
+        if (::callback.isInitialized) {
+            client.removeLocationUpdates(callback)
+        }
         super.onDestroy()
     }
 
