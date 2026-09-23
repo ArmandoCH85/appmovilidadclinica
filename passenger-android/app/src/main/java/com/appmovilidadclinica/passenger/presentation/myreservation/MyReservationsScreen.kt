@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.passenger.presentation.myreservation
+package com.appmovilidadclinica.passenger.presentation.myreservation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -194,44 +194,8 @@ private fun ReservationCard(
                 )
             }
 
-            if (reservation.status == ReservationStatus.CONFIRMED) {
-                Spacer(Modifier.height(12.dp))
-
-                val canCheckin = reservation.canSelfCheckin()
-                Button(
-                    onClick = onSelfCheckin,
-                    enabled = canCheckin && !rowState.checkingIn,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) {
-                    if (rowState.checkingIn) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    } else {
-                        Text("Confirmar abordaje", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-
-                if (!canCheckin) {
-                    Text(
-                        "Disponible solo cerca del horario de salida.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-
-                if (rowState.errorMessage != null) {
-                    Text(
-                        rowState.errorMessage,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-            }
+            // El abordaje lo confirma unicamente el conductor desde su app: la
+            // lista ya no ofrece "Confirmar abordaje" al pasajero.
         }
     }
 }

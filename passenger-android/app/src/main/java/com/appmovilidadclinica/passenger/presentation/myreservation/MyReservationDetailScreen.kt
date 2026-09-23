@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.passenger.presentation.myreservation
+package com.appmovilidadclinica.passenger.presentation.myreservation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -287,25 +287,10 @@ fun MyReservationDetailScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            // Botones de accion (solo si esta CONFIRMED)
+            // Botones de accion (solo si esta CONFIRMED).
+            // El abordaje lo confirma unicamente el conductor desde su app, asi
+            // que aqui ya no hay boton de self-checkin: solo cancelar.
             if (reservation.status == ReservationStatus.CONFIRMED) {
-                Button(
-                    onClick = viewModel::selfCheckin,
-                    enabled = viewModel.canSelfCheckin && !state.checkingIn,
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                ) {
-                    Text(if (state.checkingIn) "Confirmando…" else "Confirmar abordaje")
-                }
-                if (!viewModel.canSelfCheckin) {
-                    Text(
-                        "Disponible solo cerca del horario de salida.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
-
-                Spacer(Modifier.height(12.dp))
-
                 OutlinedButton(
                     onClick = viewModel::askCancel,
                     enabled = !state.cancelling,
