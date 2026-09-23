@@ -48,3 +48,22 @@ backend/backend.exe
 # apellido, usuario, CeCo, area, gerencia, sede). NUNCA versionar: el repo es
 # publico.
 Planilla_Usuarios.md
+
+# Artefactos locales: respaldos manuales de las apps, APKs/AABs generados y
+# restos de descomprimir un .aab (base/, BUNDLE-METADATA/, META-INF/,
+# BundleConfig.pb). Reglas ancladas a la raiz para no tocar los .zip de assets
+# que si se versionan (p.ej. driver-android-current/icono/AppAssets_*.zip).
+/driver-android*.zip
+/passenger-android*.zip
+/pax-*.zip
+/*.apk
+/*.aab
+*.apk
+*.aab
+backend/backend_test.exe
+passenger_state.png
+/BUNDLE-METADATA/
+/META-INF/
+/BundleConfig.pb
+/base/
+.kotlin/
