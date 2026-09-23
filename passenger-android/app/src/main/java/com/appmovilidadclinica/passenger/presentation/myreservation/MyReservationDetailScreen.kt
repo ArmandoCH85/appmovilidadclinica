@@ -68,6 +68,7 @@ import com.appmovilidadclinica.passenger.domain.model.TripStopStatus
 import com.appmovilidadclinica.passenger.presentation.common.SeatCell
 import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
 import com.appmovilidadclinica.passenger.presentation.common.toPeruTime
+import java.time.Instant
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,6 +80,7 @@ fun MyReservationDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val reservation = state.reservation
     var showExtensionSheet by remember { mutableStateOf(false) }
+    var now by remember { mutableStateOf(Instant.now()) }
 
     // Polling del estado del viaje mientras la reserva está activa.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -87,6 +89,7 @@ fun MyReservationDetailScreen(
         if (status == ReservationStatus.CONFIRMED || status == ReservationStatus.BOARDED) {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
+                    now = Instant.now()
                     viewModel.refreshJourney()
                     delay(20_000)
                 }
@@ -246,14 +249,15 @@ fun MyReservationDetailScreen(
 
             // Botones de accion (solo si esta CONFIRMED)
             if (reservation.status == ReservationStatus.CONFIRMED) {
+                val canSelfCheckin = viewModel.canSelfCheckin(now)
                 Button(
                     onClick = viewModel::selfCheckin,
-                    enabled = viewModel.canSelfCheckin && !state.checkingIn,
+                    enabled = canSelfCheckin && !state.checkingIn,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
                     Text(if (state.checkingIn) "Confirmando…" else "Confirmar abordaje")
                 }
-                if (!viewModel.canSelfCheckin) {
+                if (!canSelfCheckin) {
                     Text(
                         "Disponible solo cerca del horario de salida.",
                         style = MaterialTheme.typography.bodySmall,

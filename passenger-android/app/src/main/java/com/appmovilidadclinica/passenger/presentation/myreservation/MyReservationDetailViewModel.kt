@@ -102,15 +102,13 @@ class MyReservationDetailViewModel @Inject constructor(
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MyReservationDetailUiState())
 
-    val canSelfCheckin: Boolean
-        get() {
-            val reservation = _uiState.value.reservation ?: return false
-            if (reservation.status != ReservationStatus.CONFIRMED) return false
-            val now = Instant.now()
-            val windowStart = reservation.originDepartureAt.minus(SELF_CHECKIN_WINDOW)
-            val windowEnd = reservation.originDepartureAt.plus(SELF_CHECKIN_WINDOW)
-            return !now.isBefore(windowStart) && !now.isAfter(windowEnd)
-        }
+    fun canSelfCheckin(now: Instant): Boolean {
+        val reservation = _uiState.value.reservation ?: return false
+        if (reservation.status != ReservationStatus.CONFIRMED) return false
+        val windowStart = reservation.originDepartureAt.minus(SELF_CHECKIN_WINDOW)
+        val windowEnd = reservation.originDepartureAt.plus(SELF_CHECKIN_WINDOW)
+        return !now.isBefore(windowStart) && !now.isAfter(windowEnd)
+    }
 
     fun askCancel() {
         android.util.Log.d("MyResDetail", "askCancel: showing dialog for ${route.reservationId}")

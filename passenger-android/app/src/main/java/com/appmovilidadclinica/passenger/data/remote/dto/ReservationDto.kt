@@ -49,6 +49,7 @@ data class ReservationListItemDto(
     @SerialName("confirmed_at") val confirmedAt: String,
     @SerialName("trip_code") val tripCode: String,
     @SerialName("scheduled_start_at") val scheduledStartAt: String,
+    @SerialName("origin_departure_at") val originDepartureAt: String,
     @SerialName("origin_name") val originName: String,
     @SerialName("destination_name") val destinationName: String,
     @SerialName("seat_label") val seatLabel: String,
