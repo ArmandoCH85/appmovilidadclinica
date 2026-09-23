@@ -126,7 +126,15 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    // androidx.test 1.7 / espresso 3.7: necesarios para poder ejecutar pruebas
+    // instrumentadas en API 36 (espresso 3.6.1 usa InputManager.getInstance(),
+    // removido en Android 16, y falla con NoSuchMethodException).
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.02"))
+    // Prueba de UI del "Detalle del viaje": interaccion real sobre la pantalla
+    // y captura de pantalla para validar legibilidad con fuente aumentada y en
+    // pantalla pequeña (ver TripDetailScreenUiTest).
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
