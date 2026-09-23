@@ -27,8 +27,8 @@ android {
         // soporte legacy que no se necesita para este alcance (ver diseño).
         minSdk = 26
         targetSdk = 35
-        versionCode = 20260919
-        versionName = "0.2.1"
+        versionCode = 20260926
+        versionName = "0.2.2"
     }
 
     signingConfigs {
