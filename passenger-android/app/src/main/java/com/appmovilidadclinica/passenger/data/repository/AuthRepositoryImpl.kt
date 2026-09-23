@@ -1,17 +1,21 @@
-package com.appmovilidadclinica.passenger.data.repository
+﻿package com.appmovilidadclinica.passenger.data.repository
 
 import android.util.Base64
 import com.appmovilidadclinica.passenger.data.local.SessionDataStore
-import com.appmovilidadclinica.passenger.data.local.StoredSession
+import com.appmovilidadclinica.passenger.shared.data.local.StoredSession
 import com.appmovilidadclinica.passenger.data.mapper.toDomain
 import com.appmovilidadclinica.passenger.data.remote.ApiErrorMapper
-import com.appmovilidadclinica.passenger.data.remote.AuthApi
+import com.appmovilidadclinica.passenger.data.remote.KtorApiClient
 import com.appmovilidadclinica.passenger.data.remote.SessionExpiredNotifier
-import com.appmovilidadclinica.passenger.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.passenger.data.remote.safeApiCall
-import com.appmovilidadclinica.passenger.domain.error.AppResult
-import com.appmovilidadclinica.passenger.domain.model.User
+import com.appmovilidadclinica.passenger.data.remote.safeApiCallUnit
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ChangePasswordRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginResponseDto
+import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.model.User
 import com.appmovilidadclinica.passenger.domain.repository.AuthRepository
+import io.ktor.client.call.body
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -26,7 +30,7 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
-    private val authApi: AuthApi,
+    private val apiClient: KtorApiClient,
     private val sessionDataStore: SessionDataStore,
     private val errorMapper: ApiErrorMapper,
     private val sessionExpiredNotifier: SessionExpiredNotifier,
@@ -34,40 +38,49 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     override suspend fun login(documentNumber: String, password: String): AppResult<User> {
-        val result = safeApiCall(errorMapper) {
-            authApi.login(LoginRequestDto(documentNumber, password))
-        }
-        if (result is AppResult.Success) {
-            val body = result.data
-            sessionDataStore.save(
-                StoredSession(
-                    token = body.token,
-                    userId = body.user.id,
-                    employeeCode = body.user.employeeCode,
-                    fullName = body.user.fullName,
-                    role = body.user.role,
-                    department = body.user.department,
-                    phone = body.user.phone,
-                )
-            )
-            return AppResult.Success(body.user.toDomain())
-        }
+        val apiResult = safeApiCall<LoginResponseDto>(
+            errorMapper = errorMapper,
+            call = { apiClient.authApi.login(LoginRequestDto(documentNumber, password)) },
+            parseBody = { it.body() },
+        )
         @Suppress("UNCHECKED_CAST")
-        return result as AppResult<User>
+        return when (apiResult) {
+            is AppResult.Success -> {
+                val body = apiResult.data
+                sessionDataStore.save(
+                    StoredSession(
+                        token = body.token,
+                        userId = body.user.id,
+                        employeeCode = body.user.employeeCode,
+                        fullName = body.user.fullName,
+                        role = body.user.role,
+                        department = body.user.department,
+                        phone = body.user.phone,
+                    )
+                )
+                AppResult.Success(body.user.toDomain())
+            }
+            is AppResult.Failure -> apiResult as AppResult<User>
+        }
     }
 
     override suspend fun logout() {
         sessionDataStore.clear()
     }
 
+    override suspend fun changePassword(currentPassword: String, newPassword: String): AppResult<Unit> =
+        safeApiCallUnit(
+            errorMapper = errorMapper,
+            call = {
+                apiClient.authApi.changePassword(
+                    ChangePasswordRequestDto(currentPassword, newPassword)
+                )
+            },
+        )
+
     override fun observeSession(): Flow<User?> =
         sessionDataStore.sessionFlow.map { it?.toDomain() }
 
-    /**
-     * Combina el token actual con un ticker de 1s (mismo espiritu que
-     * `useTimestamp` de VueUse en el panel admin) para que el countdown de
-     * expiracion se actualice solo, sin que la UI tenga que pollear.
-     */
     override fun observeSecondsUntilExpiry(): Flow<Long?> {
         val ticker = flow {
             while (true) {
@@ -86,14 +99,6 @@ class AuthRepositoryImpl @Inject constructor(
 
     override fun observeSessionExpired(): Flow<Unit> = sessionExpiredNotifier.events
 
-    /**
-     * Decodifica SOLO el payload de un JWT (base64url, sin verificar firma)
-     * — la app confia en el backend, no necesita revalidar HS256
-     * client-side. Se usa nada mas para leer `exp` (countdown de expiracion,
-     * mismo patron que `admin/src/auth/useAuth.ts`, `decodeExp`). Unico call
-     * site — inlineado aca en vez de un objeto aparte (ver memoria
-     * "android-passenger-module/ponytail-audit").
-     */
     private fun expiresAtEpochSeconds(token: String): Long? {
         val parts = token.split(".")
         if (parts.size != 3) return null

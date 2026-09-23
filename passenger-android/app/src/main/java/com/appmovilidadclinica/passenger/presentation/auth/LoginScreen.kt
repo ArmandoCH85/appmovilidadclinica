@@ -92,11 +92,11 @@ private fun LoginCard(
         tonalElevation = 3.dp,
         shadowElevation = 8.dp,
         modifier = Modifier
-            .padding(horizontal = 28.dp)
+            .padding(horizontal = 20.dp)
             .fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(28.dp),
+            modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             BrandHeader()
@@ -106,10 +106,10 @@ private fun LoginCard(
             OutlinedTextField(
                 value = state.documentNumber,
                 onValueChange = onDocumentNumberChange,
-                label = { Text("Número de documento") },
+                label = { Text("Usuario") },
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
+                    keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next,
                 ),
                 singleLine = true,
@@ -201,16 +201,16 @@ private fun BrandHeader() {
         Spacer(Modifier.height(16.dp))
 
         Text(
-            "Aplicación Pasajeros",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
+            "Movilidad clínica - cuidadores",
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
         )
 
         Spacer(Modifier.height(4.dp))
 
         Text(
-            "Ingrese su número de documento y contraseña",
+            "Ingrese su usuario y contraseña",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

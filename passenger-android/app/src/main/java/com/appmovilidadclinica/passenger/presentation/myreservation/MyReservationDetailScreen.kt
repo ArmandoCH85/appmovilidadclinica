@@ -15,33 +15,39 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,24 +57,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.appmovilidadclinica.passenger.domain.model.ExtensionStop
-import com.appmovilidadclinica.passenger.domain.model.ReservationStatus
-import com.appmovilidadclinica.passenger.domain.model.TripSeat
-import com.appmovilidadclinica.passenger.domain.model.TripStop
-import com.appmovilidadclinica.passenger.domain.model.TripStopStatus
+import com.appmovilidadclinica.passenger.shared.domain.model.ExtensionStop
+import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStopStatus
 import com.appmovilidadclinica.passenger.presentation.common.SeatCell
 import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
 import com.appmovilidadclinica.passenger.presentation.common.toPeruTime
-import java.time.Instant
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,16 +86,14 @@ fun MyReservationDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val reservation = state.reservation
     var showExtensionSheet by remember { mutableStateOf(false) }
-    var now by remember { mutableStateOf(Instant.now()) }
 
-    // Polling del estado del viaje mientras la reserva está activa.
+    // Polling del estado del viaje mientras la reserva está abordada.
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(state.reservation?.status) {
         val status = state.reservation?.status
         if (status == ReservationStatus.CONFIRMED || status == ReservationStatus.BOARDED) {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
-                    now = Instant.now()
                     viewModel.refreshJourney()
                     delay(20_000)
                 }
@@ -114,14 +118,23 @@ fun MyReservationDetailScreen(
             )
         },
     ) { padding ->
-        Column(
-            modifier = Modifier.padding(padding).padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        PullToRefreshBox(
+            isRefreshing = state.loadingStops,
+            onRefresh = viewModel::refreshStops,
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxWidth(),
         ) {
-            if (reservation == null) {
-                Text("Cargando…")
-                return@Column
-            }
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (reservation == null) {
+                    Text("Cargando…")
+                    return@Column
+                }
 
             // Codigo de reserva
             Text(
@@ -129,11 +142,25 @@ fun MyReservationDetailScreen(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
-            Text(
-                statusLabel(reservation.status),
-                style = MaterialTheme.typography.labelMedium,
-                color = statusColor(reservation.status),
-            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // Estado: icono + texto (nunca solo color, para accesibilidad)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    statusIcon(reservation.status),
+                    contentDescription = null,
+                    tint = statusColor(reservation.status),
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    statusLabel(reservation.status),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = statusColor(reservation.status),
+                    fontWeight = FontWeight.Medium,
+                )
+            }
 
             Spacer(Modifier.height(20.dp))
 
@@ -156,13 +183,15 @@ fun MyReservationDetailScreen(
 
             // Card con info del viaje
             Card(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // Ruta
                     Text(
                         "${reservation.originName} → ${reservation.destinationName}",
                         style = MaterialTheme.typography.titleMedium,
@@ -171,6 +200,7 @@ fun MyReservationDetailScreen(
 
                     Spacer(Modifier.height(12.dp))
 
+                    // Salida con icono
                     DetailRow(
                         icon = Icons.Default.Schedule,
                         text = "Salida: ${reservation.originDepartureAt.toPeruDateTime()}",
@@ -178,6 +208,7 @@ fun MyReservationDetailScreen(
 
                     Spacer(Modifier.height(6.dp))
 
+                    // Asiento con icono
                     DetailRow(
                         icon = Icons.Default.EventSeat,
                         text = "Asiento: ${reservation.seatLabel}",
@@ -193,14 +224,16 @@ fun MyReservationDetailScreen(
                 }
             }
 
-            // Semáforo del recorrido (se refresca con el polling cada 20s)
-            if (state.stops.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
+
+            // Card con el recorrido: hora aproximada/real de llegada del bus a cada parada
+            if (state.loadingStops || state.stops.isNotEmpty()) {
                 Card(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -210,20 +243,26 @@ fun MyReservationDetailScreen(
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.height(12.dp))
-                        TripStopsTimeline(state.stops)
+
+                        if (state.loadingStops) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            TripStopsTimeline(state.stops)
+                        }
                     }
                 }
+
+                Spacer(Modifier.height(16.dp))
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // Oferta de extensión de viaje (un paradero antes del destino)
+            // Oferta de extensión de viaje (un paradero antes del destino).
             if (state.canExtend) {
                 Card(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -244,11 +283,12 @@ fun MyReservationDetailScreen(
                         }
                     }
                 }
+
                 Spacer(Modifier.height(16.dp))
             }
 
             // Botones de accion (solo si esta CONFIRMED).
-            // El abordaje lo registra unicamente el conductor desde su app, asi
+            // El abordaje lo confirma unicamente el conductor desde su app, asi
             // que aqui ya no hay boton de self-checkin: solo cancelar.
             if (reservation.status == ReservationStatus.CONFIRMED) {
                 OutlinedButton(
@@ -266,6 +306,7 @@ fun MyReservationDetailScreen(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 12.dp),
                 )
+            }
             }
         }
     }
@@ -372,6 +413,7 @@ private fun ExtensionBottomSheet(
                             seat = seat,
                             selected = selectedSeatId == seat.tripSeatId,
                             onClick = { selectedSeatId = seat.tripSeatId },
+                            modifier = Modifier.size(64.dp),
                         )
                     }
                 }
@@ -403,7 +445,7 @@ private fun ExtensionBottomSheet(
     }
 }
 
-/** Timeline de paradas con el semáforo: rojo PENDING, amarillo ARRIVED, verde DEPARTED. */
+/** Timeline de paradas: icono de estado + hora real (si el chofer ya la marco) o estimada. */
 @Composable
 private fun TripStopsTimeline(stops: List<TripStop>) {
     Column {
@@ -415,11 +457,24 @@ private fun TripStopsTimeline(stops: List<TripStop>) {
 
 @Composable
 private fun TripStopRow(stop: TripStop, isLast: Boolean) {
+    val skipped = stop.status == TripStopStatus.SKIPPED
+    val arrived = stop.actualArrivalAt != null
+    val departed = stop.actualDepartureAt != null
+
+    // Semáforo de colores: rojo PENDIENTE, amarillo ARRIVED, verde DEPARTED,
+    // gris SKIPPED.
     val semaphoreColor = when (stop.status) {
         TripStopStatus.PENDING -> Color(0xFFD32F2F)
         TripStopStatus.ARRIVED -> Color(0xFFF9A825)
         TripStopStatus.DEPARTED -> Color(0xFF388E3C)
         TripStopStatus.SKIPPED -> Color(0xFF9E9E9E)
+    }
+
+    val timeText = when {
+        skipped -> "Parada omitida"
+departed -> "Salió ${stop.actualDepartureAt!!.toPeruTime()}"
+        arrived -> "Llegó ${stop.actualArrivalAt!!.toPeruTime()}"
+        else -> "Hora aprox. ${stop.scheduledArrivalAt.toPeruTime()}"
     }
 
     Row(modifier = Modifier.fillMaxWidth()) {
@@ -444,10 +499,13 @@ private fun TripStopRow(stop: TripStop, isLast: Boolean) {
             Text(
                 stop.stopName,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (stop.status == TripStopStatus.ARRIVED) FontWeight.Medium else FontWeight.Normal,
+                fontWeight = if (arrived || skipped) FontWeight.Medium else FontWeight.Normal,
+                color = if (skipped) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurface,
+                textDecoration = if (skipped) TextDecoration.LineThrough else null,
             )
             Text(
-                "Hora aprox. ${stop.scheduledArrivalAt.toPeruTime()}",
+                timeText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -480,9 +538,17 @@ private fun statusLabel(status: ReservationStatus): String = when (status) {
     ReservationStatus.CANCELLED -> "Cancelada"
 }
 
+private fun statusIcon(status: ReservationStatus) = when (status) {
+    ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW -> Icons.Filled.Cancel
+    else -> Icons.Filled.CheckCircle
+}
+
 @Composable
 private fun statusColor(status: ReservationStatus) = when (status) {
     ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW -> MaterialTheme.colorScheme.error
     ReservationStatus.COMPLETED, ReservationStatus.BOARDED -> MaterialTheme.colorScheme.primary
     ReservationStatus.CONFIRMED -> MaterialTheme.colorScheme.onSurface
 }
+
+
+

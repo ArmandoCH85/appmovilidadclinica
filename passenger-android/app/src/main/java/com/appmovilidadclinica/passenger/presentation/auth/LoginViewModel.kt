@@ -2,8 +2,8 @@ package com.appmovilidadclinica.passenger.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.appmovilidadclinica.passenger.domain.error.AppError
-import com.appmovilidadclinica.passenger.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.error.AppError
+import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.domain.usecase.LoginUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,7 +38,7 @@ class LoginViewModel @Inject constructor(
     fun submit() {
         val state = _uiState.value
         if (state.documentNumber.isBlank() || state.password.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Complete el documento y la contraseña.") }
+            _uiState.update { it.copy(errorMessage = "Complete el usuario y la contraseña.") }
             return
         }
         _uiState.update { it.copy(submitting = true, errorMessage = null) }
@@ -55,7 +55,7 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun messageFor(error: AppError): String = when (error) {
-        is AppError.Unauthorized -> "Documento o contraseña incorrectos."
+        is AppError.Unauthorized -> "Usuario o contraseña incorrectos."
         is AppError.Forbidden -> error.message
         is AppError.Network -> "No se pudo conectar con el servidor. Verifique su conexión."
         else -> "Ocurrió un error inesperado. Intente nuevamente."

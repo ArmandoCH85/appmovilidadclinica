@@ -1,6 +1,5 @@
 # Gradle / Android Studio local — no van al repo
 .gradle/
-.kotlin/
 local.properties
 *.iml
 captures/
@@ -9,9 +8,6 @@ captures/
 # Release signing — NUNCA commitear keystores ni passwords
 app/keystore.properties
 *.jks
-*.jks.dead
 *.keystore
 *.p12
 *.pfx
-*.pem
-*.csr

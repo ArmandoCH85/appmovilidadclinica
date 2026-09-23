@@ -10,10 +10,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.appmovilidadclinica.passenger.presentation.auth.LoginScreen
+import com.appmovilidadclinica.passenger.presentation.changepassword.ChangePasswordScreen
 import com.appmovilidadclinica.passenger.presentation.common.SessionExpiredDialog
 import com.appmovilidadclinica.passenger.presentation.common.SessionViewModel
 import com.appmovilidadclinica.passenger.presentation.myreservation.MyReservationDetailScreen
 import com.appmovilidadclinica.passenger.presentation.myreservation.MyReservationsScreen
+import com.appmovilidadclinica.passenger.presentation.reportincident.ReportIncidentScreen
 import com.appmovilidadclinica.passenger.presentation.seatselection.SeatSelectionScreen
 import com.appmovilidadclinica.passenger.presentation.tripsearch.TripSearchScreen
 
@@ -55,8 +57,19 @@ fun PassengerNavGraph(navController: NavHostController = rememberNavController()
                     navController.navigate(Screen.SeatSelection(tripId, originStopId, destinationStopId))
                 },
                 onOpenReservations = { navController.navigate(Screen.MyReservations) },
+                userDisplayName = user?.fullName.orEmpty(),
+                onOpenChangePassword = { navController.navigate(Screen.ChangePassword) },
+                onOpenReportIncident = { navController.navigate(Screen.ReportIncident) },
                 onLogout = { sessionViewModel.logout() },
             )
+        }
+
+        composable<Screen.ChangePassword> {
+            ChangePasswordScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable<Screen.ReportIncident> {
+            ReportIncidentScreen(onBack = { navController.popBackStack() })
         }
 
         composable<Screen.SeatSelection> {

@@ -18,17 +18,15 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.appmovilidadclinica.passenger"
-    compileSdk = 35
+    namespace = "com.sitech.clinica.empleados"
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sitech.clinica.empleados"
-        // minSdk 26: cobertura >95% del parque activo real, sin cargar
-        // soporte legacy que no se necesita para este alcance (ver diseño).
         minSdk = 26
-        targetSdk = 35
-        versionCode = 20260926
-        versionName = "0.2.2"
+        targetSdk = 36
+        versionCode = 20260927
+        versionName = "0.3.0"
     }
 
     signingConfigs {
@@ -74,37 +72,49 @@ android {
 }
 
 dependencies {
+    implementation(project(":shared"))
+
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
+
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
-    debugImplementation(libs.androidx.ui.tooling)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
-    implementation(libs.retrofit.core)
-    implementation(libs.retrofit.kotlinx.serialization)
-    implementation(libs.okhttp.core)
-    implementation(libs.okhttp.logging.interceptor)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.kotlinx.coroutines.android)
-
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    implementation(libs.datastore.preferences)
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp.core)
+    implementation(libs.okhttp.logging.interceptor)
 
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.android)
+
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
+    implementation(libs.kermit)
+
+    implementation(libs.multiplatform.settings)
+
+    implementation(libs.datastore.preferences)
     implementation(libs.zxing.core)
-    // Sin testImplementation todavia — se agregan (JUnit5/MockK/Turbine) con
-    // el primer test real, no antes (ver memoria "android-passenger-module/ponytail-audit").
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

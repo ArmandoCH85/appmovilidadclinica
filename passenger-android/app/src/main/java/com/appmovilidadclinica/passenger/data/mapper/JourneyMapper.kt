@@ -1,16 +1,16 @@
 package com.appmovilidadclinica.passenger.data.mapper
 
-import com.appmovilidadclinica.passenger.data.remote.dto.ExtendResponseDto
-import com.appmovilidadclinica.passenger.data.remote.dto.JourneyStateDto
-import com.appmovilidadclinica.passenger.data.remote.dto.JourneyStopDto
-import com.appmovilidadclinica.passenger.domain.model.ExtendResult
-import com.appmovilidadclinica.passenger.domain.model.ExtensionOffer
-import com.appmovilidadclinica.passenger.domain.model.ExtensionStop
-import com.appmovilidadclinica.passenger.domain.model.JourneyState
-import com.appmovilidadclinica.passenger.domain.model.ReservationStatus
-import com.appmovilidadclinica.passenger.domain.model.TripStatus
-import com.appmovilidadclinica.passenger.domain.model.TripStop
-import com.appmovilidadclinica.passenger.domain.model.TripStopStatus
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ExtendResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.JourneyStateDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.JourneyStopDto
+import com.appmovilidadclinica.passenger.shared.domain.model.ExtendResult
+import com.appmovilidadclinica.passenger.shared.domain.model.ExtensionOffer
+import com.appmovilidadclinica.passenger.shared.domain.model.ExtensionStop
+import com.appmovilidadclinica.passenger.shared.domain.model.JourneyState
+import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStatus
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
+import com.appmovilidadclinica.passenger.shared.domain.model.TripStopStatus
 import java.time.OffsetDateTime
 
 private fun parseJourneyInstant(raw: String) = OffsetDateTime.parse(raw).toInstant()
@@ -22,6 +22,8 @@ fun JourneyStopDto.toDomain(): TripStop = TripStop(
     stopName = stopName,
     scheduledArrivalAt = parseJourneyInstant(scheduledArrivalAt),
     scheduledDepartureAt = parseJourneyInstant(scheduledDepartureAt),
+    actualArrivalAt = actualArrivalAt?.let(::parseJourneyInstant),
+    actualDepartureAt = actualDepartureAt?.let(::parseJourneyInstant),
     status = TripStopStatus.valueOf(status),
 )
 

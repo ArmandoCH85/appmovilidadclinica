@@ -67,3 +67,7 @@ passenger_state.png
 /BundleConfig.pb
 /base/
 .kotlin/
+
+# Reglas que ya traia la rama de la extension de pasajeros.
+*.zip
+icono/
