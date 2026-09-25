@@ -416,12 +416,14 @@ const boardingsFilter = reactive<{
   routeID: number | null
   direction: string
   stopID: number | null
+  vehicleID: number | null
   dateFrom: Date | null
   dateTo: Date | null
 }>({
   routeID: null,
   direction: '',
   stopID: null,
+  vehicleID: null,
   dateFrom: null,
   dateTo: null,
 })
@@ -433,12 +435,14 @@ const directionOptions = [
 ]
 
 async function loadBoardings(): Promise<void> {
+  void loadArrivalVehicles()
   boardingsLoading.value = true
   boardingsError.value = ''
   const params = new URLSearchParams()
   if (boardingsFilter.routeID && boardingsFilter.routeID > 0) params.set('route_id', String(boardingsFilter.routeID))
   if (boardingsFilter.direction) params.set('direction', boardingsFilter.direction)
   if (boardingsFilter.stopID && boardingsFilter.stopID > 0) params.set('stop_id', String(boardingsFilter.stopID))
+  if (boardingsFilter.vehicleID && boardingsFilter.vehicleID > 0) params.set('vehicle_id', String(boardingsFilter.vehicleID))
   const fromStr = ymd(boardingsFilter.dateFrom)
   if (fromStr) params.set('date_from', fromStr)
   const toStr = ymd(boardingsFilter.dateTo)
@@ -462,9 +466,17 @@ function clearBoardingsFilters(): void {
   boardingsFilter.routeID = null
   boardingsFilter.direction = ''
   boardingsFilter.stopID = null
+  boardingsFilter.vehicleID = null
   boardingsFilter.dateFrom = null
   boardingsFilter.dateTo = null
 }
+
+// Etiqueta legible del bus elegido (placa) para el resumen del Excel.
+const boardingVehicleLabel = computed(() => {
+  if (!boardingsFilter.vehicleID || boardingsFilter.vehicleID <= 0) return ''
+  const v = arrivalVehicles.value.find((x) => x.id === boardingsFilter.vehicleID)
+  return v ? v.plate : `ID ${boardingsFilter.vehicleID}`
+})
 
 // --- Export a Excel del tab Abordajes por parada ---
 const boardingsExcelColumns: ExcelColumn[] = [
@@ -474,9 +486,13 @@ const boardingsExcelColumns: ExcelColumn[] = [
   { key: 'direction',        label: 'Sentido',     width: 8 },
   { key: 'stop_name',        label: 'Parada',      width: 22 },
   { key: 'stop_type',        label: 'Tipo',        width: 10 },
+  { key: 'vehicle_plate',    label: 'Bus (placa)', width: 14 },
+  { key: 'vehicle_internal_code', label: 'Bus (código)', width: 14 },
   { key: 'app_passengers',   label: 'App',         format: 'number', width: 8 },
   { key: 'guest_passengers', label: 'Invitados',   format: 'number', width: 10 },
   { key: 'total_passengers', label: 'Total',       format: 'number', width: 8 },
+  { key: 'app_passenger_names',   label: 'Pasajeros (App)',      width: 40 },
+  { key: 'guest_passenger_names', label: 'Pasajeros (Invitados)', width: 40 },
 ]
 
 function exportBoardings(): void {
@@ -484,6 +500,7 @@ function exportBoardings(): void {
   if (boardingsFilter.routeID && boardingsFilter.routeID > 0) parts.push(`Ruta ID=${boardingsFilter.routeID}`)
   if (boardingsFilter.direction) parts.push(`Sentido=${boardingsFilter.direction}`)
   if (boardingsFilter.stopID && boardingsFilter.stopID > 0) parts.push(`Parada ID=${boardingsFilter.stopID}`)
+  if (boardingVehicleLabel.value) parts.push(`Bus=${boardingVehicleLabel.value}`)
   if (boardingsFilter.dateFrom || boardingsFilter.dateTo) {
     parts.push(`Rango=${ymd(boardingsFilter.dateFrom) ?? '*'} a ${ymd(boardingsFilter.dateTo) ?? '*'}`)
   }
@@ -501,6 +518,7 @@ const hasBoardingsFilters = computed(
       (boardingsFilter.routeID && boardingsFilter.routeID > 0) ||
         boardingsFilter.direction ||
         (boardingsFilter.stopID && boardingsFilter.stopID > 0) ||
+        (boardingsFilter.vehicleID && boardingsFilter.vehicleID > 0) ||
         boardingsFilter.dateFrom ||
         boardingsFilter.dateTo,
     ),
@@ -919,6 +937,38 @@ const INCIDENT_STATUS_LABELS: Record<string, string> = {
   RESOLVED: 'Resuelto',
 }
 
+// "Reportado por": separa las incidencias que carga el conductor desde la
+// app conductor (DRIVER) de las que carga el pasajero desde la app pasajero
+// (WORKER). Es un filtro exclusivo del reporte de tickets/quejas.
+const INCIDENT_REPORTER_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'DRIVER', label: 'Conductor' },
+  { value: 'WORKER', label: 'Pasajero' },
+]
+
+const INCIDENT_REPORTER_LABELS: Record<string, string> = {
+  DRIVER: 'Conductor',
+  WORKER: 'Pasajero',
+}
+
+const INCIDENT_REPORTER_SEVERITIES: Record<string, 'info' | 'success'> = {
+  DRIVER: 'info',
+  WORKER: 'success',
+}
+
+// El admin suele filtrar por la fecha del VIAJE, pero un ticket para un viaje
+// futuro se reporta dias antes. Por eso el rango de fechas se puede aplicar a
+// la fecha de servicio (default) o a la fecha de reporte.
+const INCIDENT_DATE_FIELD_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'service_date', label: 'Fecha del viaje' },
+  { value: 'reported_at', label: 'Fecha de reporte' },
+]
+
+const INCIDENT_DATE_FIELD_LABELS: Record<string, string> = {
+  service_date: 'Fecha del viaje',
+  reported_at: 'Fecha de reporte',
+}
+
 const incidents = ref<TripIncidentReportRow[]>([])
 const incidentsLoading = ref(false)
 const incidentsError = ref('')
@@ -926,12 +976,16 @@ const incidentsFilter = reactive<{
   routeID: number | null
   incidentType: string
   status: string
+  reporterRole: string
+  dateField: string
   dateFrom: Date | null
   dateTo: Date | null
 }>({
   routeID: null,
   incidentType: '',
   status: '',
+  reporterRole: '',
+  dateField: 'service_date',
   dateFrom: null,
   dateTo: null,
 })
@@ -943,6 +997,8 @@ async function loadIncidents(): Promise<void> {
   if (incidentsFilter.routeID && incidentsFilter.routeID > 0) params.set('route_id', String(incidentsFilter.routeID))
   if (incidentsFilter.incidentType) params.set('incident_type', incidentsFilter.incidentType)
   if (incidentsFilter.status) params.set('status', incidentsFilter.status)
+  if (incidentsFilter.reporterRole) params.set('reporter_role', incidentsFilter.reporterRole)
+  if (incidentsFilter.dateField) params.set('date_field', incidentsFilter.dateField)
   const fromStr = ymd(incidentsFilter.dateFrom)
   if (fromStr) params.set('date_from', fromStr)
   const toStr = ymd(incidentsFilter.dateTo)
@@ -966,6 +1022,8 @@ function clearIncidentsFilters(): void {
   incidentsFilter.routeID = null
   incidentsFilter.incidentType = ''
   incidentsFilter.status = ''
+  incidentsFilter.reporterRole = ''
+  incidentsFilter.dateField = 'service_date'
   incidentsFilter.dateFrom = null
   incidentsFilter.dateTo = null
 }
@@ -980,6 +1038,7 @@ const incidentsExcelColumns: ExcelColumn[] = [
   { key: 'route_code',        label: 'Código ruta',      width: 12 },
   { key: 'route_name',        label: 'Nombre ruta',      width: 24 },
   { key: 'direction',         label: 'Sentido',          width: 8 },
+  { key: 'reported_by_role',  label: 'Rol reportero',    width: 14 },
   { key: 'reported_by_name',  label: 'Reportado por',    width: 24 },
   { key: 'description',       label: 'Descripción',      width: 36 },
   { key: 'resolved_at',       label: 'Resuelto en',      format: 'datetime', width: 20 },
@@ -991,8 +1050,12 @@ function exportIncidents(): void {
   if (incidentsFilter.routeID && incidentsFilter.routeID > 0) parts.push(`Ruta ID=${incidentsFilter.routeID}`)
   if (incidentsFilter.incidentType) parts.push(`Tipo=${incidentsFilter.incidentType}`)
   if (incidentsFilter.status) parts.push(`Estado=${incidentsFilter.status}`)
+  if (incidentsFilter.reporterRole) {
+    parts.push(`Reportado por=${INCIDENT_REPORTER_LABELS[incidentsFilter.reporterRole] ?? incidentsFilter.reporterRole}`)
+  }
   if (incidentsFilter.dateFrom || incidentsFilter.dateTo) {
-    parts.push(`Rango=${ymd(incidentsFilter.dateFrom) ?? '*'} a ${ymd(incidentsFilter.dateTo) ?? '*'}`)
+    const campo = INCIDENT_DATE_FIELD_LABELS[incidentsFilter.dateField] ?? incidentsFilter.dateField
+    parts.push(`${campo}=${ymd(incidentsFilter.dateFrom) ?? '*'} a ${ymd(incidentsFilter.dateTo) ?? '*'}`)
   }
   exportRowsToExcel(incidents.value, incidentsExcelColumns, {
     filename: timestampedFilename('reporte_tickets_quejas'),
@@ -1008,6 +1071,7 @@ const hasIncidentsFilters = computed(
       (incidentsFilter.routeID && incidentsFilter.routeID > 0) ||
         incidentsFilter.incidentType ||
         incidentsFilter.status ||
+        incidentsFilter.reporterRole ||
         incidentsFilter.dateFrom ||
         incidentsFilter.dateTo,
     ),
@@ -2005,6 +2069,20 @@ onMounted(() => {
               <InputNumber inputId="bd-stop" v-model="boardingsFilter.stopID" :min="0" placeholder="Todas" />
             </div>
             <div class="filter">
+              <label for="bd-vehicle">Bus (placa)</label>
+              <Select
+                id="bd-vehicle"
+                v-model="boardingsFilter.vehicleID"
+                :options="arrivalVehicleOptions"
+                optionLabel="label"
+                optionValue="value"
+                :loading="arrivalVehiclesLoading"
+                filter
+                placeholder="Todos los buses"
+                class="filter-select-wide"
+              />
+            </div>
+            <div class="filter">
               <label for="bd-from">Desde</label>
               <DatePicker id="bd-from" v-model="boardingsFilter.dateFrom" date-format="yy-mm-dd" show-icon />
             </div>
@@ -2047,9 +2125,40 @@ onMounted(() => {
             <Column field="direction" header="Sentido" style="width: 5rem" />
             <Column field="stop_name" header="Parada" />
             <Column field="stop_type" header="Tipo" style="width: 6rem" />
+            <Column header="Bus" style="width: 9rem">
+              <template #body="{ data }">
+                <div class="boarding-names" :title="data.vehicle_internal_code">
+                  {{ data.vehicle_plate }}
+                </div>
+                <div class="cell-sub">{{ data.vehicle_internal_code }}</div>
+              </template>
+            </Column>
             <Column field="app_passengers" header="App" style="width: 4rem" />
             <Column field="guest_passengers" header="Invitados" style="width: 5rem" />
             <Column field="total_passengers" header="Total" style="width: 4rem" />
+            <Column header="Pasajeros" style="min-width: 16rem">
+              <template #body="{ data }">
+                <div
+                  v-if="data.app_passenger_names"
+                  class="boarding-names"
+                  :title="data.app_passenger_names"
+                >
+                  {{ data.app_passenger_names }}
+                </div>
+                <div
+                  v-if="data.guest_passenger_names"
+                  class="boarding-names"
+                  :title="data.guest_passenger_names"
+                >
+                  <span class="boarding-guest-tag">Invitados:</span>
+                  {{ data.guest_passenger_names }}
+                </div>
+                <span
+                  v-if="!data.app_passenger_names && !data.guest_passenger_names"
+                  class="cell-muted"
+                >—</span>
+              </template>
+            </Column>
           </DataTable>
 
           <p v-if="!boardingsLoading && !boardingsError" class="reports-total">
@@ -2370,6 +2479,26 @@ onMounted(() => {
               />
             </div>
             <div class="filter">
+              <label for="inc-reporter">Reportado por</label>
+              <Select
+                id="inc-reporter"
+                v-model="incidentsFilter.reporterRole"
+                :options="INCIDENT_REPORTER_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="inc-datefield">Filtrar fechas por</label>
+              <Select
+                id="inc-datefield"
+                v-model="incidentsFilter.dateField"
+                :options="INCIDENT_DATE_FIELD_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
               <label for="inc-from">Desde</label>
               <DatePicker id="inc-from" v-model="incidentsFilter.dateFrom" date-format="yy-mm-dd" show-icon />
             </div>
@@ -2426,6 +2555,14 @@ onMounted(() => {
             <Column field="trip_code" header="Viaje" style="width: 10rem" />
             <Column field="service_date" header="Fecha" style="width: 7rem" />
             <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column header="Rol" style="width: 7rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="INCIDENT_REPORTER_LABELS[data.reported_by_role] ?? data.reported_by_role"
+                  :severity="INCIDENT_REPORTER_SEVERITIES[data.reported_by_role] ?? 'secondary'"
+                />
+              </template>
+            </Column>
             <Column field="reported_by_name" header="Reportado por" />
             <Column header="Descripción">
               <template #body="{ data }">{{ data.description }}</template>
@@ -2877,6 +3014,15 @@ onMounted(() => {
 .cell-muted {
   color: #a1a1aa;
 }
+/* Lista de nombres de pasajeros del reporte Abordajes por parada. */
+.boarding-names {
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+.boarding-guest-tag {
+  color: #71717a;
+  font-weight: 600;
+}
 .stop-order {
   display: inline-block;
   min-width: 1.5rem;
@@ -2910,6 +3056,7 @@ onMounted(() => {
   }
   .cell-sub,
   .cell-muted,
+  .boarding-guest-tag,
   .stop-order {
     color: #a1a1aa;
   }

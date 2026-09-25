@@ -100,12 +100,12 @@ ListIncidents(ctx context.Context, status, incidentType, dateFrom, dateTo string
 
 	// Reportes nuevos (migration 0004)
 	GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error)
-	GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64) ([]BoardingByStop, error)
+	GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64, vehicleID int64) ([]BoardingByStop, error)
 	GetTripsStatusSummary(ctx context.Context, dateFrom, dateTo, status string) ([]TripStatusSummary, error)
 	GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error)
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
 	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
-	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
+	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, reporterRole, dateField, dateFrom, dateTo string) ([]TripIncidentReport, error)
 	GetTripStopArrivals(ctx context.Context, f TripStopArrivalFilter) ([]TripStopArrival, error)
 
 	// Reportes nuevos (migration 0005/0006)
@@ -759,12 +759,13 @@ func (s *adminService) GetRouteOccupancy(ctx context.Context, routeID int64, dat
 }
 
 // GetBoardingsByStop devuelve abordajes por parada (sede/paradero).
-// dateFrom/dateTo ('') y direction ('') opcionales; routeID/stopID 0 = todas.
-func (s *adminService) GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64) ([]BoardingByStop, error) {
+// dateFrom/dateTo ('') y direction ('') opcionales; routeID/stopID/vehicleID
+// 0 = todas.
+func (s *adminService) GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64, vehicleID int64) ([]BoardingByStop, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	return s.repo.GetBoardingsByStop(ctx, dateFrom, dateTo, routeID, direction, stopID)
+	return s.repo.GetBoardingsByStop(ctx, dateFrom, dateTo, routeID, direction, stopID, vehicleID)
 }
 
 // GetTripsStatusSummary devuelve conteo de viajes por status (#11).
@@ -807,8 +808,11 @@ func (s *adminService) GetReservationChanges(ctx context.Context, reservationID 
 	return s.repo.GetReservationChanges(ctx, reservationID, eventType, dateFrom, dateTo)
 }
 
-// GetTripIncidents lista tickets/quejas de viaje (#27).
-func (s *adminService) GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error) {
+// GetTripIncidents lista tickets/quejas de viaje (#27). reporterRole permite
+// separar incidencias de conductor (DRIVER) de las de pasajero (WORKER) y
+// dateField elige si el rango de fechas se aplica a la fecha del viaje
+// (service_date) o a la de carga del ticket (reported_at).
+func (s *adminService) GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, reporterRole, dateField, dateFrom, dateTo string) ([]TripIncidentReport, error) {
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
@@ -818,7 +822,16 @@ func (s *adminService) GetTripIncidents(ctx context.Context, routeID int64, inci
 	if status != "" && !validIncidentStatus(status) {
 		return nil, apperror.ValidationError{Field: "status", Reason: "status de incidente invalido"}
 	}
-	return s.repo.GetTripIncidents(ctx, routeID, incidentType, status, dateFrom, dateTo)
+	if reporterRole != "" && !validIncidentReporterRole(reporterRole) {
+		return nil, apperror.ValidationError{Field: "reporter_role", Reason: "rol de reportero invalido"}
+	}
+	if dateField != "" && dateField != "reported_at" && dateField != "service_date" {
+		return nil, apperror.ValidationError{Field: "date_field", Reason: "campo de fecha invalido (reported_at|service_date)"}
+	}
+	if dateFrom != "" && dateTo != "" && dateFrom > dateTo {
+		return nil, apperror.ValidationError{Field: "date_to", Reason: "la fecha hasta no puede ser anterior a la fecha desde"}
+	}
+	return s.repo.GetTripIncidents(ctx, routeID, incidentType, status, reporterRole, dateField, dateFrom, dateTo)
 }
 
 // GetTripStopArrivals lista la llegada de cada bus a cada sede/paradero
@@ -929,6 +942,16 @@ func validIncidentType(s string) bool {
 func validIncidentStatus(s string) bool {
 	switch s {
 	case "OPEN", "IN_REVIEW", "RESOLVED":
+		return true
+	}
+	return false
+}
+
+// validIncidentReporterRole acepta los roles de users.role que reportan
+// incidencias: DRIVER (conductor) y WORKER (pasajero).
+func validIncidentReporterRole(s string) bool {
+	switch s {
+	case "DRIVER", "WORKER":
 		return true
 	}
 	return false
