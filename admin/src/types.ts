@@ -305,7 +305,7 @@ export interface RouteOccupancyRow {
 /** vw_boardings_by_stop — GET /admin/reports/boardings-by-stop.
  * Abordajes por parada (sede/paradero): app (reservas con abordaje confirmado)
  * vs invitados (registrados por el conductor).
- * Filtros opcionales: date_from, date_to, route_id, direction, stop_id. */
+ * Filtros opcionales: date_from, date_to, route_id, direction, stop_id, vehicle_id. */
 export interface BoardingByStopRow {
   service_date: string
   route_id: number
@@ -315,9 +315,16 @@ export interface BoardingByStopRow {
   stop_id: number
   stop_name: string
   stop_type: 'SEDE' | 'PARADERO'
+  vehicle_id: number
+  vehicle_plate: string
+  vehicle_internal_code: string
   app_passengers: number
   guest_passengers: number
   total_passengers: number
+  /** Nombres de los pasajeros de la app que subieron en esa parada (CSV). */
+  app_passenger_names: string
+  /** Nombres de los invitados que subieron en esa parada (CSV). */
+  guest_passenger_names: string
 }
 
 /** vw_trips_status_summary — GET /admin/reports/trips-status-summary (#11).

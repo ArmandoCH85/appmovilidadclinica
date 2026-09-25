@@ -447,19 +447,29 @@ type RouteOccupancy struct {
 // BoardingByStop refleja una fila de vw_boardings_by_stop: abordajes por
 // parada (sede/paradero), separando usuarios de la app (con confirmacion de
 // abordaje) de invitados registrados por el conductor.
-// Una fila por (fecha, ruta, sentido, parada).
+// Una fila por (fecha, ruta, sentido, parada, bus).
+//
+// AppPassengerNames/GuestPassengerNames listan, separados por coma y en
+// orden alfabetico, los nombres de quienes subieron en esa parada. Son la
+// contraparte legible de AppPassengers/GuestPassengers: mismo criterio de
+// inclusion (BOARDED/COMPLETED).
 type BoardingByStop struct {
-	ServiceDate     string `json:"service_date"`
-	RouteID         int64  `json:"route_id"`
-	RouteCode       string `json:"route_code"`
-	RouteName       string `json:"route_name"`
-	Direction       string `json:"direction"`
-	StopID          int64  `json:"stop_id"`
-	StopName        string `json:"stop_name"`
-	StopType        string `json:"stop_type"`
-	AppPassengers   int    `json:"app_passengers"`
-	GuestPassengers int    `json:"guest_passengers"`
-	TotalPassengers int    `json:"total_passengers"`
+	ServiceDate         string `json:"service_date"`
+	RouteID             int64  `json:"route_id"`
+	RouteCode           string `json:"route_code"`
+	RouteName           string `json:"route_name"`
+	Direction           string `json:"direction"`
+	StopID              int64  `json:"stop_id"`
+	StopName            string `json:"stop_name"`
+	StopType            string `json:"stop_type"`
+	VehicleID           int64  `json:"vehicle_id"`
+	VehiclePlate        string `json:"vehicle_plate"`
+	VehicleInternalCode string `json:"vehicle_internal_code"`
+	AppPassengers       int    `json:"app_passengers"`
+	GuestPassengers     int    `json:"guest_passengers"`
+	TotalPassengers     int    `json:"total_passengers"`
+	AppPassengerNames   string `json:"app_passenger_names"`
+	GuestPassengerNames string `json:"guest_passenger_names"`
 }
 
 // TripStatusSummary refleja una fila de vw_trips_status_summary (#11).
@@ -845,7 +855,7 @@ type AdminRepository interface {
 	GetRouteOccupancy(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]RouteOccupancy, error)
 
 	// GetBoardingsByStop consulta vw_boardings_by_stop con filtros opcionales.
-	GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64) ([]BoardingByStop, error)
+	GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64, vehicleID int64) ([]BoardingByStop, error)
 	GetTripsStatusSummary(ctx context.Context, dateFrom, dateTo, status string) ([]TripStatusSummary, error)
 	GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error)
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
@@ -2678,9 +2688,9 @@ func (r *adminRepository) GetRouteOccupancy(ctx context.Context, routeID int64, 
 }
 
 // GetBoardingsByStop consulta vw_boardings_by_stop (abordajes por parada).
-// Filtros opcionales: dateFrom/dateTo (''), routeID (0=todas), direction ('')
-// y stopID (0=todas).
-func (r *adminRepository) GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64) ([]BoardingByStop, error) {
+// Filtros opcionales: dateFrom/dateTo (''), routeID (0=todas), direction (''),
+// stopID (0=todas) y vehicleID (0=todos los buses).
+func (r *adminRepository) GetBoardingsByStop(ctx context.Context, dateFrom, dateTo string, routeID int64, direction string, stopID int64, vehicleID int64) ([]BoardingByStop, error) {
 	var conds []string
 	var fargs []any
 	if dateFrom != "" {
@@ -2703,16 +2713,35 @@ func (r *adminRepository) GetBoardingsByStop(ctx context.Context, dateFrom, date
 		conds = append(conds, "stop_id = ?")
 		fargs = append(fargs, stopID)
 	}
+	if vehicleID > 0 {
+		conds = append(conds, "vehicle_id = ?")
+		fargs = append(fargs, vehicleID)
+	}
 	where := ""
 	if len(conds) > 0 {
 		where = " WHERE " + strings.Join(conds, " AND ")
 	}
 	q := `SELECT service_date, route_id, route_code, route_name, direction,
-               stop_id, stop_name, stop_type, app_passengers, guest_passengers,
-               total_passengers
+               stop_id, stop_name, stop_type,
+               vehicle_id, vehicle_plate, vehicle_internal_code,
+               app_passengers, guest_passengers,
+               total_passengers, app_passenger_names, guest_passenger_names
           FROM vw_boardings_by_stop` + where + `
-         ORDER BY service_date DESC, route_code, direction, stop_name`
-	rows, err := r.db.QueryContext(ctx, q, fargs...)
+         ORDER BY service_date DESC, route_code, direction, stop_name, vehicle_plate`
+
+	// La vista arma los nombres con GROUP_CONCAT; el default (1 KB) puede
+	// truncar una parada con muchos pasajeros. Se sube en la MISMA conexion
+	// que corre el SELECT: un db.Exec suelto podria caer en otra del pool.
+	conn, err := r.db.Conn(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("tomando conexion para abordajes por parada: %w", err)
+	}
+	defer conn.Close()
+	if _, err := conn.ExecContext(ctx, "SET SESSION group_concat_max_len = 1048576"); err != nil {
+		return nil, fmt.Errorf("ajustando group_concat_max_len: %w", err)
+	}
+
+	rows, err := conn.QueryContext(ctx, q, fargs...)
 	if err != nil {
 		return nil, fmt.Errorf("consultando vw_boardings_by_stop: %w", err)
 	}
@@ -2721,11 +2750,16 @@ func (r *adminRepository) GetBoardingsByStop(ctx context.Context, dateFrom, date
 	var out []BoardingByStop
 	for rows.Next() {
 		var b BoardingByStop
+		var appNames, guestNames sql.NullString
 		if err := rows.Scan(&b.ServiceDate, &b.RouteID, &b.RouteCode, &b.RouteName,
 			&b.Direction, &b.StopID, &b.StopName, &b.StopType,
-			&b.AppPassengers, &b.GuestPassengers, &b.TotalPassengers); err != nil {
+			&b.VehicleID, &b.VehiclePlate, &b.VehicleInternalCode,
+			&b.AppPassengers, &b.GuestPassengers, &b.TotalPassengers,
+			&appNames, &guestNames); err != nil {
 			return nil, fmt.Errorf("escaneando abordajes por parada: %w", err)
 		}
+		b.AppPassengerNames = appNames.String
+		b.GuestPassengerNames = guestNames.String
 		out = append(out, b)
 	}
 	return out, rows.Err()

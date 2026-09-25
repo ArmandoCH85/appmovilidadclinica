@@ -416,12 +416,14 @@ const boardingsFilter = reactive<{
   routeID: number | null
   direction: string
   stopID: number | null
+  vehicleID: number | null
   dateFrom: Date | null
   dateTo: Date | null
 }>({
   routeID: null,
   direction: '',
   stopID: null,
+  vehicleID: null,
   dateFrom: null,
   dateTo: null,
 })
@@ -433,12 +435,14 @@ const directionOptions = [
 ]
 
 async function loadBoardings(): Promise<void> {
+  void loadArrivalVehicles()
   boardingsLoading.value = true
   boardingsError.value = ''
   const params = new URLSearchParams()
   if (boardingsFilter.routeID && boardingsFilter.routeID > 0) params.set('route_id', String(boardingsFilter.routeID))
   if (boardingsFilter.direction) params.set('direction', boardingsFilter.direction)
   if (boardingsFilter.stopID && boardingsFilter.stopID > 0) params.set('stop_id', String(boardingsFilter.stopID))
+  if (boardingsFilter.vehicleID && boardingsFilter.vehicleID > 0) params.set('vehicle_id', String(boardingsFilter.vehicleID))
   const fromStr = ymd(boardingsFilter.dateFrom)
   if (fromStr) params.set('date_from', fromStr)
   const toStr = ymd(boardingsFilter.dateTo)
@@ -462,9 +466,17 @@ function clearBoardingsFilters(): void {
   boardingsFilter.routeID = null
   boardingsFilter.direction = ''
   boardingsFilter.stopID = null
+  boardingsFilter.vehicleID = null
   boardingsFilter.dateFrom = null
   boardingsFilter.dateTo = null
 }
+
+// Etiqueta legible del bus elegido (placa) para el resumen del Excel.
+const boardingVehicleLabel = computed(() => {
+  if (!boardingsFilter.vehicleID || boardingsFilter.vehicleID <= 0) return ''
+  const v = arrivalVehicles.value.find((x) => x.id === boardingsFilter.vehicleID)
+  return v ? v.plate : `ID ${boardingsFilter.vehicleID}`
+})
 
 // --- Export a Excel del tab Abordajes por parada ---
 const boardingsExcelColumns: ExcelColumn[] = [
@@ -474,9 +486,13 @@ const boardingsExcelColumns: ExcelColumn[] = [
   { key: 'direction',        label: 'Sentido',     width: 8 },
   { key: 'stop_name',        label: 'Parada',      width: 22 },
   { key: 'stop_type',        label: 'Tipo',        width: 10 },
+  { key: 'vehicle_plate',    label: 'Bus (placa)', width: 14 },
+  { key: 'vehicle_internal_code', label: 'Bus (código)', width: 14 },
   { key: 'app_passengers',   label: 'App',         format: 'number', width: 8 },
   { key: 'guest_passengers', label: 'Invitados',   format: 'number', width: 10 },
   { key: 'total_passengers', label: 'Total',       format: 'number', width: 8 },
+  { key: 'app_passenger_names',   label: 'Pasajeros (App)',      width: 40 },
+  { key: 'guest_passenger_names', label: 'Pasajeros (Invitados)', width: 40 },
 ]
 
 function exportBoardings(): void {
@@ -484,6 +500,7 @@ function exportBoardings(): void {
   if (boardingsFilter.routeID && boardingsFilter.routeID > 0) parts.push(`Ruta ID=${boardingsFilter.routeID}`)
   if (boardingsFilter.direction) parts.push(`Sentido=${boardingsFilter.direction}`)
   if (boardingsFilter.stopID && boardingsFilter.stopID > 0) parts.push(`Parada ID=${boardingsFilter.stopID}`)
+  if (boardingVehicleLabel.value) parts.push(`Bus=${boardingVehicleLabel.value}`)
   if (boardingsFilter.dateFrom || boardingsFilter.dateTo) {
     parts.push(`Rango=${ymd(boardingsFilter.dateFrom) ?? '*'} a ${ymd(boardingsFilter.dateTo) ?? '*'}`)
   }
@@ -501,6 +518,7 @@ const hasBoardingsFilters = computed(
       (boardingsFilter.routeID && boardingsFilter.routeID > 0) ||
         boardingsFilter.direction ||
         (boardingsFilter.stopID && boardingsFilter.stopID > 0) ||
+        (boardingsFilter.vehicleID && boardingsFilter.vehicleID > 0) ||
         boardingsFilter.dateFrom ||
         boardingsFilter.dateTo,
     ),
@@ -2005,6 +2023,20 @@ onMounted(() => {
               <InputNumber inputId="bd-stop" v-model="boardingsFilter.stopID" :min="0" placeholder="Todas" />
             </div>
             <div class="filter">
+              <label for="bd-vehicle">Bus (placa)</label>
+              <Select
+                id="bd-vehicle"
+                v-model="boardingsFilter.vehicleID"
+                :options="arrivalVehicleOptions"
+                optionLabel="label"
+                optionValue="value"
+                :loading="arrivalVehiclesLoading"
+                filter
+                placeholder="Todos los buses"
+                class="filter-select-wide"
+              />
+            </div>
+            <div class="filter">
               <label for="bd-from">Desde</label>
               <DatePicker id="bd-from" v-model="boardingsFilter.dateFrom" date-format="yy-mm-dd" show-icon />
             </div>
@@ -2047,9 +2079,40 @@ onMounted(() => {
             <Column field="direction" header="Sentido" style="width: 5rem" />
             <Column field="stop_name" header="Parada" />
             <Column field="stop_type" header="Tipo" style="width: 6rem" />
+            <Column header="Bus" style="width: 9rem">
+              <template #body="{ data }">
+                <div class="boarding-names" :title="data.vehicle_internal_code">
+                  {{ data.vehicle_plate }}
+                </div>
+                <div class="cell-sub">{{ data.vehicle_internal_code }}</div>
+              </template>
+            </Column>
             <Column field="app_passengers" header="App" style="width: 4rem" />
             <Column field="guest_passengers" header="Invitados" style="width: 5rem" />
             <Column field="total_passengers" header="Total" style="width: 4rem" />
+            <Column header="Pasajeros" style="min-width: 16rem">
+              <template #body="{ data }">
+                <div
+                  v-if="data.app_passenger_names"
+                  class="boarding-names"
+                  :title="data.app_passenger_names"
+                >
+                  {{ data.app_passenger_names }}
+                </div>
+                <div
+                  v-if="data.guest_passenger_names"
+                  class="boarding-names"
+                  :title="data.guest_passenger_names"
+                >
+                  <span class="boarding-guest-tag">Invitados:</span>
+                  {{ data.guest_passenger_names }}
+                </div>
+                <span
+                  v-if="!data.app_passenger_names && !data.guest_passenger_names"
+                  class="cell-muted"
+                >—</span>
+              </template>
+            </Column>
           </DataTable>
 
           <p v-if="!boardingsLoading && !boardingsError" class="reports-total">
@@ -2877,6 +2940,15 @@ onMounted(() => {
 .cell-muted {
   color: #a1a1aa;
 }
+/* Lista de nombres de pasajeros del reporte Abordajes por parada. */
+.boarding-names {
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+.boarding-guest-tag {
+  color: #71717a;
+  font-weight: 600;
+}
 .stop-order {
   display: inline-block;
   min-width: 1.5rem;
@@ -2910,6 +2982,7 @@ onMounted(() => {
   }
   .cell-sub,
   .cell-muted,
+  .boarding-guest-tag,
   .stop-order {
     color: #a1a1aa;
   }
