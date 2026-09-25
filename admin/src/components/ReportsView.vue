@@ -937,6 +937,38 @@ const INCIDENT_STATUS_LABELS: Record<string, string> = {
   RESOLVED: 'Resuelto',
 }
 
+// "Reportado por": separa las incidencias que carga el conductor desde la
+// app conductor (DRIVER) de las que carga el pasajero desde la app pasajero
+// (WORKER). Es un filtro exclusivo del reporte de tickets/quejas.
+const INCIDENT_REPORTER_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'DRIVER', label: 'Conductor' },
+  { value: 'WORKER', label: 'Pasajero' },
+]
+
+const INCIDENT_REPORTER_LABELS: Record<string, string> = {
+  DRIVER: 'Conductor',
+  WORKER: 'Pasajero',
+}
+
+const INCIDENT_REPORTER_SEVERITIES: Record<string, 'info' | 'success'> = {
+  DRIVER: 'info',
+  WORKER: 'success',
+}
+
+// El admin suele filtrar por la fecha del VIAJE, pero un ticket para un viaje
+// futuro se reporta dias antes. Por eso el rango de fechas se puede aplicar a
+// la fecha de servicio (default) o a la fecha de reporte.
+const INCIDENT_DATE_FIELD_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'service_date', label: 'Fecha del viaje' },
+  { value: 'reported_at', label: 'Fecha de reporte' },
+]
+
+const INCIDENT_DATE_FIELD_LABELS: Record<string, string> = {
+  service_date: 'Fecha del viaje',
+  reported_at: 'Fecha de reporte',
+}
+
 const incidents = ref<TripIncidentReportRow[]>([])
 const incidentsLoading = ref(false)
 const incidentsError = ref('')
@@ -944,12 +976,16 @@ const incidentsFilter = reactive<{
   routeID: number | null
   incidentType: string
   status: string
+  reporterRole: string
+  dateField: string
   dateFrom: Date | null
   dateTo: Date | null
 }>({
   routeID: null,
   incidentType: '',
   status: '',
+  reporterRole: '',
+  dateField: 'service_date',
   dateFrom: null,
   dateTo: null,
 })
@@ -961,6 +997,8 @@ async function loadIncidents(): Promise<void> {
   if (incidentsFilter.routeID && incidentsFilter.routeID > 0) params.set('route_id', String(incidentsFilter.routeID))
   if (incidentsFilter.incidentType) params.set('incident_type', incidentsFilter.incidentType)
   if (incidentsFilter.status) params.set('status', incidentsFilter.status)
+  if (incidentsFilter.reporterRole) params.set('reporter_role', incidentsFilter.reporterRole)
+  if (incidentsFilter.dateField) params.set('date_field', incidentsFilter.dateField)
   const fromStr = ymd(incidentsFilter.dateFrom)
   if (fromStr) params.set('date_from', fromStr)
   const toStr = ymd(incidentsFilter.dateTo)
@@ -984,6 +1022,8 @@ function clearIncidentsFilters(): void {
   incidentsFilter.routeID = null
   incidentsFilter.incidentType = ''
   incidentsFilter.status = ''
+  incidentsFilter.reporterRole = ''
+  incidentsFilter.dateField = 'service_date'
   incidentsFilter.dateFrom = null
   incidentsFilter.dateTo = null
 }
@@ -998,6 +1038,7 @@ const incidentsExcelColumns: ExcelColumn[] = [
   { key: 'route_code',        label: 'Código ruta',      width: 12 },
   { key: 'route_name',        label: 'Nombre ruta',      width: 24 },
   { key: 'direction',         label: 'Sentido',          width: 8 },
+  { key: 'reported_by_role',  label: 'Rol reportero',    width: 14 },
   { key: 'reported_by_name',  label: 'Reportado por',    width: 24 },
   { key: 'description',       label: 'Descripción',      width: 36 },
   { key: 'resolved_at',       label: 'Resuelto en',      format: 'datetime', width: 20 },
@@ -1009,8 +1050,12 @@ function exportIncidents(): void {
   if (incidentsFilter.routeID && incidentsFilter.routeID > 0) parts.push(`Ruta ID=${incidentsFilter.routeID}`)
   if (incidentsFilter.incidentType) parts.push(`Tipo=${incidentsFilter.incidentType}`)
   if (incidentsFilter.status) parts.push(`Estado=${incidentsFilter.status}`)
+  if (incidentsFilter.reporterRole) {
+    parts.push(`Reportado por=${INCIDENT_REPORTER_LABELS[incidentsFilter.reporterRole] ?? incidentsFilter.reporterRole}`)
+  }
   if (incidentsFilter.dateFrom || incidentsFilter.dateTo) {
-    parts.push(`Rango=${ymd(incidentsFilter.dateFrom) ?? '*'} a ${ymd(incidentsFilter.dateTo) ?? '*'}`)
+    const campo = INCIDENT_DATE_FIELD_LABELS[incidentsFilter.dateField] ?? incidentsFilter.dateField
+    parts.push(`${campo}=${ymd(incidentsFilter.dateFrom) ?? '*'} a ${ymd(incidentsFilter.dateTo) ?? '*'}`)
   }
   exportRowsToExcel(incidents.value, incidentsExcelColumns, {
     filename: timestampedFilename('reporte_tickets_quejas'),
@@ -1026,6 +1071,7 @@ const hasIncidentsFilters = computed(
       (incidentsFilter.routeID && incidentsFilter.routeID > 0) ||
         incidentsFilter.incidentType ||
         incidentsFilter.status ||
+        incidentsFilter.reporterRole ||
         incidentsFilter.dateFrom ||
         incidentsFilter.dateTo,
     ),
@@ -2433,6 +2479,26 @@ onMounted(() => {
               />
             </div>
             <div class="filter">
+              <label for="inc-reporter">Reportado por</label>
+              <Select
+                id="inc-reporter"
+                v-model="incidentsFilter.reporterRole"
+                :options="INCIDENT_REPORTER_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
+              <label for="inc-datefield">Filtrar fechas por</label>
+              <Select
+                id="inc-datefield"
+                v-model="incidentsFilter.dateField"
+                :options="INCIDENT_DATE_FIELD_OPTIONS"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
+            <div class="filter">
               <label for="inc-from">Desde</label>
               <DatePicker id="inc-from" v-model="incidentsFilter.dateFrom" date-format="yy-mm-dd" show-icon />
             </div>
@@ -2489,6 +2555,14 @@ onMounted(() => {
             <Column field="trip_code" header="Viaje" style="width: 10rem" />
             <Column field="service_date" header="Fecha" style="width: 7rem" />
             <Column field="route_code" header="Ruta" style="width: 6rem" />
+            <Column header="Rol" style="width: 7rem">
+              <template #body="{ data }">
+                <Tag
+                  :value="INCIDENT_REPORTER_LABELS[data.reported_by_role] ?? data.reported_by_role"
+                  :severity="INCIDENT_REPORTER_SEVERITIES[data.reported_by_role] ?? 'secondary'"
+                />
+              </template>
+            </Column>
             <Column field="reported_by_name" header="Reportado por" />
             <Column header="Descripción">
               <template #body="{ data }">{{ data.description }}</template>

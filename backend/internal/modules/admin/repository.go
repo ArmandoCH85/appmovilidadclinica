@@ -598,6 +598,8 @@ type ReservationChange struct {
 // Tickets / quejas: tipos BREAKDOWN, DELAY, ACCIDENT, OTHER; estados
 // OPEN, IN_REVIEW, RESOLVED. Se llama TripIncidentReport para no chocar
 // con el TripIncident CRUD existente (IncidentsView.vue).
+// ReportedByRole distingue incidencia de CONDUCTOR ('DRIVER') vs de
+// PASAJERO ('WORKER'); '—' si el reportero fue borrado.
 type TripIncidentReport struct {
 	IncidentID       int64      `json:"incident_id"`
 	TripID           int64      `json:"trip_id"`
@@ -612,6 +614,7 @@ type TripIncidentReport struct {
 	Status           string     `json:"status"`
 	ReportedByUserID int64      `json:"reported_by_user_id"`
 	ReportedByName   string     `json:"reported_by_name"`
+	ReportedByRole   string     `json:"reported_by_role"`
 	ReportedAt       time.Time  `json:"reported_at"`
 	ResolvedAt       *time.Time `json:"resolved_at,omitempty"`
 	ResolutionNotes  string     `json:"resolution_notes"`
@@ -860,7 +863,7 @@ type AdminRepository interface {
 	GetDurationDeviation(ctx context.Context, routeID int64, dateFrom, dateTo string) ([]DurationDeviation, error)
 	GetDelaysByRouteDay(ctx context.Context, routeID int64, direction, dateFrom, dateTo string) ([]DelayByRouteDay, error)
 	GetReservationChanges(ctx context.Context, reservationID int64, eventType, dateFrom, dateTo string) ([]ReservationChange, error)
-	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error)
+	GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, reporterRole, dateField, dateFrom, dateTo string) ([]TripIncidentReport, error)
 	GetTripStopArrivals(ctx context.Context, f TripStopArrivalFilter) ([]TripStopArrival, error)
 
 	// Reportes nuevos (migration 0005/0006)
@@ -3065,8 +3068,18 @@ func (r *adminRepository) GetReservationChanges(ctx context.Context, reservation
 
 // GetTripIncidents consulta vw_trip_incidents (#27) — tickets / quejas.
 // Filtros: routeID (>0), incidentType ('' = todos), status ('' = todos),
-// dateFrom, dateTo (acotan por reported_at).
-func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, dateFrom, dateTo string) ([]TripIncidentReport, error) {
+// reporterRole ('' = todos, 'DRIVER' = conductor, 'WORKER' = pasajero),
+// dateField ('' | 'reported_at' | 'service_date') y dateFrom, dateTo.
+//
+// dateField importa: el admin suele filtrar por la FECHA DEL VIAJE
+// (service_date), pero un ticket cargado para un viaje futuro se reporta
+// antes (reported_at). Por defecto el repo usa reported_at para no cambiar
+// el comportamiento historico; la UI manda service_date explicito.
+func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, incidentType, status, reporterRole, dateField, dateFrom, dateTo string) ([]TripIncidentReport, error) {
+	dateCol := "reported_at"
+	if dateField == "service_date" {
+		dateCol = "service_date"
+	}
 	var conds []string
 	var fargs []any
 	if routeID > 0 {
@@ -3081,12 +3094,16 @@ func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, i
 		conds = append(conds, "status = ?")
 		fargs = append(fargs, status)
 	}
+	if reporterRole != "" {
+		conds = append(conds, "reported_by_role = ?")
+		fargs = append(fargs, reporterRole)
+	}
 	if dateFrom != "" {
-		conds = append(conds, "DATE(reported_at) >= ?")
+		conds = append(conds, "DATE("+dateCol+") >= ?")
 		fargs = append(fargs, dateFrom)
 	}
 	if dateTo != "" {
-		conds = append(conds, "DATE(reported_at) <= ?")
+		conds = append(conds, "DATE("+dateCol+") <= ?")
 		fargs = append(fargs, dateTo)
 	}
 	where := ""
@@ -3095,8 +3112,8 @@ func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, i
 	}
 	q := `SELECT incident_id, trip_id, trip_code, service_date, route_id,
                route_code, route_name, direction, incident_type, description,
-               status, reported_by_user_id, reported_by_name, reported_at,
-               resolved_at, resolution_notes
+               status, reported_by_user_id, reported_by_name, reported_by_role,
+               reported_at, resolved_at, resolution_notes
           FROM vw_trip_incidents` + where + `
          ORDER BY reported_at DESC, incident_id DESC`
 	rows, err := r.db.QueryContext(ctx, q, fargs...)
@@ -3112,7 +3129,7 @@ func (r *adminRepository) GetTripIncidents(ctx context.Context, routeID int64, i
 		if err := rows.Scan(&t.IncidentID, &t.TripID, &t.TripCode, &t.ServiceDate,
 			&t.RouteID, &t.RouteCode, &t.RouteName, &t.Direction,
 			&t.IncidentType, &t.Description, &t.Status,
-			&t.ReportedByUserID, &t.ReportedByName, &t.ReportedAt,
+			&t.ReportedByUserID, &t.ReportedByName, &t.ReportedByRole, &t.ReportedAt,
 			&resolved, &t.ResolutionNotes); err != nil {
 			return nil, fmt.Errorf("escaneando incidente de viaje: %w", err)
 		}

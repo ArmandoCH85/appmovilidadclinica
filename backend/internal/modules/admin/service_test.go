@@ -188,7 +188,7 @@ func (m *mockAdminRepo) GetDelaysByRouteDay(_ context.Context, _ int64, _, _, _ 
 func (m *mockAdminRepo) GetReservationChanges(_ context.Context, _ int64, _, _, _ string) ([]ReservationChange, error) {
 	return nil, nil
 }
-func (m *mockAdminRepo) GetTripIncidents(_ context.Context, _ int64, _, _, _, _ string) ([]TripIncidentReport, error) {
+func (m *mockAdminRepo) GetTripIncidents(_ context.Context, _ int64, _, _, _, _, _, _ string) ([]TripIncidentReport, error) {
 	return nil, nil
 }
 func (m *mockAdminRepo) GetTripStopArrivals(_ context.Context, f TripStopArrivalFilter) ([]TripStopArrival, error) {
@@ -572,6 +572,52 @@ func TestUpdateIncident_NonAdminRole_ReturnsForbidden(t *testing.T) {
 	require.Error(t, err)
 	var fe apperror.ForbiddenError
 	require.True(t, errors.As(err, &fe), "rol no ADMIN debe mapear a ForbiddenError")
+}
+
+// TestGetTripIncidents_InvalidReporterRole_ReturnsValidationError cubre el
+// filtro nuevo del reporte #27: solo DRIVER (conductor) y WORKER (pasajero)
+// son roles de reportero validos.
+func TestGetTripIncidents_InvalidReporterRole_ReturnsValidationError(t *testing.T) {
+	svc := NewService(&mockAdminRepo{})
+
+	_, err := svc.GetTripIncidents(ctxWithRole(t, RoleADMIN), 0, "", "", "PASSENGER", "", "", "")
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "rol de reportero invalido debe mapear a ValidationError (422)")
+	assert.Equal(t, "reporter_role", ve.Field)
+}
+
+func TestGetTripIncidents_ValidReporterRole_DelegatesToRepo(t *testing.T) {
+	svc := NewService(&mockAdminRepo{})
+
+	for _, role := range []string{"", "DRIVER", "WORKER"} {
+		_, err := svc.GetTripIncidents(ctxWithRole(t, RoleADMIN), 0, "", "", role, "", "", "")
+		require.NoError(t, err, "rol %q debe delegar al repo", role)
+	}
+}
+
+// TestGetTripIncidents_InvalidDateField_ReturnsValidationError cubre el
+// selector de campo de fecha del reporte #27.
+func TestGetTripIncidents_InvalidDateField_ReturnsValidationError(t *testing.T) {
+	svc := NewService(&mockAdminRepo{})
+
+	_, err := svc.GetTripIncidents(ctxWithRole(t, RoleADMIN), 0, "", "", "", "trip_date", "", "")
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve))
+	assert.Equal(t, "date_field", ve.Field)
+}
+
+// TestGetTripIncidents_InvertedRange_ReturnsValidationError evita el bug de
+// UI que mandaba date_from > date_to y devolvia una tabla vacia en silencio.
+func TestGetTripIncidents_InvertedRange_ReturnsValidationError(t *testing.T) {
+	svc := NewService(&mockAdminRepo{})
+
+	_, err := svc.GetTripIncidents(ctxWithRole(t, RoleADMIN), 0, "", "", "", "service_date", "2026-10-05", "2026-09-05")
+	require.Error(t, err)
+	var ve apperror.ValidationError
+	require.True(t, errors.As(err, &ve), "rango invertido debe mapear a ValidationError (422)")
+	assert.Equal(t, "date_to", ve.Field)
 }
 
 // --- Reporte de llegadas por sede/paradero (vw_trip_stop_arrivals) ---

@@ -405,6 +405,9 @@ export interface TripIncidentReportRow {
   status: string
   reported_by_user_id: number
   reported_by_name: string
+  /** Rol del reportero: 'DRIVER' = incidencia de conductor, 'WORKER' = de
+   * pasajero; '—' si el usuario fue borrado. */
+  reported_by_role: string
   reported_at: string
   resolved_at?: string | null
   resolution_notes: string

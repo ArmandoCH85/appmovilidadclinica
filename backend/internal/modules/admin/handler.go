@@ -1184,14 +1184,16 @@ func (h *AdminHandler) ReservationChangesReport(w http.ResponseWriter, r *http.R
 }
 
 // TripIncidentsReport maneja GET /admin/reports/incidents.
-// Filtros opcionales: route_id, incident_type, status, date_from, date_to.
+// Filtros opcionales: route_id, incident_type, status, reporter_role
+// (DRIVER = conductor, WORKER = pasajero), date_field
+// (reported_at | service_date), date_from, date_to.
 func (h *AdminHandler) TripIncidentsReport(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	routeID, _ := strconv.ParseInt(q.Get("route_id"), 10, 64)
 	if routeID < 0 {
 		routeID = 0
 	}
-	rows, err := h.svc.GetTripIncidents(r.Context(), routeID, q.Get("incident_type"), q.Get("status"), q.Get("date_from"), q.Get("date_to"))
+	rows, err := h.svc.GetTripIncidents(r.Context(), routeID, q.Get("incident_type"), q.Get("status"), q.Get("reporter_role"), q.Get("date_field"), q.Get("date_from"), q.Get("date_to"))
 	if err != nil {
 		apperror.WriteJSONError(w, err)
 		return

@@ -18,6 +18,7 @@ package admin
 import (
 	"context"
 	"errors"
+	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -301,6 +302,49 @@ func TestRepository_DuplicateKey_MapsToConflict(t *testing.T) {
 				gotErr, gotErr,
 			)
 
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+// TestRepository_GetTripIncidents_DateFieldSelector verifica que el rango de
+// fechas del reporte #27 se aplique a la columna correcta: la fecha de
+// servicio del viaje (service_date) o la de carga del ticket (reported_at).
+// Regresion del reporte que devolvia vacio al filtrar por la fecha del viaje.
+func TestRepository_GetTripIncidents_DateFieldSelector(t *testing.T) {
+	ctx := context.Background()
+
+	cases := []struct {
+		name      string
+		dateField string
+		wantCol   string
+	}{
+		{"default usa reported_at", "", "DATE(reported_at)"},
+		{"service_date explicito", "service_date", "DATE(service_date)"},
+		{"reported_at explicito", "reported_at", "DATE(reported_at)"},
+	}
+
+	cols := []string{
+		"incident_id", "trip_id", "trip_code", "service_date", "route_id",
+		"route_code", "route_name", "direction", "incident_type", "description",
+		"status", "reported_by_user_id", "reported_by_name", "reported_by_role",
+		"reported_at", "resolved_at", "resolution_notes",
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			require.NoError(t, err)
+			defer db.Close()
+
+			mock.ExpectQuery(regexp.QuoteMeta(tc.wantCol)).
+				WithArgs("2026-10-05", "2026-10-05").
+				WillReturnRows(sqlmock.NewRows(cols))
+
+			repo := &adminRepository{db: db}
+			out, err := repo.GetTripIncidents(ctx, 0, "", "", "", tc.dateField, "2026-10-05", "2026-10-05")
+			require.NoError(t, err)
+			require.Empty(t, out)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
