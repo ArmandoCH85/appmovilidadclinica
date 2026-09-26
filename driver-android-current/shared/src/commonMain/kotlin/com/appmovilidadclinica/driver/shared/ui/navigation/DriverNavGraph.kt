@@ -81,6 +81,9 @@ fun DriverNavGraph(
             is Route.Incident -> IncidentScreen(
                 tripId = current.tripId,
                 onBack = { navState.pop() },
+                // Faltaba: sin esto el reporte se enviaba pero la pantalla no
+                // se cerraba y parecia que no habia funcionado.
+                onSubmitted = { navState.pop() },
             )
             Route.QrScan -> qrScanContent(
                 navState.stack.value

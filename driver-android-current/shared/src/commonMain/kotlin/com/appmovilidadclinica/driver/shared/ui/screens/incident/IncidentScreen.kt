@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.appmovilidadclinica.driver.shared.domain.model.IncidentType
 import com.appmovilidadclinica.driver.shared.domain.repository.DriverRepository
+import com.appmovilidadclinica.driver.shared.ui.common.PendingNotice
 import com.appmovilidadclinica.driver.shared.ui.common.icon
 import com.appmovilidadclinica.driver.shared.ui.common.label
 import org.koin.compose.koinInject
@@ -59,7 +60,13 @@ fun IncidentScreen(
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(state.submitted) {
-        if (state.submitted) onSubmitted()
+        if (state.submitted) {
+            // La confirmacion se muestra al volver (detalle del viaje), donde
+            // el aviso se cierra solo a los 5 segundos. Antes esta pantalla no
+            // se cerraba y parecia que el envio no habia funcionado.
+            PendingNotice.post("Incidencia reportada")
+            onSubmitted()
+        }
     }
 
     Scaffold(
