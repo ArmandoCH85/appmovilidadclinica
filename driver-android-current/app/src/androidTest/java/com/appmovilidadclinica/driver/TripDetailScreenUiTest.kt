@@ -25,8 +25,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -50,6 +52,8 @@ import com.appmovilidadclinica.driver.shared.platform.LocationService
 import com.appmovilidadclinica.driver.shared.platform.NotificationService
 import com.appmovilidadclinica.driver.shared.platform.PermissionStatus
 import com.appmovilidadclinica.driver.shared.trip.TripLocationController
+import com.appmovilidadclinica.driver.shared.ui.common.PendingNotice
+import com.appmovilidadclinica.driver.shared.ui.screens.incident.IncidentScreen
 import com.appmovilidadclinica.driver.shared.ui.screens.tripdetail.TripDetailScreen
 import com.appmovilidadclinica.driver.shared.ui.theme.DriverAppTheme
 import java.io.File
@@ -474,6 +478,56 @@ class TripDetailScreenUiTest {
     }
 
     @Test
+    fun elAvisoDeLaUltimaAccionSeCierraSoloALos5Segundos() {
+        render(FakeRepo())
+
+        rule.onNodeWithText("Iniciar viaje").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Viaje iniciado").assertExists()
+
+        // Antes habia que tocar "Cerrar aviso"; ahora se va solo. El delay de
+        // Compose se controla con el reloj virtual del test.
+        rule.mainClock.advanceTimeBy(NOTICE_AUTO_DISMISS_MILLIS + 1_000)
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Viaje iniciado").assertCountEquals(0)
+    }
+
+    /**
+     * El reporte de incidencia debe AVISAR al terminar para que la navegacion
+     * cierre la pantalla (antes se quedaba abierta y parecia que no
+     * funcionaba). Se prueba en este archivo porque comparte la activity
+     * anfitriona y los dobles de prueba.
+     */
+    @Test
+    fun elReporteDeIncidenciaAvisaAlTerminarParaQueSeCierreLaPantalla() {
+        var completed = false
+        host.runOnUiThread {
+            host.setContent {
+                DriverAppTheme {
+                    IncidentScreen(
+                        tripId = TRIP_ID,
+                        driverRepository = FakeRepo(),
+                        onSubmitted = { completed = true },
+                    )
+                }
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Retraso").performClick()
+        rule.onNodeWithText("Descripción").performTextInput("Demora por trafico")
+        rule.onNodeWithText("Enviar reporte").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Sí, enviar").performClick()
+        rule.waitForIdle()
+
+        // La pantalla avisa que termino (la navegacion la cierra) y deja
+        // publicado el aviso que vera el conductor al volver al detalle.
+        assertTrue("La pantalla de incidencia no aviso que termino", completed)
+        assertEquals("Incidencia reportada", PendingNotice.consume())
+    }
+
+    @Test
     fun manifiestoConVariosPasajerosSigueSiendoUsable() {
         // Se ejecuta también con la fuente del sistema aumentada y en pantalla
         // pequeña: las capturas permiten comparar la misma pantalla.
@@ -502,6 +556,9 @@ class TripDetailScreenUiTest {
 }
 
 private const val TRIP_ID = 55L
+
+/** Igual que en la pantalla: la alerta debe irse sola a los 5 segundos. */
+private const val NOTICE_AUTO_DISMISS_MILLIS = 5_000L
 
 /** Espera a que la ventana del diálogo alcance a dibujarse antes de medirla. */
 private const val DIALOG_SETTLE_MILLIS = 1_200L

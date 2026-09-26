@@ -83,6 +83,7 @@ import com.appmovilidadclinica.driver.shared.platform.NotificationService
 import com.appmovilidadclinica.driver.shared.trip.TripLocationController
 import com.appmovilidadclinica.driver.shared.ui.common.DriverDimens
 import com.appmovilidadclinica.driver.shared.ui.common.DriverText
+import com.appmovilidadclinica.driver.shared.ui.common.PendingNotice
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 
@@ -135,6 +136,22 @@ fun TripDetailScreen(
     var overrideTarget by remember { mutableStateOf<PrimaryAction?>(null) }
 
     LaunchedEffect(Unit) { viewModel.load() }
+
+    // Al entrar (o al volver de otra pantalla) puede haber un aviso publicado
+    // por la pantalla anterior, p. ej. "Incidencia reportada".
+    LaunchedEffect(Unit) {
+        PendingNotice.consume()?.let(viewModel::showNotice)
+    }
+
+    // Las alertas se cierran SOLAS a los 5 segundos: el conductor no tiene que
+    // tocar nada para sacarlas de la pantalla. El boton "Cerrar aviso" sigue
+    // estando por si quiere quitarla antes.
+    LaunchedEffect(state.notice) {
+        if (state.notice != null) {
+            delay(NOTICE_AUTO_DISMISS_MILLIS)
+            viewModel.dismissNotice()
+        }
+    }
 
     // GPS tracking en primer plano mientras el viaje está en curso.
     LaunchedEffect(state.trip?.status, locationService.isAvailable()) {
@@ -424,6 +441,9 @@ fun TripDetailScreen(
 }
 
 private const val PERIODIC_REFRESH_MILLIS = 45_000L
+
+/** Tiempo que una alerta permanece en pantalla antes de cerrarse sola. */
+private const val NOTICE_AUTO_DISMISS_MILLIS = 5_000L
 
 private fun overrideLabelForDeparture(model: TripDetailModel): String =
     "Salir sin registrar ${pendingPassengersText(model.pendingBoarders)}"

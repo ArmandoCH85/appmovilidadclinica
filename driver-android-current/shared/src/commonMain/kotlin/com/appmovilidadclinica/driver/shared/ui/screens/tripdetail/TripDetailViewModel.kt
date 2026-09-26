@@ -435,6 +435,16 @@ class TripDetailViewModel(
         _uiState.update { it.copy(notice = null) }
     }
 
+    /**
+     * Publica un aviso puntual, por ejemplo al volver de otra pantalla
+     * ("Incidencia reportada"). Se cierra solo a los 5 segundos.
+     */
+    fun showNotice(title: String) {
+        _uiState.update {
+            it.copy(notice = ActionNotice(kind = NoticeKind.SUCCESS, title = title))
+        }
+    }
+
     fun dispose() {
         scope.cancel()
     }
