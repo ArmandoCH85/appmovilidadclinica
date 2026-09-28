@@ -1,6 +1,6 @@
-﻿package com.appmovilidadclinica.passenger.shared.domain.model
+package com.appmovilidadclinica.passenger.shared.domain.model
 
-import java.time.Instant
+import kotlinx.datetime.Instant
 
 enum class ReservationStatus { CONFIRMED, BOARDED, COMPLETED, NO_SHOW, CANCELLED }
 

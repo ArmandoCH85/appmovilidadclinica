@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.passenger.presentation.tripsearch
+package com.appmovilidadclinica.passenger.presentation.tripsearch
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,9 +60,11 @@ import com.appmovilidadclinica.passenger.shared.domain.model.BookingState
 import com.appmovilidadclinica.passenger.shared.domain.model.Stop
 import com.appmovilidadclinica.passenger.shared.domain.model.TripSearchResult
 import com.appmovilidadclinica.passenger.presentation.common.toPeruTime
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneOffset
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -238,9 +240,9 @@ private fun DatePickerField(
 
     if (showDialog) {
         // El DatePicker trabaja con milisegundos UTC a medianoche. Convertimos
-        // LocalDate <-> Long siempre via ZoneOffset.UTC para evitar off-by-one
+        // LocalDate <-> Long siempre via la zona UTC para evitar off-by-one
         // cuando el dispositivo esta en una zona horaria alejada de UTC.
-        val initialMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val initialMillis = date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
         val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
 
         DatePickerDialog(
@@ -248,7 +250,9 @@ private fun DatePickerField(
             confirmButton = {
                 TextButton(onClick = {
                     pickerState.selectedDateMillis?.let { millis ->
-                        val picked = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        val picked = Instant.fromEpochMilliseconds(millis)
+                            .toLocalDateTime(TimeZone.UTC)
+                            .date
                         onDateChange(picked)
                     }
                     showDialog = false

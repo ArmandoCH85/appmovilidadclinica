@@ -17,13 +17,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 data class TripSearchUiState(
     val stops: List<Stop> = emptyList(),
     val loadingStops: Boolean = true,
-    val date: LocalDate = LocalDate.now(),
+    val date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.of("America/Lima")).date,
     val originStopId: Long? = null,
     val destinationStopId: Long? = null,
     val searching: Boolean = false,

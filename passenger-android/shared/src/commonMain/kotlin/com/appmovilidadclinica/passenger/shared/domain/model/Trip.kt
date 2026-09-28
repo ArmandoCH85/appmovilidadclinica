@@ -1,7 +1,7 @@
-﻿package com.appmovilidadclinica.passenger.shared.domain.model
+package com.appmovilidadclinica.passenger.shared.domain.model
 
-import java.time.Instant
-import java.time.LocalDate
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 
 /** Direccion de una ruta ” espejo de `transport_routes.direction`. */
 enum class TripDirection { IDA, VUELTA }

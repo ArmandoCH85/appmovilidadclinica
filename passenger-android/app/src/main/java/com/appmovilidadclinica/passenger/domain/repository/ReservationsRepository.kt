@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.passenger.domain.repository
+package com.appmovilidadclinica.passenger.domain.repository
 
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.model.ExtendResult
@@ -6,7 +6,7 @@ import com.appmovilidadclinica.passenger.shared.domain.model.JourneyState
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
 import kotlinx.coroutines.flow.Flow
-import java.time.Instant
+import kotlinx.datetime.Instant
 
 interface ReservationsRepository {
     /**

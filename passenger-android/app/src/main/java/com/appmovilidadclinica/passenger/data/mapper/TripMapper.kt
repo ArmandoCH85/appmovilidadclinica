@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.passenger.data.mapper
+package com.appmovilidadclinica.passenger.data.mapper
 
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.SeatResultDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripDetailResponseDto
@@ -13,8 +13,10 @@ import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStatus
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStopStatus
-import java.time.Instant
-import java.time.LocalDate
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toKotlinInstant
+import kotlinx.datetime.toKotlinLocalDate
 import java.time.OffsetDateTime
 
 /**
@@ -22,8 +24,12 @@ import java.time.OffsetDateTime
  * local (`-05:00` hora Lima), pero `Instant.parse()` SOLO acepta UTC (`Z`).
  * `OffsetDateTime` acepta cualquier offset y `.toInstant()` normaliza a UTC.
  * Funciona con `Z`, `-05:00`, `+00:00`, etc.
+ *
+ * Se usa java.time para parsear (OffsetDateTime) y se convierte al Instant de
+ * kotlinx-datetime, que es el tipo multiplataforma de los modelos.
  */
-private fun parseInstant(raw: String): Instant = OffsetDateTime.parse(raw).toInstant()
+private fun parseInstant(raw: String): Instant =
+    OffsetDateTime.parse(raw).toInstant().toKotlinInstant()
 
 /**
  * Parsea un campo fecha-hora del backend a LocalDate. El backend manda
@@ -32,9 +38,10 @@ private fun parseInstant(raw: String): Instant = OffsetDateTime.parse(raw).toIns
  * espera solo la parte de fecha. Aceptamos los dos formatos: si trae hora,
  * la descartamos; si es fecha pura, la usamos tal cual.
  */
-private fun parseLocalDate(raw: String): LocalDate =
-    if (raw.length >= 10 && raw[10] == 'T') LocalDate.parse(raw.substring(0, 10))
-    else LocalDate.parse(raw)
+private fun parseLocalDate(raw: String): LocalDate {
+    val isoDate = if (raw.length >= 10 && raw[10] == 'T') raw.substring(0, 10) else raw
+    return java.time.LocalDate.parse(isoDate).toKotlinLocalDate()
+}
 
 fun TripSearchResultDto.toDomain(): TripSearchResult = TripSearchResult(
     tripId = tripId,

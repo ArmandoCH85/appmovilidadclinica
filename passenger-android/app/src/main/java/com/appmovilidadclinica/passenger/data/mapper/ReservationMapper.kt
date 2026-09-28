@@ -1,4 +1,4 @@
-﻿package com.appmovilidadclinica.passenger.data.mapper
+package com.appmovilidadclinica.passenger.data.mapper
 
 import com.appmovilidadclinica.passenger.data.local.ReservationEntity
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
@@ -26,7 +26,7 @@ fun ReservationResponseDto.toEntity(
     routeName = context.routeName,
     originName = context.originName,
     destinationName = context.destinationName,
-    originDepartureAtEpochMillis = context.originDepartureAt.toEpochMilli(),
+    originDepartureAtEpochMillis = context.originDepartureAt.toEpochMilliseconds(),
     seatLabel = context.seatLabel,
     vehicleCode = "",
     plate = "",
@@ -69,11 +69,11 @@ fun ReservationEntity.toDomain(): Reservation = Reservation(
     originTripStopTimeId = originTripStopTimeId,
     destinationTripStopTimeId = destinationTripStopTimeId,
     status = ReservationStatus.valueOf(status),
-    confirmedAt = Instant.ofEpochMilli(confirmedAtEpochMillis),
+    confirmedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(confirmedAtEpochMillis),
     routeName = routeName,
     originName = originName,
     destinationName = destinationName,
-    originDepartureAt = Instant.ofEpochMilli(originDepartureAtEpochMillis),
+    originDepartureAt = kotlinx.datetime.Instant.fromEpochMilliseconds(originDepartureAtEpochMillis),
     seatLabel = seatLabel,
     vehicleCode = vehicleCode,
     plate = plate,

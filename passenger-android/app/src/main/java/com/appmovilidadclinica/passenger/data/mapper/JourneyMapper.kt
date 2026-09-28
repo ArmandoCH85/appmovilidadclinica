@@ -11,9 +11,11 @@ import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStatus
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStop
 import com.appmovilidadclinica.passenger.shared.domain.model.TripStopStatus
+import kotlinx.datetime.toKotlinInstant
 import java.time.OffsetDateTime
 
-private fun parseJourneyInstant(raw: String) = OffsetDateTime.parse(raw).toInstant()
+private fun parseJourneyInstant(raw: String) =
+    OffsetDateTime.parse(raw).toInstant().toKotlinInstant()
 
 fun JourneyStopDto.toDomain(): TripStop = TripStop(
     tripStopTimeId = tripStopTimeId,

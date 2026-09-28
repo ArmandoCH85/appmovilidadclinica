@@ -1,10 +1,11 @@
-// Modulo KMP (Fase 1 de la migracion a multiplatform).
-// Target actual: Android (source set commonMain + androidMain).
-// iOS target se agrega en Fase 5 (requiere macOS para validar build).
+// Modulo KMP: Android (commonMain + androidMain) e iOS (iosMain).
+//
+// El target iOS se declara igual que en la app del conductor
+// (driver-android-current/shared): framework estatico "Shared" y engine HTTP
+// Darwin en iosMain. NOTA: compilar/linkear los targets iOS requiere macOS;
+// en Windows/Linux quedan declarados y el build de Android sigue funcionando.
 //
 // Contiene: HTTP client (Ktor), DTOs, modelos de dominio, repositorios.
-// Por ahora NO contiene UI (Fase 3) ni storage local (Fase 4) — el app
-// Android sigue usando Retrofit/Room/DataStore durante la transicion.
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
@@ -18,11 +19,28 @@ kotlin {
         }
     }
 
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
+
     sourceSets {
         commonMain.dependencies {
             // Core
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+
+            // Fechas multiplataforma. `api` (no implementation): los modelos de
+            // dominio exponen Instant/LocalDate, asi que la app Android tambien
+            // tiene que verlos en su classpath. En JVM son los mismos tipos que
+            // java.time, por eso el codigo Android existente no cambia.
+            api(libs.kotlinx.datetime)
 
             // HTTP - Ktor API (multiplatform)
             implementation(libs.ktor.client.core)
@@ -40,6 +58,11 @@ kotlin {
         androidMain.dependencies {
             // Engine HTTP nativo de Android (OkHttp)
             implementation(libs.ktor.client.okhttp)
+        }
+
+        iosMain.dependencies {
+            // Engine HTTP nativo de iOS (Darwin)
+            implementation(libs.ktor.client.darwin)
         }
 
         commonTest.dependencies {
