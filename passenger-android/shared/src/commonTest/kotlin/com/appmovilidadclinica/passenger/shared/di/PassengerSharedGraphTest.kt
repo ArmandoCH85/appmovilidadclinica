@@ -4,6 +4,7 @@ import com.appmovilidadclinica.passenger.data.remote.KtorTokenProvider
 import com.appmovilidadclinica.passenger.data.remote.createHttpClient
 import com.appmovilidadclinica.passenger.shared.data.local.SessionStore
 import com.appmovilidadclinica.passenger.shared.data.remote.AuthApi
+import com.appmovilidadclinica.passenger.shared.data.remote.ReservationsApi
 import com.appmovilidadclinica.passenger.shared.data.remote.StopsApi
 import com.appmovilidadclinica.passenger.shared.data.remote.TripsApi
 import com.appmovilidadclinica.passenger.shared.domain.error.AppError
@@ -48,6 +49,7 @@ class PassengerSharedGraphTest {
             authApi = AuthApi(client),
             stopsApi = StopsApi(client),
             tripsApi = TripsApi(client),
+            reservationsApi = ReservationsApi(client),
         )
     }
 

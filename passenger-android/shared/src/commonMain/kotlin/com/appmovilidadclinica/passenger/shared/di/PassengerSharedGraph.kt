@@ -6,18 +6,27 @@ import com.appmovilidadclinica.passenger.shared.data.local.StoredSession
 import com.appmovilidadclinica.passenger.shared.data.mapper.toDomain
 import com.appmovilidadclinica.passenger.shared.data.mapper.toStoredSession
 import com.appmovilidadclinica.passenger.shared.data.remote.AuthApi
+import com.appmovilidadclinica.passenger.shared.data.remote.ReservationsApi
 import com.appmovilidadclinica.passenger.shared.data.remote.StopsApi
 import com.appmovilidadclinica.passenger.shared.data.remote.TripsApi
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ErrorResponseDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.SeatResultDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.StopDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripDetailResponseDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripSearchResultDto
 import com.appmovilidadclinica.passenger.shared.domain.error.AppError
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.model.ReservationCreated
+import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
 import com.appmovilidadclinica.passenger.shared.domain.model.Stop
+import com.appmovilidadclinica.passenger.shared.domain.model.TripDetail
 import com.appmovilidadclinica.passenger.shared.domain.model.TripDirection
 import com.appmovilidadclinica.passenger.shared.domain.model.TripSearchResult
+import com.appmovilidadclinica.passenger.shared.domain.model.TripSeat
 import com.appmovilidadclinica.passenger.shared.platform.createPlatformSettings
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -43,6 +52,7 @@ class PassengerSharedGraph internal constructor(
     private val authApi: AuthApi,
     private val stopsApi: StopsApi,
     private val tripsApi: TripsApi,
+    private val reservationsApi: ReservationsApi,
 ) {
 
     // ------------------------------------------------------------------ login
@@ -96,6 +106,59 @@ class PassengerSharedGraph internal constructor(
         }
     }
 
+    // ------------------------------------------------------- seleccion
+
+    /** Detalle del viaje con su cronograma (`GET /trips/{id}`). */
+    suspend fun loadTripDetail(tripId: Long): AppResult<TripDetail> = request {
+        val response = tripsApi.getDetail(tripId)
+        if (response.status.isSuccess()) {
+            AppResult.Success(response.body<TripDetailResponseDto>().toDomain())
+        } else {
+            AppResult.Failure(response.toAppError())
+        }
+    }
+
+    /**
+     * Asientos del tramo (`GET /trips/{id}/seats`). Aca origin/destination son
+     * `trip_stop_time_id` (distinto de la busqueda de viajes).
+     */
+    suspend fun listSeats(
+        tripId: Long,
+        originTripStopTimeId: Long,
+        destinationTripStopTimeId: Long,
+    ): AppResult<List<TripSeat>> = request {
+        val response = tripsApi.listSeats(tripId, originTripStopTimeId, destinationTripStopTimeId)
+        if (response.status.isSuccess()) {
+            AppResult.Success(response.body<List<SeatResultDto>>().map { it.toDomain() })
+        } else {
+            AppResult.Failure(response.toAppError())
+        }
+    }
+
+    /** Confirma la reserva del asiento elegido (`POST /reservations`). */
+    suspend fun confirmReservation(request: ReservationRequest): AppResult<ReservationCreated> = request {
+        val response = reservationsApi.confirm(
+            ReservationRequestDto(
+                tripId = request.tripId,
+                tripSeatId = request.tripSeatId,
+                originTripStopTimeId = request.originTripStopTimeId,
+                destinationTripStopTimeId = request.destinationTripStopTimeId,
+            )
+        )
+        if (response.status.isSuccess()) {
+            val body: ReservationResponseDto = response.body()
+            AppResult.Success(
+                ReservationCreated(
+                    reservationId = body.reservationId,
+                    reservationCode = body.reservationCode,
+                    qrToken = body.qrToken,
+                )
+            )
+        } else {
+            AppResult.Failure(response.toAppError())
+        }
+    }
+
     fun close() {
         httpClient.close()
     }
@@ -117,6 +180,7 @@ class PassengerSharedGraph internal constructor(
                 authApi = AuthApi(client),
                 stopsApi = StopsApi(client),
                 tripsApi = TripsApi(client),
+                reservationsApi = ReservationsApi(client),
             )
         }
     }

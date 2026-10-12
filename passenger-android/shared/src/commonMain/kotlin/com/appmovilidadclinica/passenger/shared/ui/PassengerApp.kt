@@ -11,6 +11,8 @@ import com.appmovilidadclinica.passenger.shared.ui.home.HomeScreen
 import com.appmovilidadclinica.passenger.shared.ui.login.LoginScreen
 import com.appmovilidadclinica.passenger.shared.ui.navigation.PassengerNavState
 import com.appmovilidadclinica.passenger.shared.ui.navigation.PassengerRoute
+import com.appmovilidadclinica.passenger.shared.ui.seatselection.SeatSelectionController
+import com.appmovilidadclinica.passenger.shared.ui.seatselection.SeatSelectionScreen
 import com.appmovilidadclinica.passenger.shared.ui.theme.PassengerAppTheme
 import com.appmovilidadclinica.passenger.shared.ui.tripsearch.TripSearchController
 import com.appmovilidadclinica.passenger.shared.ui.tripsearch.TripSearchScreen
@@ -68,10 +70,26 @@ fun PassengerApp(graph: PassengerSharedGraph) {
                     )
                 }
 
-                is PassengerRoute.TripDetail -> ComingSoonScreen(
-                    title = "Selección de asiento",
-                    onBack = { navState.pop() },
-                )
+                is PassengerRoute.TripDetail -> {
+                    val controller = remember(route) {
+                        SeatSelectionController(
+                            tripId = route.tripId,
+                            originStopId = route.originStopId,
+                            destinationStopId = route.destinationStopId,
+                            loadTripDetail = graph::loadTripDetail,
+                            listSeats = graph::listSeats,
+                            confirmReservation = graph::confirmReservation,
+                        )
+                    }
+                    SeatSelectionScreen(
+                        controller = controller,
+                        onBack = { navState.pop() },
+                        onConfirmed = { reservationId ->
+                            // Ya reservado: el detalle reemplaza a la seleccion.
+                            navState.replace(PassengerRoute.ReservationDetail(reservationId))
+                        },
+                    )
+                }
 
                 PassengerRoute.Reservations -> ComingSoonScreen(
                     title = "Mis reservas",
