@@ -1,5 +1,7 @@
 package com.appmovilidadclinica.passenger.shared.data.remote
 
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentResponseDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationResponseDto
@@ -54,4 +56,17 @@ class ReservationsApi(private val client: HttpClient) {
 
     suspend fun selfCheckinParsed(reservationId: Long): SelfCheckinResponseDto =
         selfCheckin(reservationId).body()
+
+    /**
+     * `POST /reservations/{id}/incidents` — 201 con `{id}`.
+     * La reserva tiene que ser propia y estar activa (CONFIRMED/BOARDED).
+     */
+    suspend fun reportIncident(reservationId: Long, body: ReportIncidentRequestDto): HttpResponse =
+        client.post("reservations/$reservationId/incidents") {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+
+    suspend fun reportIncidentParsed(reservationId: Long, body: ReportIncidentRequestDto): ReportIncidentResponseDto =
+        reportIncident(reservationId, body).body()
 }

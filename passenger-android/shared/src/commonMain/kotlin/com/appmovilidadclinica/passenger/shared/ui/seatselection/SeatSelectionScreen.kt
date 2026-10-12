@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -80,6 +81,39 @@ fun SeatSelectionScreen(
                     }
                 },
             )
+        },
+        bottomBar = {
+            // La accion principal va fija abajo: con viajes de 20+ asientos el
+            // boton quedaba fuera de la vista y habia que scrollear para hallarlo.
+            if (state.confirmed == null) {
+                Surface(tonalElevation = 3.dp) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        Button(
+                            onClick = controller::confirm,
+                            enabled = !state.confirming && state.selectedSeatId != null,
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                        ) {
+                            if (state.confirming) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            } else {
+                                Text("Confirmar reserva", style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                        if (state.selectedSeatId == null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Elija un asiento para continuar",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
         },
     ) { padding ->
         Column(
@@ -174,23 +208,7 @@ fun SeatSelectionScreen(
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
-
-            Button(
-                onClick = controller::confirm,
-                enabled = !state.confirming && state.selectedSeatId != null,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-            ) {
-                if (state.confirming) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                } else {
-                    Text("Confirmar reserva", style = MaterialTheme.typography.labelLarge)
-                }
-            }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

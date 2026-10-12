@@ -9,9 +9,13 @@ import com.appmovilidadclinica.passenger.shared.data.remote.AuthApi
 import com.appmovilidadclinica.passenger.shared.data.remote.ReservationsApi
 import com.appmovilidadclinica.passenger.shared.data.remote.StopsApi
 import com.appmovilidadclinica.passenger.shared.data.remote.TripsApi
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ChangePasswordRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ErrorResponseDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentRequestDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReportIncidentResponseDto
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationListItemDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.ReservationResponseDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.SeatResultDto
@@ -20,6 +24,7 @@ import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripDetailRespon
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.TripSearchResultDto
 import com.appmovilidadclinica.passenger.shared.domain.error.AppError
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
+import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationCreated
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationRequest
 import com.appmovilidadclinica.passenger.shared.domain.model.Stop
@@ -154,6 +159,59 @@ class PassengerSharedGraph internal constructor(
                     qrToken = body.qrToken,
                 )
             )
+        } else {
+            AppResult.Failure(response.toAppError())
+        }
+    }
+
+    // --------------------------------------------------------- reservas
+
+    /** Reservas del trabajador (`GET /reservations`). */
+    suspend fun loadReservations(): AppResult<List<Reservation>> = request {
+        val response = reservationsApi.list()
+        if (response.status.isSuccess()) {
+            AppResult.Success(response.body<List<ReservationListItemDto>>().map { it.toDomain() })
+        } else {
+            AppResult.Failure(response.toAppError())
+        }
+    }
+
+    /** Cancela una reserva propia (`POST /reservations/{id}/cancel`, 204). */
+    suspend fun cancelReservation(reservationId: Long): AppResult<Unit> = request {
+        val response = reservationsApi.cancel(reservationId)
+        if (response.status.isSuccess()) {
+            AppResult.Success(Unit)
+        } else {
+            AppResult.Failure(response.toAppError())
+        }
+    }
+
+    /** Reporta una incidencia sobre una reserva activa. */
+    suspend fun reportIncident(
+        reservationId: Long,
+        incidentType: String,
+        description: String,
+    ): AppResult<Long> = request {
+        val response = reservationsApi.reportIncident(
+            reservationId,
+            ReportIncidentRequestDto(incidentType = incidentType, description = description),
+        )
+        if (response.status.isSuccess()) {
+            AppResult.Success(response.body<ReportIncidentResponseDto>().id)
+        } else {
+            AppResult.Failure(response.toAppError())
+        }
+    }
+
+    // ------------------------------------------------------------ cuenta
+
+    /** Cambia la contraseña del usuario logueado (`POST /auth/change-password`). */
+    suspend fun changePassword(currentPassword: String, newPassword: String): AppResult<Unit> = request {
+        val response = authApi.changePassword(
+            ChangePasswordRequestDto(currentPassword = currentPassword, newPassword = newPassword)
+        )
+        if (response.status.isSuccess()) {
+            AppResult.Success(Unit)
         } else {
             AppResult.Failure(response.toAppError())
         }

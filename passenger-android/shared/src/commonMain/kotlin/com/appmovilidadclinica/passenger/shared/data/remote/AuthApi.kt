@@ -1,5 +1,6 @@
 package com.appmovilidadclinica.passenger.shared.data.remote
 
+import com.appmovilidadclinica.passenger.shared.data.remote.dto.ChangePasswordRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginRequestDto
 import com.appmovilidadclinica.passenger.shared.data.remote.dto.LoginResponseDto
 import io.ktor.client.HttpClient
@@ -28,4 +29,11 @@ class AuthApi(private val client: HttpClient) {
 
     suspend fun loginParsed(body: LoginRequestDto): LoginResponseDto =
         login(body).body()
+
+    /** `POST /auth/change-password` — el JWT sale del plugin Bearer global. */
+    suspend fun changePassword(body: ChangePasswordRequestDto): HttpResponse =
+        client.post("auth/change-password") {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
 }
