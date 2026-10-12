@@ -5,11 +5,17 @@
 // Darwin en iosMain. NOTA: compilar/linkear los targets iOS requiere macOS;
 // en Windows/Linux quedan declarados y el build de Android sigue funcionando.
 //
-// Contiene: HTTP client (Ktor), DTOs, modelos de dominio, repositorios.
+// Compose Multiplatform (Etapa 1 iOS): la UI (login, sesion, home) vive en
+// commonMain y la consumen las dos apps. Se expone con `api` para que la app
+// Android compile contra ella.
+//
+// Contiene: HTTP client (Ktor), DTOs, modelos de dominio, repositorios y UI.
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.multiplatform)
 }
 
 kotlin {
@@ -53,6 +59,13 @@ kotlin {
 
             // Multiplatform Settings (Fase 4 — DataStore replacement)
             implementation(libs.multiplatform.settings)
+
+            // Compose Multiplatform (Etapa 1 iOS). `api` para que la app Android
+            // compile contra la UI que vive en este modulo.
+            api(compose.runtime)
+            api(compose.foundation)
+            api(compose.material3)
+            api(compose.ui)
         }
 
         androidMain.dependencies {
@@ -68,6 +81,8 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            // MapSettings: Settings en memoria para probar SessionStore sin Android.
+            implementation(libs.multiplatform.settings.test)
         }
     }
 }

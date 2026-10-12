@@ -1,0 +1,9 @@
+// Configuracion del proyecto Xcode. Estos valores los lee el target
+// `iosApp`; el BUNDLE_ID mantiene el mismo identificador que la app Android
+// para que el backend trate igual a las dos.
+//
+// TEAM_ID: dejalo vacio para simulador; para dispositivo va el Team ID de la
+// cuenta de Apple (Xcode → Signing & Capabilities → Team).
+TEAM_ID=
+BUNDLE_ID=com.sitech.clinica.empleados
+APP_NAME=Movilidad clinica

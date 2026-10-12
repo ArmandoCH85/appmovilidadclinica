@@ -25,6 +25,8 @@ ktor = "3.0.3"
 kermit = "2.0.5"
 # kotlinx-datetime: en JVM son typealiases de java.time, asi que Android no cambia
 kotlinxDatetime = "0.6.1"
+# Compose Multiplatform (Etapa 1 iOS): mismo 1.7.1 que la app del conductor
+composeMultiplatform = "1.7.1"
 # Multiplatform Settings (Fase 4 — DataStore replacement)
 multiplatformSettings = "1.1.1"
 # SQLDelight (Fase 4.5 — Room replacement, NO aplicado, ver memoria)
@@ -84,6 +86,7 @@ kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",
 multiplatform-settings = { group = "com.russhwolf", name = "multiplatform-settings", version.ref = "multiplatformSettings" }
 
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test" }
+multiplatform-settings-test = { group = "com.russhwolf", name = "multiplatform-settings-test", version.ref = "multiplatformSettings" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -91,6 +94,7 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

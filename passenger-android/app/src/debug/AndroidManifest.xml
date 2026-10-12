@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifest solo para builds de debug: agrega una activity que monta la UI
+  COMPARTIDA (la misma que corre en iOS) para poder verla y probarla en Android
+  sin tocar la app real (que sigue con su Hilt + navegacion propia).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name="com.appmovilidadclinica.passenger.debug.SharedUiPreviewActivity"
+            android:exported="true"
+            android:label="Preview UI compartida"
+            android:theme="@style/Theme.Passenger" />
+    </application>
+
+</manifest>
