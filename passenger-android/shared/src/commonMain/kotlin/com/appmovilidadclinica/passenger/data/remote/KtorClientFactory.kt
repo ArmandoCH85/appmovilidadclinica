@@ -2,6 +2,8 @@ package com.appmovilidadclinica.passenger.data.remote
 
 import com.appmovilidadclinica.passenger.shared.platform.httpClientEngineFactory
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -52,12 +54,31 @@ private fun bearerFromTokenProvider(provider: KtorTokenProvider) =
  * Factory del HttpClient multiplataforma (antes KtorClientFactory, OkHttp-only).
  * El engine (OkHttp/Darwin) llega via expect/actual; el token Bearer se inyecta
  * con un plugin custom que relee el SessionStore en cada request.
+ *
+ * @param engine engine concreto a usar. Por defecto el de la plataforma; los
+ *   tests pasan un `MockEngine` para no depender del backend.
  */
 fun createHttpClient(
     baseUrl: String = NETWORK_BASE_URL,
     tokenProvider: KtorTokenProvider? = null,
     enableLogging: Boolean = true,
-): HttpClient = HttpClient(httpClientEngineFactory()) {
+    engine: HttpClientEngine? = null,
+): HttpClient {
+    val configure: HttpClientConfig<*>.() -> Unit = {
+        configureClient(baseUrl, tokenProvider, enableLogging)
+    }
+    return if (engine != null) {
+        HttpClient(engine, configure)
+    } else {
+        HttpClient(httpClientEngineFactory(), configure)
+    }
+}
+
+private fun HttpClientConfig<*>.configureClient(
+    baseUrl: String,
+    tokenProvider: KtorTokenProvider?,
+    enableLogging: Boolean,
+) {
     expectSuccess = false
 
     install(ContentNegotiation) {

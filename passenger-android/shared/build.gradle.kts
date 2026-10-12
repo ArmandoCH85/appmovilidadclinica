@@ -65,6 +65,7 @@ kotlin {
             api(compose.runtime)
             api(compose.foundation)
             api(compose.material3)
+            api(compose.materialIconsExtended)
             api(compose.ui)
         }
 
@@ -83,6 +84,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             // MapSettings: Settings en memoria para probar SessionStore sin Android.
             implementation(libs.multiplatform.settings.test)
+            // MockEngine: respuestas HTTP simuladas para probar el grafo sin backend.
+            implementation(libs.ktor.client.mock)
         }
     }
 }
