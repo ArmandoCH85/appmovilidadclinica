@@ -89,6 +89,7 @@ fun PassengerApp(graph: PassengerSharedGraph) {
                                 PassengerRoute.TripDetail(tripId, originStopId, destinationStopId)
                             )
                         },
+                        onBack = { navState.pop() },
                         onLogout = { graph.sessionStore.clear() },
                     )
                 }

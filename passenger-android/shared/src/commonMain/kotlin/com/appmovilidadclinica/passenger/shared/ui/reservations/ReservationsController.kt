@@ -6,6 +6,7 @@ import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,18 +35,27 @@ data class ReservationsUiState(
 class ReservationsController(
     private val loadReservations: suspend () -> AppResult<List<Reservation>>,
     private val cancelReservation: suspend (Long) -> AppResult<Unit>,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
+    private var scope: CoroutineScope = newScope(),
 ) {
     private val _uiState = MutableStateFlow(ReservationsUiState())
     val uiState: StateFlow<ReservationsUiState> = _uiState
 
     private var loaded = false
 
+    /**
+     * Si el scope se cancelo (p.ej. tras cerrar sesion), se crea uno nuevo:
+     * asi la pantalla nunca queda trabada en "cargando".
+     */
+    private fun activeScope(): CoroutineScope {
+        if (scope.coroutineContext[Job]?.isActive != true) scope = newScope()
+        return scope
+    }
+
     fun load(force: Boolean = false) {
         if (loaded && !force) return
         loaded = true
         _uiState.update { it.copy(loading = true) }
-        scope.launch {
+        activeScope().launch {
             when (val result = loadReservations()) {
                 is AppResult.Success -> _uiState.update {
                     it.copy(loading = false, reservations = result.data, errorMessage = null)
@@ -65,7 +75,7 @@ class ReservationsController(
         val state = _uiState.value
         if (state.cancelling) return
         _uiState.update { it.copy(cancelling = true, notice = null) }
-        scope.launch {
+        activeScope().launch {
             when (val result = cancelReservation(reservationId)) {
                 is AppResult.Success -> {
                     _uiState.update {
@@ -100,7 +110,6 @@ class ReservationsController(
     fun dispose() {
         scope.cancel()
     }
-
     private fun messageFor(error: AppError): String = when (error) {
         is AppError.Network -> "No se pudo conectar con el servidor. Verifique su conexión."
         is AppError.Unauthorized -> error.message.ifBlank { "Sesión expirada. Inicie sesión nuevamente." }
@@ -119,3 +128,5 @@ private fun AppError.messageOrEmpty(): String = when (this) {
     is AppError.Network -> message
     is AppError.Unknown -> message
 }
+
+private fun newScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)

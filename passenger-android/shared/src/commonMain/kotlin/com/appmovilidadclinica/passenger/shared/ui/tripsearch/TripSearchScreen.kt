@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.EventSeat
@@ -79,6 +80,7 @@ import kotlinx.datetime.toLocalDateTime
 fun TripSearchScreen(
     controller: TripSearchController,
     onTripSelected: (tripId: Long, originStopId: Long, destinationStopId: Long) -> Unit,
+    onBack: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val state by controller.uiState.collectAsState()
@@ -91,6 +93,11 @@ fun TripSearchScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Buscar viaje") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
                 actions = {
                     VerticalDivider(
                         modifier = Modifier

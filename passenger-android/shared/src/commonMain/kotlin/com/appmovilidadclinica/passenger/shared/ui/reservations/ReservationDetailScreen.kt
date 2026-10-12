@@ -54,7 +54,11 @@ fun ReservationDetailScreen(
     val state by controller.uiState.collectAsState()
     var askCancel by remember { mutableStateOf(false) }
 
-    LaunchedEffect(controller, reservationId) { controller.load() }
+    // Si la reserva no esta en la lista (p.ej. recien creada y el listado
+    // todavia no la trajo), se recarga en vez de quedarse en "cargando".
+    LaunchedEffect(controller, reservationId) {
+        if (controller.reservationById(reservationId) == null) controller.load(force = true)
+    }
 
     val reservation = state.reservations.find { it.reservationId == reservationId }
 
