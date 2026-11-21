@@ -98,6 +98,20 @@ fun VehicleMapScreen(
     }
     var centredOnVehicle by remember { mutableStateOf(false) }
 
+    // Nombre de la ubicación del bus (geocodificación inversa de Android).
+    var placeName by remember(vehicle?.latitude, vehicle?.longitude) {
+        mutableStateOf<String?>(null)
+    }
+    LaunchedEffect(vehicle?.latitude, vehicle?.longitude) {
+        val lat = vehicle?.latitude
+        val lon = vehicle?.longitude
+        placeName = if (lat != null && lon != null) {
+            resolvePlaceName(context, lat, lon)
+        } else {
+            null
+        }
+    }
+
     DisposableEffect(mapView, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -197,6 +211,15 @@ fun VehicleMapScreen(
                     }
                     vehicle?.let { v ->
                         Spacer(Modifier.height(4.dp))
+                        // Dónde está el bus, con nombre en vez de coordenadas.
+                        placeName?.let { name ->
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                        }
                         val age = ageLabel(v.fixTime)
                         Text(
                             listOfNotNull(

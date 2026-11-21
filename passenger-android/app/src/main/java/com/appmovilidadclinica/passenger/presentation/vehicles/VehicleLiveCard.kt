@@ -24,6 +24,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +58,20 @@ fun VehicleLiveCard(
     val vehicle = state.positions.entries
         .firstOrNull { it.key.equals(plate, ignoreCase = true) }
         ?.value
+
+    // Nombre de la ubicación (geocodificación inversa del propio Android).
+    var placeName by remember(vehicle?.latitude, vehicle?.longitude) {
+        mutableStateOf<String?>(null)
+    }
+    LaunchedEffect(vehicle?.latitude, vehicle?.longitude) {
+        val lat = vehicle?.latitude
+        val lon = vehicle?.longitude
+        placeName = if (lat != null && lon != null) {
+            resolvePlaceName(context, lat, lon)
+        } else {
+            null
+        }
+    }
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -108,11 +125,15 @@ fun VehicleLiveCard(
 
             if (vehicle != null && vehicle.hasPosition) {
                 Spacer(Modifier.height(6.dp))
-                Text(
-                    "%.6f, %.6f".format(vehicle.latitude, vehicle.longitude),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                )
+                // Nombre de la ubicación en vez de coordenadas. Si no se puede
+                // resolver (sin red o sin geocodificador), no se muestra nada.
+                if (placeName != null) {
+                    Text(
+                        placeName!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
                 vehicle.fixTime?.let { fix ->
                     Text(
                         "Última posición: ${fix.toPeruDateTime()}" +
