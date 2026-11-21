@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -37,8 +38,16 @@ const (
 	// trailWindow es cuÃƒÆ’Ã‚Â¡ntas horas de recorrido se muestran en el mapa.
 	trailWindow = 2 * time.Hour
 
-	// maxTrailPoints acota la polilÃƒÆ’Ã‚Â­nea para no mandar cientos de puntos.
-	maxTrailPoints = 250
+	// maxTrailPoints acota la polilínea para no mandar cientos de puntos.
+	maxTrailPoints = 400
+
+	// maxSpeedMps descarta saltos imposibles del GPS (45 m/s ≈ 162 km/h): son
+	// fixes basura que hacían que la línea se fuera "por fuera" de la calle.
+	maxSpeedMps = 45.0
+
+	// trailSimplifyMeters es la tolerancia de Douglas–Peucker: quita puntos
+	// redundantes pero respeta la forma real de la ruta.
+	trailSimplifyMeters = 8.0
 )
 
 // DeviceIDsDefault es el mapeo placa ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ id de dispositivo en Traccar,
@@ -274,12 +283,7 @@ func (s *Service) fetchTrail(ctx context.Context, deviceID int64) ([]TrailPoint,
 // buildTrail ordena, descarta repetidos (el bus estacionado manda cientos de
 // puntos iguales) y muestrea hasta `max` puntos. FunciÃƒÆ’Ã‚Â³n pura para poder probar.
 func buildTrail(points []traccarPosition, max int) []TrailPoint {
-	type raw struct {
-		lat float64
-		lon float64
-		at  time.Time
-	}
-	var clean []raw
+	var clean []trailRaw
 	for _, p := range points {
 		if !validCoords(p.Latitude, p.Longitude) {
 			continue
@@ -291,21 +295,37 @@ func buildTrail(points []traccarPosition, max int) []TrailPoint {
 		if at == nil {
 			continue
 		}
-		// Se salta el punto si es (casi) idÃƒÆ’Ã‚Â©ntico al anterior: el bus parado
-		// reporta la misma posiciÃƒÆ’Ã‚Â³n cada 10 s y no aporta a la lÃƒÆ’Ã‚Â­nea.
+		// Se salta el punto si es (casi) idéntico al anterior: el bus parado
+		// reporta la misma posición cada 10 s y no aporta a la línea.
 		if len(clean) > 0 {
 			prev := clean[len(clean)-1]
 			if abs(prev.lat-p.Latitude) < 5e-5 && abs(prev.lon-p.Longitude) < 5e-5 {
 				continue
 			}
+			// Punto imposible (salto de varios cientos de metros en segundos):
+			// el GPS perdió fix o marcó basura. Si se deja, la línea se va
+			// "por fuera" de la calle.
+			seconds := at.Sub(prev.at).Seconds()
+			if seconds > 1 {
+				metros := haversineMeters(prev.lat, prev.lon, p.Latitude, p.Longitude)
+				if metros/seconds > maxSpeedMps {
+					continue
+				}
+			}
 		}
-		clean = append(clean, raw{lat: p.Latitude, lon: p.Longitude, at: *at})
+		clean = append(clean, trailRaw{lat: p.Latitude, lon: p.Longitude, at: *at})
 	}
 	if len(clean) == 0 {
 		return nil
 	}
 
-	// Muestreo uniforme si hay demasiados puntos (para no mandar 1000 puntos).
+	// Simplificación Douglas–Peucker: conserva la forma real del recorrido y
+	// elimina el zigzag del GPS, sin cortar camino como hacía el muestreo
+	// uniforme (que unía puntos lejanos con una recta larga).
+	epsDeg := trailSimplifyMeters / 111_320.0
+	clean = simplifyDouglasPeucker(clean, epsDeg)
+
+	// Tope de seguridad de puntos.
 	step := 1
 	if max > 0 && len(clean) > max {
 		step = (len(clean) + max - 1) / max
@@ -318,12 +338,92 @@ func buildTrail(points []traccarPosition, max int) []TrailPoint {
 			FixTime:   clean[i].at,
 		})
 	}
-	// El ÃƒÆ’Ã‚Âºltimo punto siempre va: es donde estÃƒÆ’Ã‚Â¡ el bus ahora.
+	// El último punto siempre va: es donde está el bus ahora.
 	last := clean[len(clean)-1]
 	if out == nil || out[len(out)-1].Latitude != last.lat || out[len(out)-1].Longitude != last.lon {
 		out = append(out, TrailPoint{Latitude: last.lat, Longitude: last.lon, FixTime: last.at})
 	}
 	return out
+}
+
+type trailRaw struct {
+	lat float64
+	lon float64
+	at  time.Time
+}
+
+// simplifyDouglasPeucker reduce la polilínea manteniendo los puntos que
+// definen la forma (curvas, esquinas) y descartando los intermedios.
+func simplifyDouglasPeucker(points []trailRaw, epsilon float64) []trailRaw {
+	if len(points) < 3 {
+		return points
+	}
+	keep := make([]bool, len(points))
+	keep[0] = true
+	keep[len(points)-1] = true
+
+	var recurse func(from, to int)
+	recurse = func(from, to int) {
+		if to-from < 2 {
+			return
+		}
+		// Perpendicular más lejana al segmento from→to.
+		maxDist := 0.0
+		index := -1
+		for i := from + 1; i < to; i++ {
+			d := perpendicularDistance(points[i], points[from], points[to])
+			if d > maxDist {
+				maxDist = d
+				index = i
+			}
+		}
+		if maxDist > epsilon && index > 0 {
+			keep[index] = true
+			recurse(from, index)
+			recurse(index, to)
+		}
+	}
+	recurse(0, len(points)-1)
+
+	out := make([]trailRaw, 0, len(points))
+	for i, p := range points {
+		if keep[i] {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// perpendicularDistance devuelve la distancia (en grados) del punto p a la
+// recta a→b, aproximando con un plano local.
+func perpendicularDistance(p, a, b trailRaw) float64 {
+	dx := b.lon - a.lon
+	dy := b.lat - a.lat
+	if dx == 0 && dy == 0 {
+		return math.Hypot(p.lon-a.lon, p.lat-a.lat)
+	}
+	t := ((p.lon-a.lon)*dx + (p.lat-a.lat)*dy) / (dx*dx + dy*dy)
+	var cx, cy float64
+	switch {
+	case t < 0:
+		cx, cy = a.lon, a.lat
+	case t > 1:
+		cx, cy = b.lon, b.lat
+	default:
+		cx, cy = a.lon+t*dx, a.lat+t*dy
+	}
+	return math.Hypot(p.lon-cx, p.lat-cy)
+}
+
+// haversineMeters es la distancia en metros entre dos coordenadas.
+func haversineMeters(lat1, lon1, lat2, lon2 float64) float64 {
+	const earthRadius = 6_371_000.0
+	toRad := func(d float64) float64 { return d * math.Pi / 180 }
+	dLat := toRad(lat2 - lat1)
+	dLon := toRad(lon2 - lon1)
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(toRad(lat1))*math.Cos(toRad(lat2))*math.Sin(dLon/2)*math.Sin(dLon/2)
+	return 2 * earthRadius * math.Asin(math.Sqrt(a))
 }
 
 // ------------------------------------------------------------------ Traccar

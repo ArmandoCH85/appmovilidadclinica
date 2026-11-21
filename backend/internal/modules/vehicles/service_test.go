@@ -204,12 +204,16 @@ func TestService_ConsultaTraccarYUsaCache(t *testing.T) {
 	if len(got) != 1 || !got[0].HasPosition {
 		t.Fatalf("posiciÃ³n inesperada: %+v", got)
 	}
-	// El recorrido se recorta: se descarta el punto repetido del bus parado.
-	if len(got[0].Trail) != 3 {
-		t.Fatalf("se esperaban 3 puntos de recorrido, hubo %d: %+v", len(got[0].Trail), got[0].Trail)
+	// El recorrido se recorta: se descartan el punto repetido del bus parado y
+	// el intermedio colineal (Douglas–Peucker), pero se respetan los extremos.
+	if len(got[0].Trail) < 2 {
+		t.Fatalf("recorrido demasiado corto: %+v", got[0].Trail)
 	}
-	if got[0].Trail[0].Latitude != -12.20 || got[0].Trail[2].Latitude != -12.1 {
-		t.Errorf("recorrido en orden inesperado: %+v", got[0].Trail)
+	if got[0].Trail[0].Latitude != -12.20 {
+		t.Errorf("el recorrido debería arrancar en el primer punto: %+v", got[0].Trail)
+	}
+	if last := got[0].Trail[len(got[0].Trail)-1]; last.Latitude != -12.1 || last.Longitude != -77.0 {
+		t.Errorf("el recorrido debería terminar en la posición actual: %+v", got[0].Trail)
 	}
 	if llamadas != 3 {
 		t.Fatalf("se esperaban 3 llamadas a Traccar (devices+positions+recorrido), hubo %d", llamadas)
