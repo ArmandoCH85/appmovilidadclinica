@@ -75,6 +75,7 @@ import com.appmovilidadclinica.passenger.shared.domain.model.TripStopStatus
 import com.appmovilidadclinica.passenger.presentation.common.SeatCell
 import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
 import com.appmovilidadclinica.passenger.presentation.common.toPeruTime
+import com.appmovilidadclinica.passenger.presentation.vehicles.VehicleLiveCard
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -222,6 +223,16 @@ fun MyReservationDetailScreen(
                         )
                     }
                 }
+            }
+
+            // Ubicación en vivo del bus de ESTA reserva. El backend es quien
+            // consulta el GPS: el pasajero no ve ni ingresa credenciales.
+            if (reservation.plate.isNotBlank() &&
+                (reservation.status == ReservationStatus.CONFIRMED ||
+                    reservation.status == ReservationStatus.BOARDED)
+            ) {
+                Spacer(Modifier.height(12.dp))
+                VehicleLiveCard(plate = reservation.plate)
             }
 
             Spacer(Modifier.height(16.dp))

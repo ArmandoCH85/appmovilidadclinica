@@ -14,21 +14,23 @@ import (
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/booking"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/driver"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/trips"
+	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/vehicles"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/authctx"
 )
 
 // RouterDeps agrupa las dependencias que NewRouter cablea: los handlers de
-// los seis modulos, el firmador/verificador JWT y el logger. Centralizarlas
+// los modulos, el firmador/verificador JWT y el logger. Centralizarlas
 // en un struct evita una firma con muchos parametros y deja el cableado
 // explicito en main.go.
 type RouterDeps struct {
-	AuthHandler    *auth.AuthHandler
-	TripsHandler   *trips.TripsHandler
-	BookingHandler *booking.BookingHandler
-	DriverHandler  *driver.DriverHandler
-	AdminHandler   *admin.AdminHandler
-	TokenAuth      *jwtauth.JWTAuth
-	Logger         *slog.Logger
+	AuthHandler     *auth.AuthHandler
+	TripsHandler    *trips.TripsHandler
+	BookingHandler  *booking.BookingHandler
+	DriverHandler   *driver.DriverHandler
+	AdminHandler    *admin.AdminHandler
+	VehiclesHandler *vehicles.Handler
+	TokenAuth       *jwtauth.JWTAuth
+	Logger          *slog.Logger
 
 	// UserActiveChecker verifica en la BD si el usuario sigue activo. Si es
 	// nil, no se aplica el guard de suspension. Se inyecta desde main.go para
@@ -86,6 +88,12 @@ func NewRouter(deps RouterDeps) http.Handler {
 		// driver y admin usan r.Route("/driver|/admin", ...) internamente.
 		deps.DriverHandler.RegisterRoutes(r)
 		deps.AdminHandler.RegisterRoutes(r)
+
+		// vehicles: posiciones GPS de la flota (proxy con credenciales del
+		// servidor; la app del pasajero nunca las ve).
+		if deps.VehiclesHandler != nil {
+			deps.VehiclesHandler.RegisterRoutes(r)
+		}
 	})
 
 	return r

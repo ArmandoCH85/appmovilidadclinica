@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -60,7 +59,6 @@ fun ProfileMenuButton(
     onOpenReservations: () -> Unit,
     onOpenChangePassword: () -> Unit,
     onOpenReportIncident: () -> Unit,
-    onOpenVehicleTracking: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -172,18 +170,6 @@ fun ProfileMenuButton(
                         onClick = {
                             close()
                             onOpenReportIncident()
-                        },
-                    )
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                    ProfileMenuRow(
-                        icon = Icons.Default.DirectionsBus,
-                        label = "Vehículos en vivo",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        onClick = {
-                            close()
-                            onOpenVehicleTracking()
                         },
                     )
 

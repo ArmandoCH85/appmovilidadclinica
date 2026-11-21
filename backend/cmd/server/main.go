@@ -23,6 +23,7 @@ import (
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/booking"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/driver"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/trips"
+	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/modules/vehicles"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/platform/database"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/platform/jobs"
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/platform/server"
@@ -91,15 +92,26 @@ func main() {
 	adminSvc := admin.NewService(adminRepo)
 	adminHandler := admin.NewHandler(adminSvc, nil)
 
+	// Modulo de GPS: proxy hacia Traccar (MS Global GPS). Las credenciales
+	// salen de TRACCAR_USER / TRACCAR_PASSWORD del entorno; si faltan, el
+	// endpoint /api/vehicles/positions responde 500 y la app muestra el aviso.
+	vehiclesCfg := vehicles.LoadConfigFromEnv()
+	if vehiclesCfg.Username == "" || vehiclesCfg.Password == "" {
+		slog.Warn("GPS no configurado: definÃ­ TRACCAR_USER y TRACCAR_PASSWORD para /api/vehicles/positions")
+	}
+	vehiclesSvc := vehicles.NewService(vehiclesCfg, nil)
+	vehiclesHandler := vehicles.NewHandler(vehiclesSvc)
+
 	// 5. Router raiz con todas las dependencias inyectadas.
 	router := server.NewRouter(server.RouterDeps{
-		AuthHandler:    authHandler,
-		TripsHandler:   tripsHandler,
-		BookingHandler: bookingHandler,
-		DriverHandler:  driverHandler,
-		AdminHandler:   adminHandler,
-		TokenAuth:      tokenAuth,
-		Logger:         slog.Default(),
+		AuthHandler:     authHandler,
+		TripsHandler:    tripsHandler,
+		BookingHandler:  bookingHandler,
+		DriverHandler:   driverHandler,
+		AdminHandler:    adminHandler,
+		VehiclesHandler: vehiclesHandler,
+		TokenAuth:       tokenAuth,
+		Logger:          slog.Default(),
 		// Suspension inmediata: en cada request se valida contra la BD que el
 		// usuario siga activo (active=1). Suspender (active=0) corta la sesion
 		// al instante en cualquier app, sin esperar a que expire el JWT.
@@ -135,7 +147,7 @@ func main() {
 	go func() {
 		slog.Info("servidor escuchando", "puerto", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("servidor falló", "error", err)
+			slog.Error("servidor fallÃ³", "error", err)
 			os.Exit(1)
 		}
 	}()

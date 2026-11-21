@@ -23,10 +23,6 @@ sealed interface Screen {
     @Serializable
     data object ReportIncident : Screen
 
-    /** Vehículos en vivo (posiciones del servidor GPS Traccar). */
-    @Serializable
-    data object VehicleTracking : Screen
-
     @Serializable
     data class SeatSelection(
         val tripId: Long,
