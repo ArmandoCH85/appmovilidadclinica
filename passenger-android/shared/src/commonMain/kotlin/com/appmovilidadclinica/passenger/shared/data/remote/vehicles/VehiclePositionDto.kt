@@ -21,4 +21,13 @@ data class VehiclePositionDto(
     val online: Boolean? = null,
     @SerialName("has_position") val hasPosition: Boolean = false,
     @SerialName("is_stale") val isStale: Boolean = true,
+    /** Recorrido de las últimas horas (para dibujar la línea del camino). */
+    val trail: List<VehicleTrailPointDto> = emptyList(),
+)
+
+@Serializable
+data class VehicleTrailPointDto(
+    val latitude: Double,
+    val longitude: Double,
+    @SerialName("fix_time") val fixTime: String? = null,
 )

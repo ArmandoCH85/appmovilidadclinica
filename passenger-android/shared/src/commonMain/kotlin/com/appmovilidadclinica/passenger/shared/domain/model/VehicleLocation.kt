@@ -25,7 +25,16 @@ data class VehicleLocation(
     val courseDegrees: Double? = null,
     val online: Boolean? = null,
     val isStale: Boolean = true,
+    /** Recorrido de las últimas horas, para dibujar el camino en el mapa. */
+    val trail: List<VehicleTrailPoint> = emptyList(),
 ) {
     /** true solo si hay coordenadas utilizables. */
     val hasPosition: Boolean get() = latitude != null && longitude != null
 }
+
+/** Un punto del recorrido del vehículo. */
+data class VehicleTrailPoint(
+    val latitude: Double,
+    val longitude: Double,
+    val fixTime: Instant? = null,
+)

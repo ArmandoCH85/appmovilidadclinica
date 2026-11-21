@@ -17,12 +17,12 @@ func TestParseDeviceIDs(t *testing.T) {
 		t.Errorf("CJI-579 = %d, se esperaba 147", got["CJI-579"])
 	}
 	if got["C0C-965"] != 142 {
-		t.Errorf("C0C-965 = %d, se esperaba 142 (normaliza minúsculas)", got["C0C-965"])
+		t.Errorf("C0C-965 = %d, se esperaba 142 (normaliza minÃºsculas)", got["C0C-965"])
 	}
 
 	for _, raw := range []string{"", "CJI-579", "CJI-579=abc", "CJI-579=0"} {
 		if _, err := ParseDeviceIDs(raw); err == nil {
-			t.Errorf("ParseDeviceIDs(%q) debería fallar", raw)
+			t.Errorf("ParseDeviceIDs(%q) deberÃ­a fallar", raw)
 		}
 	}
 }
@@ -43,7 +43,7 @@ func TestBuildPositions_MapeaPorIDYNoPorNombre(t *testing.T) {
 	got := buildPositions(DeviceIDsDefault, devices, positions, now)
 
 	if len(got) != 2 {
-		t.Fatalf("se esperaban 2 vehículos, se obtuvieron %d", len(got))
+		t.Fatalf("se esperaban 2 vehÃ­culos, se obtuvieron %d", len(got))
 	}
 	if got[0].Plate != "C0C-965" || got[1].Plate != "CJI-579" {
 		t.Fatalf("orden/placas inesperadas: %+v", got)
@@ -54,10 +54,10 @@ func TestBuildPositions_MapeaPorIDYNoPorNombre(t *testing.T) {
 		t.Errorf("C0C-965 sin coordenadas correctas: %+v", c0c)
 	}
 	if c0c.Online == nil || *c0c.Online {
-		t.Errorf("C0C-965 debería figurar offline")
+		t.Errorf("C0C-965 deberÃ­a figurar offline")
 	}
 	if !c0c.IsStale {
-		t.Errorf("C0C-965 tiene fix de 3 h: debería ser stale")
+		t.Errorf("C0C-965 tiene fix de 3 h: deberÃ­a ser stale")
 	}
 
 	cji := got[1]
@@ -69,10 +69,10 @@ func TestBuildPositions_MapeaPorIDYNoPorNombre(t *testing.T) {
 		t.Errorf("velocidad = %.2f, se esperaba 18.52", *cji.SpeedKmh)
 	}
 	if cji.IsStale {
-		t.Errorf("CJI-579 con fix de 2 min no debería ser stale")
+		t.Errorf("CJI-579 con fix de 2 min no deberÃ­a ser stale")
 	}
 	if cji.Online == nil || !*cji.Online {
-		t.Errorf("CJI-579 debería figurar online")
+		t.Errorf("CJI-579 deberÃ­a figurar online")
 	}
 }
 
@@ -83,13 +83,13 @@ func TestBuildPositions_SinPosicionNoInventaCoordenadas(t *testing.T) {
 	got := buildPositions(map[string]int64{"CJI-579": 147}, devices, nil, now)
 
 	if len(got) != 1 {
-		t.Fatalf("se esperaba 1 vehículo")
+		t.Fatalf("se esperaba 1 vehÃ­culo")
 	}
 	if got[0].HasPosition || got[0].Latitude != nil || got[0].Longitude != nil {
 		t.Errorf("no debe inventar coordenadas: %+v", got[0])
 	}
 	if !got[0].IsStale {
-		t.Errorf("sin posición debe marcarse como stale")
+		t.Errorf("sin posiciÃ³n debe marcarse como stale")
 	}
 }
 
@@ -104,7 +104,7 @@ func TestBuildPositions_DescartaCeroCeroYFueraDeRango(t *testing.T) {
 	for _, p := range casos {
 		got := buildPositions(map[string]int64{"CJI-579": 147}, devices, []traccarPosition{p}, now)
 		if got[0].HasPosition || got[0].Latitude != nil {
-			t.Errorf("coordenada inválida aceptada: %+v", p)
+			t.Errorf("coordenada invÃ¡lida aceptada: %+v", p)
 		}
 	}
 }
@@ -129,6 +129,16 @@ func TestService_ConsultaTraccarYUsaCache(t *testing.T) {
 		case "/api/devices":
 			_, _ = w.Write([]byte(`[{"id":147,"name":"CJI-579","status":"online"}]`))
 		case "/api/positions":
+			if r.URL.Query().Get("deviceId") != "" {
+				// HistÃ³rico del recorrido (con un duplicado que debe descartarse).
+				_, _ = w.Write([]byte(`[
+					{"deviceId":147,"latitude":-12.20,"longitude":-77.10,"fixTime":"2026-10-12T20:00:00Z","valid":true},
+					{"deviceId":147,"latitude":-12.20,"longitude":-77.10,"fixTime":"2026-10-12T20:00:10Z","valid":true},
+					{"deviceId":147,"latitude":-12.15,"longitude":-77.05,"fixTime":"2026-10-12T21:00:00Z","valid":true},
+					{"deviceId":147,"latitude":-12.1,"longitude":-77.0,"fixTime":"2026-10-12T21:59:00Z","valid":true}
+				]`))
+				return
+			}
 			_, _ = w.Write([]byte(`[{"deviceId":147,"latitude":-12.1,"longitude":-77.0,"fixTime":"2026-10-12T21:59:00Z","valid":true,"speed":5}]`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -151,18 +161,25 @@ func TestService_ConsultaTraccarYUsaCache(t *testing.T) {
 		t.Fatalf("error inesperado: %v", err)
 	}
 	if len(got) != 1 || !got[0].HasPosition {
-		t.Fatalf("posición inesperada: %+v", got)
+		t.Fatalf("posiciÃ³n inesperada: %+v", got)
 	}
-	if llamadas != 2 {
-		t.Fatalf("se esperaban 2 llamadas a Traccar (devices+positions), hubo %d", llamadas)
+	// El recorrido se recorta: se descarta el punto repetido del bus parado.
+	if len(got[0].Trail) != 3 {
+		t.Fatalf("se esperaban 3 puntos de recorrido, hubo %d: %+v", len(got[0].Trail), got[0].Trail)
+	}
+	if got[0].Trail[0].Latitude != -12.20 || got[0].Trail[2].Latitude != -12.1 {
+		t.Errorf("recorrido en orden inesperado: %+v", got[0].Trail)
+	}
+	if llamadas != 3 {
+		t.Fatalf("se esperaban 3 llamadas a Traccar (devices+positions+recorrido), hubo %d", llamadas)
 	}
 
 	// Segunda consulta: cacheada, sin llamadas nuevas.
 	if _, err := svc.Latest(context.Background()); err != nil {
 		t.Fatalf("error inesperado: %v", err)
 	}
-	if llamadas != 2 {
-		t.Errorf("la caché no funcionó: hubo %d llamadas", llamadas)
+	if llamadas != 3 {
+		t.Errorf("la cachÃ© no funcionÃ³: hubo %d llamadas", llamadas)
 	}
 }
 

@@ -1,6 +1,6 @@
-// Package vehicles expone las posiciones GPS de los vehículos de la flota.
+// Package vehicles expone las posiciones GPS de los vehÃƒÆ’Ã‚Â­culos de la flota.
 //
-// Las credenciales de Traccar (MS Global GPS) viven SOLO acá, en variables de
+// Las credenciales de Traccar (MS Global GPS) viven SOLO acÃƒÆ’Ã‚Â¡, en variables de
 // entorno del servidor: las apps nunca las ven ni las piden al usuario.
 package vehicles
 
@@ -24,26 +24,33 @@ const (
 	// DefaultBaseURL es la API de Traccar de MS Global GPS.
 	DefaultBaseURL = "https://gps.msglobalgps.com/api/"
 
-	// staleAfter marca una posición como "última ubicación conocida".
+	// staleAfter marca una posiciÃƒÆ’Ã‚Â³n como "ÃƒÆ’Ã‚Âºltima ubicaciÃƒÆ’Ã‚Â³n conocida".
 	staleAfter = 5 * time.Minute
 
 	// knotsToKmh: Traccar entrega `speed` en nudos.
 	knotsToKmh = 1.852
 
 	// cacheTTL evita golpear Traccar en cada request de cada pasajero.
+	// cacheTTL evita golpear Traccar en cada request de cada pasajero.
 	defaultCacheTTL = 15 * time.Second
+
+	// trailWindow es cuÃƒÆ’Ã‚Â¡ntas horas de recorrido se muestran en el mapa.
+	trailWindow = 2 * time.Hour
+
+	// maxTrailPoints acota la polilÃƒÆ’Ã‚Â­nea para no mandar cientos de puntos.
+	maxTrailPoints = 250
 )
 
-// DeviceIDsDefault es el mapeo placa → id de dispositivo en Traccar,
+// DeviceIDsDefault es el mapeo placa ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ id de dispositivo en Traccar,
 // verificado contra GET /api/devices (CJI-579 = 147; la app y el backend usan
 // "C0C-965" con cero y Traccar lo llama "COC-965" con letra O: es el mismo
-// vehículo y por eso se resuelve por id, nunca por nombre).
+// vehÃƒÆ’Ã‚Â­culo y por eso se resuelve por id, nunca por nombre).
 var DeviceIDsDefault = map[string]int64{
 	"CJI-579": 147,
 	"C0C-965": 142,
 }
 
-// Config es la configuración del proxy, leída del entorno.
+// Config es la configuraciÃƒÆ’Ã‚Â³n del proxy, leÃƒÆ’Ã‚Â­da del entorno.
 type Config struct {
 	BaseURL   string
 	Username  string
@@ -54,7 +61,7 @@ type Config struct {
 
 // LoadConfigFromEnv lee TRACCAR_BASE_URL, TRACCAR_USER, TRACCAR_PASSWORD,
 // TRACCAR_DEVICE_IDS ("CJI-579=147,C0C-965=142") y TRACCAR_CACHE_TTL.
-// Sin usuario/contraseña el servicio queda deshabilitado (503 en el endpoint),
+// Sin usuario/contraseÃƒÆ’Ã‚Â±a el servicio queda deshabilitado (503 en el endpoint),
 // nunca con credenciales de ejemplo.
 func LoadConfigFromEnv() Config {
 	cfg := Config{
@@ -71,7 +78,7 @@ func LoadConfigFromEnv() Config {
 		if parsed, err := ParseDeviceIDs(v); err == nil {
 			cfg.DeviceIDs = parsed
 		} else {
-			slog.Warn("TRACCAR_DEVICE_IDS inválido, se usa el mapeo por defecto", "error", err)
+			slog.Warn("TRACCAR_DEVICE_IDS invÃƒÆ’Ã‚Â¡lido, se usa el mapeo por defecto", "error", err)
 		}
 	}
 	if v := os.Getenv("TRACCAR_CACHE_TTL"); v != "" {
@@ -92,21 +99,21 @@ func ParseDeviceIDs(raw string) (map[string]int64, error) {
 		}
 		parts := strings.SplitN(pair, "=", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("par inválido %q (se espera PLACA=ID)", pair)
+			return nil, fmt.Errorf("par invÃƒÆ’Ã‚Â¡lido %q (se espera PLACA=ID)", pair)
 		}
 		id, err := strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64)
 		if err != nil || id <= 0 {
-			return nil, fmt.Errorf("id inválido en %q", pair)
+			return nil, fmt.Errorf("id invÃƒÆ’Ã‚Â¡lido en %q", pair)
 		}
 		out[strings.ToUpper(strings.TrimSpace(parts[0]))] = id
 	}
 	if len(out) == 0 {
-		return nil, errors.New("no se indicó ningún vehículo")
+		return nil, errors.New("no se indicÃƒÆ’Ã‚Â³ ningÃƒÆ’Ã‚Âºn vehÃƒÆ’Ã‚Â­culo")
 	}
 	return out, nil
 }
 
-// VehiclePosition es lo que consume la app: datos mínimos y sin credenciales.
+// VehiclePosition es lo que consume la app: datos mÃƒÆ’Ã‚Â­nimos y sin credenciales.
 type VehiclePosition struct {
 	Plate       string     `json:"plate"`
 	Latitude    *float64   `json:"latitude"`
@@ -118,9 +125,19 @@ type VehiclePosition struct {
 	Online      *bool      `json:"online"`
 	HasPosition bool       `json:"has_position"`
 	IsStale     bool       `json:"is_stale"`
+	// Trail es el recorrido de las ÃƒÆ’Ã‚Âºltimas horas ya muestreado: sirve para
+	// dibujar en el mapa el camino que hizo el bus (no solo el punto actual).
+	Trail []TrailPoint `json:"trail"`
 }
 
-// Service consulta Traccar y arma las posiciones, con caché corto.
+// TrailPoint es un punto del recorrido para la polilÃƒÆ’Ã‚Â­nea del mapa.
+type TrailPoint struct {
+	Latitude  float64   `json:"latitude"`
+	Longitude float64   `json:"longitude"`
+	FixTime   time.Time `json:"fix_time"`
+}
+
+// Service consulta Traccar y arma las posiciones, con cachÃƒÆ’Ã‚Â© corto.
 type Service struct {
 	cfg    Config
 	client *http.Client
@@ -143,8 +160,8 @@ func NewService(cfg Config, httpClient *http.Client) *Service {
 // ErrNotConfigured indica que faltan las credenciales del servidor GPS.
 var ErrNotConfigured = errors.New("servicio de GPS no configurado")
 
-// Latest devuelve la última posición conocida de cada vehículo configurado.
-// Usa caché de cfg.CacheTTL para no golpear Traccar con cada request.
+// Latest devuelve la ÃƒÆ’Ã‚Âºltima posiciÃƒÆ’Ã‚Â³n conocida de cada vehÃƒÆ’Ã‚Â­culo configurado.
+// Usa cachÃƒÆ’Ã‚Â© de cfg.CacheTTL para no golpear Traccar con cada request.
 func (s *Service) Latest(ctx context.Context) ([]VehiclePosition, error) {
 	if s.cfg.Username == "" || s.cfg.Password == "" {
 		return nil, ErrNotConfigured
@@ -169,6 +186,21 @@ func (s *Service) Latest(ctx context.Context) ([]VehiclePosition, error) {
 
 	result := buildPositions(s.cfg.DeviceIDs, devices, positions, s.now())
 
+	// Recorrido de cada vehÃƒÆ’Ã‚Â­culo. Si Traccar falla acÃƒÆ’Ã‚Â¡ no se rompe el endpoint:
+	// el bus igual se muestra, solo sin la lÃƒÆ’Ã‚Â­nea del camino.
+	for i := range result {
+		deviceID, ok := s.cfg.DeviceIDs[result[i].Plate]
+		if !ok {
+			continue
+		}
+		trail, err := s.fetchTrail(ctx, deviceID)
+		if err != nil {
+			slog.Warn("vehicles: no se pudo traer el recorrido", "plate", result[i].Plate, "error", err)
+			continue
+		}
+		result[i].Trail = trail
+	}
+
 	s.mu.Lock()
 	s.cached = result
 	s.cachedAt = s.now()
@@ -176,6 +208,73 @@ func (s *Service) Latest(ctx context.Context) ([]VehiclePosition, error) {
 	s.mu.Unlock()
 
 	return result, nil
+}
+
+// fetchTrail pide a Traccar las posiciones de las ÃƒÆ’Ã‚Âºltimas horas y las reduce a
+// una polilÃƒÆ’Ã‚Â­nea razonable (sin puntos repetidos y con un mÃƒÆ’Ã‚Â¡ximo acotado).
+func (s *Service) fetchTrail(ctx context.Context, deviceID int64) ([]TrailPoint, error) {
+	to := s.now().UTC()
+	from := to.Add(-trailWindow)
+	var raw []traccarPosition
+	if err := s.getJSON(ctx, "positions", url.Values{"deviceId": {fmt.Sprintf("%d", deviceID)}, "from": {from.Format(time.RFC3339)}, "to": {to.Format(time.RFC3339)}}, &raw); err != nil {
+		return nil, err
+	}
+	return buildTrail(raw, maxTrailPoints), nil
+}
+
+// buildTrail ordena, descarta repetidos (el bus estacionado manda cientos de
+// puntos iguales) y muestrea hasta `max` puntos. FunciÃƒÆ’Ã‚Â³n pura para poder probar.
+func buildTrail(points []traccarPosition, max int) []TrailPoint {
+	type raw struct {
+		lat float64
+		lon float64
+		at  time.Time
+	}
+	var clean []raw
+	for _, p := range points {
+		if !validCoords(p.Latitude, p.Longitude) {
+			continue
+		}
+		if p.Valid != nil && !*p.Valid {
+			continue
+		}
+		at := parseTime(p.FixTime)
+		if at == nil {
+			continue
+		}
+		// Se salta el punto si es (casi) idÃƒÆ’Ã‚Â©ntico al anterior: el bus parado
+		// reporta la misma posiciÃƒÆ’Ã‚Â³n cada 10 s y no aporta a la lÃƒÆ’Ã‚Â­nea.
+		if len(clean) > 0 {
+			prev := clean[len(clean)-1]
+			if abs(prev.lat-p.Latitude) < 5e-5 && abs(prev.lon-p.Longitude) < 5e-5 {
+				continue
+			}
+		}
+		clean = append(clean, raw{lat: p.Latitude, lon: p.Longitude, at: *at})
+	}
+	if len(clean) == 0 {
+		return nil
+	}
+
+	// Muestreo uniforme si hay demasiados puntos (para no mandar 1000 puntos).
+	step := 1
+	if max > 0 && len(clean) > max {
+		step = (len(clean) + max - 1) / max
+	}
+	out := make([]TrailPoint, 0, len(clean)/step+1)
+	for i := 0; i < len(clean); i += step {
+		out = append(out, TrailPoint{
+			Latitude:  clean[i].lat,
+			Longitude: clean[i].lon,
+			FixTime:   clean[i].at,
+		})
+	}
+	// El ÃƒÆ’Ã‚Âºltimo punto siempre va: es donde estÃƒÆ’Ã‚Â¡ el bus ahora.
+	last := clean[len(clean)-1]
+	if out == nil || out[len(out)-1].Latitude != last.lat || out[len(out)-1].Longitude != last.lon {
+		out = append(out, TrailPoint{Latitude: last.lat, Longitude: last.lon, FixTime: last.at})
+	}
+	return out
 }
 
 // ------------------------------------------------------------------ Traccar
@@ -200,7 +299,7 @@ type traccarPosition struct {
 
 func (s *Service) fetchDevices(ctx context.Context) ([]traccarDevice, error) {
 	var out []traccarDevice
-	if err := s.getJSON(ctx, "devices", &out); err != nil {
+	if err := s.getJSON(ctx, "devices", nil, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -208,18 +307,25 @@ func (s *Service) fetchDevices(ctx context.Context) ([]traccarDevice, error) {
 
 func (s *Service) fetchPositions(ctx context.Context) ([]traccarPosition, error) {
 	var out []traccarPosition
-	if err := s.getJSON(ctx, "positions", &out); err != nil {
+	if err := s.getJSON(ctx, "positions", nil, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (s *Service) getJSON(ctx context.Context, path string, target any) error {
+func (s *Service) getJSON(ctx context.Context, path string, query url.Values, target any) error {
 	endpoint, err := url.JoinPath(s.cfg.BaseURL, path)
 	if err != nil {
 		return fmt.Errorf("armando URL de Traccar: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("parseando URL de Traccar: %w", err)
+	}
+	if len(query) > 0 {
+		parsed.RawQuery = query.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
 	if err != nil {
 		return fmt.Errorf("creando request a Traccar: %w", err)
 	}
@@ -234,7 +340,7 @@ func (s *Service) getJSON(ctx context.Context, path string, target any) error {
 
 	if resp.StatusCode != http.StatusOK {
 		// No se copia el body: puede traer detalles internos del GPS.
-		return fmt.Errorf("Traccar respondió %d", resp.StatusCode)
+		return fmt.Errorf("Traccar respondiÃƒÆ’Ã‚Â³ %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
@@ -248,7 +354,7 @@ func (s *Service) getJSON(ctx context.Context, path string, target any) error {
 }
 
 // buildPositions une devices + positions por id y aplica las reglas del
-// dominio. Es una función pura para poder probarla sin red.
+// dominio. Es una funciÃƒÆ’Ã‚Â³n pura para poder probarla sin red.
 func buildPositions(
 	tracked map[string]int64,
 	devices []traccarDevice,
@@ -295,7 +401,7 @@ func buildPositions(
 		fix := parseTime(position.FixTime)
 		server := parseTime(position.ServerTime)
 
-		// Coordenadas válidas y con sentido (nunca 0,0 inventado).
+		// Coordenadas vÃƒÆ’Ã‚Â¡lidas y con sentido (nunca 0,0 inventado).
 		if validCoords(position.Latitude, position.Longitude) {
 			item.Latitude = &position.Latitude
 			item.Longitude = &position.Longitude
@@ -334,7 +440,7 @@ func validCoords(lat, lon float64) bool {
 	if lat < -90 || lat > 90 || lon < -180 || lon > 180 {
 		return false
 	}
-	// (0,0) en Traccar suele ser "sin fix": no es una ubicación real.
+	// (0,0) en Traccar suele ser "sin fix": no es una ubicaciÃƒÆ’Ã‚Â³n real.
 	return !(lat == 0 && lon == 0)
 }
 
@@ -359,4 +465,12 @@ func sortStrings(items []string) {
 			items[j], items[j-1] = items[j-1], items[j]
 		}
 	}
+}
+
+// abs devuelve el valor absoluto (para comparar coordenadas casi iguales).
+func abs(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }

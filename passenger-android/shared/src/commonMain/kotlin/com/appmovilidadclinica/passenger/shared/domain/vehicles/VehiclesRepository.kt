@@ -5,6 +5,7 @@ import com.appmovilidadclinica.passenger.shared.data.remote.vehicles.VehiclesApi
 import com.appmovilidadclinica.passenger.shared.domain.error.AppError
 import com.appmovilidadclinica.passenger.shared.domain.error.AppResult
 import com.appmovilidadclinica.passenger.shared.domain.model.VehicleLocation
+import com.appmovilidadclinica.passenger.shared.domain.model.VehicleTrailPoint
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.isSuccess
@@ -51,6 +52,13 @@ fun VehiclePositionDto.toDomain(): VehicleLocation = VehicleLocation(
     courseDegrees = course,
     online = online,
     isStale = isStale,
+    trail = trail.map { point ->
+        VehicleTrailPoint(
+            latitude = point.latitude,
+            longitude = point.longitude,
+            fixTime = point.fixTime?.let(::parseInstantOrNull),
+        )
+    },
 )
 
 private fun parseInstantOrNull(raw: String): Instant? =

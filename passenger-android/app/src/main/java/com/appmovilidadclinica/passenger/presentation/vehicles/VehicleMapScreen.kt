@@ -2,6 +2,7 @@ package com.appmovilidadclinica.passenger.presentation.vehicles
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 import java.io.File
 
 /**
@@ -86,6 +88,14 @@ fun VehicleMapScreen(
             isEnabled = true
         }
     }
+    // Línea azul con el camino que hizo el bus en las últimas horas.
+    val polyline = remember(mapView) {
+        Polyline().apply {
+            outlinePaint.color = Color.parseColor("#1E88E5")
+            outlinePaint.strokeWidth = 10f
+            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+        }
+    }
     var centredOnVehicle by remember { mutableStateOf(false) }
 
     DisposableEffect(mapView, lifecycleOwner) {
@@ -118,29 +128,41 @@ fun VehicleMapScreen(
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             AndroidView(
                 factory = { mapView },
-                update = { view ->
-                    val lat = vehicle?.latitude
-                    val lon = vehicle?.longitude
-                    if (lat != null && lon != null) {
-                        val point = GeoPoint(lat, lon)
-                        // Mismo marcador: se reposiciona, no se duplica.
-                        if (!view.overlays.contains(marker)) {
-                            marker.position = point
-                            view.overlays.add(marker)
-                        } else {
-                            marker.position = point
-                        }
-                        marker.snippet = vehicle.fixTime?.let { "Posición: ${it.toPeruDateTime()}" }
-                        if (!centredOnVehicle) {
-                            view.controller.setZoom(16.0)
-                            view.controller.setCenter(point)
-                            centredOnVehicle = true
-                        }
-                        view.invalidate()
-                    }
-                },
                 modifier = Modifier.fillMaxSize(),
             )
+
+            // El marcador y el recorrido se actualizan por estado, no por el
+            // update() de AndroidView: así se mueven solos en cada refresco.
+            LaunchedEffect(vehicle?.latitude, vehicle?.longitude, vehicle?.fixTime) {
+                val lat = vehicle?.latitude ?: return@LaunchedEffect
+                val lon = vehicle?.longitude ?: return@LaunchedEffect
+                val point = GeoPoint(lat, lon)
+                marker.position = point
+                marker.snippet = vehicle.fixTime?.let { "Posición: ${it.toPeruDateTime()}" }
+                if (!mapView.overlays.contains(marker)) {
+                    mapView.overlays.add(marker)
+                }
+                if (!centredOnVehicle) {
+                    mapView.controller.setZoom(16.0)
+                    mapView.controller.setCenter(point)
+                    centredOnVehicle = true
+                }
+                mapView.invalidate()
+            }
+
+            // Línea del camino recorrido (2 h de histórico que manda el backend).
+            LaunchedEffect(vehicle?.trail) {
+                val points = vehicle?.trail.orEmpty()
+                    .map { GeoPoint(it.latitude, it.longitude) }
+                if (points.size >= 2) {
+                    polyline.setPoints(points)
+                    if (!mapView.overlays.contains(polyline)) {
+                        // Al fondo: el marcador del bus queda encima de la línea.
+                        mapView.overlays.add(0, polyline)
+                    }
+                    mapView.invalidate()
+                }
+            }
 
             // Estado del bus arriba del mapa
             Surface(
