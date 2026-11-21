@@ -31,6 +31,8 @@ composeMultiplatform = "1.7.1"
 multiplatformSettings = "1.1.1"
 # SQLDelight (Fase 4.5 — Room replacement, NO aplicado, ver memoria)
 sqldelight = "2.0.2"
+# Mapa de vehiculos: OpenStreetMap con osmdroid (sin API key)
+osmdroid = "6.1.20"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -71,6 +73,7 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+osmdroid-android = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 
 # KMP / Ktor (Fase 1)
 ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }

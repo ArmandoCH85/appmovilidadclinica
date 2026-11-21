@@ -23,6 +23,10 @@ sealed interface Screen {
     @Serializable
     data object ReportIncident : Screen
 
+    /** Mapa en vivo del bus de una reserva (OpenStreetMap). */
+    @Serializable
+    data class VehicleMap(val plate: String) : Screen
+
     @Serializable
     data class SeatSelection(
         val tripId: Long,

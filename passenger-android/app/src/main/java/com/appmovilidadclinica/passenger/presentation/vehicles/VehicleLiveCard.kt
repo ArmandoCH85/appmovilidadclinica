@@ -43,6 +43,7 @@ import com.appmovilidadclinica.passenger.shared.domain.model.VehicleLocation
 fun VehicleLiveCard(
     plate: String,
     modifier: Modifier = Modifier,
+    onOpenMap: (String) -> Unit = {},
     viewModel: VehiclesLiveViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -132,7 +133,7 @@ fun VehicleLiveCard(
                 }
                 Spacer(Modifier.height(10.dp))
                 OutlinedButton(
-                    onClick = { openInMaps(context, vehicle) },
+                    onClick = { onOpenMap(plate) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Ver en el mapa")

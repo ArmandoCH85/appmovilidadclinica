@@ -9,6 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.appmovilidadclinica.passenger.presentation.auth.LoginScreen
 import com.appmovilidadclinica.passenger.presentation.changepassword.ChangePasswordScreen
 import com.appmovilidadclinica.passenger.presentation.common.SessionExpiredDialog
@@ -18,6 +19,7 @@ import com.appmovilidadclinica.passenger.presentation.myreservation.MyReservatio
 import com.appmovilidadclinica.passenger.presentation.reportincident.ReportIncidentScreen
 import com.appmovilidadclinica.passenger.presentation.seatselection.SeatSelectionScreen
 import com.appmovilidadclinica.passenger.presentation.tripsearch.TripSearchScreen
+import com.appmovilidadclinica.passenger.presentation.vehicles.VehicleMapScreen
 
 /**
  * Raiz de navegacion — decide Login vs. resto de la app segun la sesion
@@ -91,7 +93,18 @@ fun PassengerNavGraph(navController: NavHostController = rememberNavController()
         }
 
         composable<Screen.MyReservationDetail> {
-            MyReservationDetailScreen(onBack = { navController.popBackStack() })
+            MyReservationDetailScreen(
+                onBack = { navController.popBackStack() },
+                onOpenVehicleMap = { plate -> navController.navigate(Screen.VehicleMap(plate)) },
+            )
+        }
+
+        composable<Screen.VehicleMap> { entry ->
+            val route = entry.toRoute<Screen.VehicleMap>()
+            VehicleMapScreen(
+                plate = route.plate,
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 

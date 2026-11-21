@@ -82,6 +82,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun MyReservationDetailScreen(
     onBack: () -> Unit,
+    onOpenVehicleMap: (String) -> Unit = {},
     viewModel: MyReservationDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -232,7 +233,10 @@ fun MyReservationDetailScreen(
                     reservation.status == ReservationStatus.BOARDED)
             ) {
                 Spacer(Modifier.height(12.dp))
-                VehicleLiveCard(plate = reservation.plate)
+                VehicleLiveCard(
+                    plate = reservation.plate,
+                    onOpenMap = { plate -> onOpenVehicleMap(plate) },
+                )
             }
 
             Spacer(Modifier.height(16.dp))

@@ -103,6 +103,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
 
+    // Mapa de vehiculos: OpenStreetMap (osmdroid) — sin API key
+    implementation(libs.osmdroid.android)
+
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
