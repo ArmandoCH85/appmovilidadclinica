@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.EventSeat
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material3.Button
@@ -33,6 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,8 +48,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.appmovilidadclinica.passenger.shared.domain.model.Reservation
 import com.appmovilidadclinica.passenger.shared.domain.model.ReservationStatus
+import com.appmovilidadclinica.passenger.shared.domain.model.VehicleLocation
 import com.appmovilidadclinica.passenger.presentation.common.canSelfCheckin
 import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
+import com.appmovilidadclinica.passenger.presentation.vehicles.VehiclesLiveViewModel
+import com.appmovilidadclinica.passenger.presentation.vehicles.ageLabel
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,9 +61,11 @@ fun MyReservationsScreen(
     onReservationSelected: (Long) -> Unit,
     onBack: () -> Unit,
     viewModel: MyReservationsViewModel = hiltViewModel(),
+    vehiclesViewModel: VehiclesLiveViewModel = hiltViewModel(),
 ) {
     val reservations by viewModel.reservations.collectAsStateWithLifecycle()
     val rowStates by viewModel.rowStates.collectAsStateWithLifecycle()
+    val livePositions by vehiclesViewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(Unit) {
@@ -69,6 +76,11 @@ fun MyReservationsScreen(
             }
         }
     }
+
+    // Posiciones del bus: se consultan solo mientras esta lista esta visible
+    // (el pasajero ve dónde viene su bus sin abrir la reserva).
+    LaunchedEffect(Unit) { vehiclesViewModel.start() }
+    DisposableEffect(Unit) { onDispose { vehiclesViewModel.stop() } }
 
     Scaffold(
         topBar = {
@@ -120,6 +132,9 @@ fun MyReservationsScreen(
                 ReservationCard(
                     reservation = reservation,
                     rowState = rowStates[reservation.reservationId] ?: ReservationRowState(),
+                    vehicle = livePositions.positions.entries
+                        .firstOrNull { it.key.equals(reservation.plate, ignoreCase = true) }
+                        ?.value,
                     onClick = { onReservationSelected(reservation.reservationId) },
                     onSelfCheckin = { viewModel.selfCheckin(reservation.reservationId) },
                 )
@@ -132,6 +147,7 @@ fun MyReservationsScreen(
 private fun ReservationCard(
     reservation: Reservation,
     rowState: ReservationRowState,
+    vehicle: VehicleLocation?,
     onClick: () -> Unit,
     onSelfCheckin: () -> Unit,
 ) {
@@ -175,6 +191,30 @@ private fun ReservationCard(
                 )
             }
 
+            // Dónde viene el bus: visible en la lista, sin abrir la reserva.
+            // Solo para reservas activas (confirmada o abordada) y si el
+            // backend reporta el vehículo; si no hay posición, se dice, no se
+            // inventan coordenadas.
+            if (reservation.status == ReservationStatus.CONFIRMED ||
+                reservation.status == ReservationStatus.BOARDED
+            ) {
+                val textoBus = when {
+                    vehicle == null || !vehicle.hasPosition ->
+                        if (vehicle == null) "Bus: sin datos del GPS" else "Bus: sin posición"
+
+                    else -> {
+                        val age = ageLabel(vehicle.fixTime)
+                        val prefijo = if (vehicle.isStale) "última conocida" else "en vivo"
+                        if (age != null) "Bus $prefijo · $age" else "Bus $prefijo"
+                    }
+                }
+                ReservaInfoRow(
+                    icon = Icons.Default.MyLocation,
+                    text = textoBus,
+                    emphasize = vehicle?.hasPosition == true && vehicle.isStale.not(),
+                )
+            }
+
             Spacer(Modifier.height(8.dp))
 
             // Status: icono + texto (nunca solo color, para accesibilidad)
@@ -201,18 +241,28 @@ private fun ReservationCard(
 }
 
 @Composable
-private fun ReservaInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+private fun ReservaInfoRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    emphasize: Boolean = false,
+) {
+    val tint = if (emphasize) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             icon,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = tint,
         )
         Text(
             "  $text",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = tint,
+            fontWeight = if (emphasize) FontWeight.SemiBold else null,
         )
     }
 }

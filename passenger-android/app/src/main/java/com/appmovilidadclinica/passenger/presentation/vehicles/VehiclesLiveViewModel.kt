@@ -19,37 +19,36 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import javax.inject.Inject
 
-data class VehicleLiveUiState(
+data class VehiclesLiveUiState(
     val loading: Boolean = true,
-    val vehicle: VehicleLocation? = null,
+    val positions: Map<String, VehicleLocation> = emptyMap(),
     val errorMessage: String? = null,
     val lastUpdated: Instant? = null,
 )
 
 /**
- * Posición en vivo del vehículo de UNA reserva.
+ * Posiciones en vivo de los vehículos de las reservas del pasajero.
  *
- * Consulta `GET /api/vehicles/positions` (nuestro backend) cada 30 s mientras
- * la tarjeta está visible; el backend es quien habla con el GPS, así que el
- * pasajero nunca ve credenciales del servidor de monitoreo.
+ * Una sola instancia por pantalla: "Mis reservas" la usa para mostrar, fila
+ * por fila, dónde está el bus de cada viaje (sin tener que abrir la reserva);
+ * el detalle la usa para su tarjeta.
+ *
+ * Consulta `GET /api/vehicles/positions` (nuestro backend, que es quien habla
+ * con el GPS): el pasajero nunca ve ni ingresa credenciales.
  */
 @HiltViewModel
-class VehicleLiveViewModel @Inject constructor(
+class VehiclesLiveViewModel @Inject constructor(
     private val vehiclesRepository: VehiclesRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(VehicleLiveUiState())
-    val uiState: StateFlow<VehicleLiveUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(VehiclesLiveUiState())
+    val uiState: StateFlow<VehiclesLiveUiState> = _uiState.asStateFlow()
 
     private var pollingJob: Job? = null
-    private var plate: String? = null
     private var refreshing = false
 
-    /** Arranca el sondeo para la placa de la reserva (idempotente). */
-    fun start(plate: String) {
-        if (this.plate == plate && pollingJob?.isActive == true) return
-        this.plate = plate
-        pollingJob?.cancel()
+    fun start() {
+        if (pollingJob?.isActive == true) return
         pollingJob = viewModelScope.launch {
             var backoff = 0L
             while (isActive) {
@@ -74,28 +73,29 @@ class VehicleLiveViewModel @Inject constructor(
         viewModelScope.launch { refreshOnce() }
     }
 
+    /** Posición conocida de una placa (null si el backend no la reporta). */
+    fun vehicleFor(plate: String?): VehicleLocation? {
+        if (plate.isNullOrBlank()) return null
+        return _uiState.value.positions.entries
+            .firstOrNull { it.key.equals(plate, ignoreCase = true) }
+            ?.value
+    }
+
     private suspend fun refreshOnce(): Boolean {
         if (refreshing) return false
         refreshing = true
-        _uiState.update { it.copy(loading = it.vehicle == null) }
+        _uiState.update { it.copy(loading = it.positions.isEmpty()) }
 
         val result = vehiclesRepository.latestPositions()
         refreshing = false
 
         return when (result) {
             is AppResult.Success -> {
-                val wanted = plate
-                val match = result.data.firstOrNull { it.plate.equals(wanted, ignoreCase = true) }
                 _uiState.update {
                     it.copy(
                         loading = false,
-                        vehicle = match,
-                        // Si el vehículo no viene en la respuesta, no se inventa nada.
-                        errorMessage = if (match == null) {
-                            "Este vehículo no está reportando posición."
-                        } else {
-                            null
-                        },
+                        positions = result.data.associateBy { vehicle -> vehicle.plate },
+                        errorMessage = null,
                         lastUpdated = Clock.System.now(),
                     )
                 }
@@ -114,12 +114,27 @@ class VehicleLiveViewModel @Inject constructor(
     private fun messageFor(error: AppError): String = when (error) {
         is AppError.Unauthorized -> "Sesión expirada. Inicie sesión nuevamente."
         is AppError.Network -> "Sin conexión. Se muestra la última ubicación conocida."
-        else -> "No se pudo obtener la ubicación en este momento."
+        else -> "No se pudo obtener la ubicación del bus en este momento."
     }
 
     companion object {
-        /** Cada cuánto se refresca la posición mientras la tarjeta está visible. */
+        /** Cada cuánto se refresca la posición mientras la pantalla está visible. */
         const val REFRESH_INTERVAL_MS: Long = 30_000L
         const val MAX_BACKOFF_MS: Long = 90_000L
+    }
+}
+
+/**
+ * "hace 3 min" / "hace 2 h": antigüedad legible de la última posición GPS.
+ * Devuelve null si no hay hora.
+ */
+fun ageLabel(fixTime: Instant?, now: Instant = Clock.System.now()): String? {
+    val fix = fixTime ?: return null
+    val minutes = (now - fix).inWholeMinutes
+    return when {
+        minutes < 1 -> "hace instantes"
+        minutes < 60 -> "hace $minutes min"
+        minutes < 1440 -> "hace ${minutes / 60} h"
+        else -> "hace ${minutes / 1440} d"
     }
 }

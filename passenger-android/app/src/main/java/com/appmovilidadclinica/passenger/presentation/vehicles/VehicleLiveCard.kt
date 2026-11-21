@@ -43,13 +43,17 @@ import com.appmovilidadclinica.passenger.shared.domain.model.VehicleLocation
 fun VehicleLiveCard(
     plate: String,
     modifier: Modifier = Modifier,
-    viewModel: VehicleLiveViewModel = hiltViewModel(),
+    viewModel: VehiclesLiveViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    LaunchedEffect(plate) { viewModel.start(plate) }
+    LaunchedEffect(plate) { viewModel.start() }
     DisposableEffect(plate) { onDispose { viewModel.stop() } }
+
+    val vehicle = state.positions.entries
+        .firstOrNull { it.key.equals(plate, ignoreCase = true) }
+        ?.value
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -85,7 +89,9 @@ fun VehicleLiveCard(
                 }
             }
 
-            val vehicle = state.vehicle
+            val vehicle = state.positions.entries
+                .firstOrNull { it.key.equals(plate, ignoreCase = true) }
+                ?.value
             if (state.loading && vehicle == null) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 return@Column
@@ -143,7 +149,7 @@ fun VehicleLiveCard(
             state.lastUpdated?.let { updated ->
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Actualizado: ${updated.toPeruDateTime()} (cada ${VehicleLiveViewModel.REFRESH_INTERVAL_MS / 1000} s)",
+                    "Actualizado: ${updated.toPeruDateTime()} (cada ${VehiclesLiveViewModel.REFRESH_INTERVAL_MS / 1000} s)",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
