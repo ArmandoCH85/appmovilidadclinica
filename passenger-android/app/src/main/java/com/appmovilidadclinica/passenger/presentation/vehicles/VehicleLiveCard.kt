@@ -166,6 +166,15 @@ fun VehicleLiveCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            } else if (!state.loading && state.errorMessage == null) {
+                // Seguridad: el backend no devuelve ubicación hasta que el
+                // conductor inicie el recorrido desde su app.
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "La ubicación del bus estará disponible cuando el conductor inicie el recorrido.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             state.lastUpdated?.let { updated ->

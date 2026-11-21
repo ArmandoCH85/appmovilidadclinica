@@ -195,7 +195,8 @@ fun VehicleMapScreen(
                         }
                         Text(
                             when {
-                                vehicle == null -> "Buscando el bus…"
+                                vehicle == null && state.loading -> "Buscando el bus…"
+                                vehicle == null -> "Ubicación al iniciar el recorrido"
                                 !vehicle.hasPosition -> "El bus no reporta posición"
                                 vehicle.isStale -> "Última ubicación conocida"
                                 else -> "Bus en vivo"
@@ -203,7 +204,7 @@ fun VehicleMapScreen(
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = if (vehicle?.isStale == true || vehicle == null) {
-                                MaterialTheme.colorScheme.error
+                                MaterialTheme.colorScheme.onSurfaceVariant
                             } else {
                                 MaterialTheme.colorScheme.primary
                             },

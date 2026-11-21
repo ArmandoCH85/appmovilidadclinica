@@ -111,8 +111,45 @@ func TestBuildPositions_DescartaCeroCeroYFueraDeRango(t *testing.T) {
 
 func TestService_SinCredencialesNoConsulta(t *testing.T) {
 	svc := NewService(Config{BaseURL: DefaultBaseURL, DeviceIDs: DeviceIDsDefault}, nil)
-	if _, err := svc.Latest(context.Background()); err != ErrNotConfigured {
+	// Con placas visibles pero sin credenciales, el GPS no está configurado.
+	svc.WithVisiblePlates(func(ctx context.Context, userID int64) ([]string, error) {
+		return []string{"CJI-579"}, nil
+	})
+	if _, err := svc.LatestForUser(context.Background(), 1); err != ErrNotConfigured {
 		t.Fatalf("se esperaba ErrNotConfigured, se obtuvo %v", err)
+	}
+}
+
+// Seguridad: sin viaje en curso no se devuelve NINGUNA posición.
+func TestService_SinViajeEnCursoNoDevuelvePosiciones(t *testing.T) {
+	svc := NewService(Config{BaseURL: DefaultBaseURL, Username: "u", Password: "p", DeviceIDs: DeviceIDsDefault}, nil)
+	svc.now = func() time.Time { return time.Now() }
+	// El proveedor simula "el conductor todavía no inició el recorrido".
+	svc.WithVisiblePlates(func(ctx context.Context, userID int64) ([]string, error) {
+		return nil, nil
+	})
+
+	// No importa que falle Traccar: si no hay placas visibles, no se consulta
+	// y la respuesta queda vacía.
+	got, err := svc.LatestForUser(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("error inesperado: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("no debería devolver posiciones sin recorrido iniciado: %+v", got)
+	}
+}
+
+// Seguridad: si no se configuró el filtro, se niega todo (nunca se filtra de menos).
+func TestService_SinFiltroConfiguradoNiegaTodo(t *testing.T) {
+	svc := NewService(Config{BaseURL: DefaultBaseURL, Username: "u", Password: "p", DeviceIDs: DeviceIDsDefault}, nil)
+
+	got, err := svc.LatestForUser(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("error inesperado: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("sin filtro configurado no se debe devolver nada: %+v", got)
 	}
 }
 
@@ -155,8 +192,12 @@ func TestService_ConsultaTraccarYUsaCache(t *testing.T) {
 	}, traccar.Client())
 	fixed := time.Date(2026, 10, 12, 22, 0, 0, 0, time.UTC)
 	svc.now = func() time.Time { return fixed }
+	// El pasajero tiene reserva con el recorrido ya iniciado.
+	svc.WithVisiblePlates(func(ctx context.Context, userID int64) ([]string, error) {
+		return []string{"CJI-579"}, nil
+	})
 
-	got, err := svc.Latest(context.Background())
+	got, err := svc.LatestForUser(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("error inesperado: %v", err)
 	}
@@ -175,7 +216,7 @@ func TestService_ConsultaTraccarYUsaCache(t *testing.T) {
 	}
 
 	// Segunda consulta: cacheada, sin llamadas nuevas.
-	if _, err := svc.Latest(context.Background()); err != nil {
+	if _, err := svc.LatestForUser(context.Background(), 1); err != nil {
 		t.Fatalf("error inesperado: %v", err)
 	}
 	if llamadas != 3 {
@@ -197,7 +238,11 @@ func TestService_PropagaErrorDeTraccar(t *testing.T) {
 		CacheTTL:  0,
 	}, traccar.Client())
 
-	if _, err := svc.Latest(context.Background()); err == nil {
+	svc.WithVisiblePlates(func(ctx context.Context, userID int64) ([]string, error) {
+		return []string{"CJI-579", "C0C-965"}, nil
+	})
+
+	if _, err := svc.LatestForUser(context.Background(), 1); err == nil {
 		t.Fatal("se esperaba error cuando Traccar responde 401")
 	}
 }

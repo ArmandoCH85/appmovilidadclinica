@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/apperror"
+	"github.com/ArmandoCH85/appmovilidadclinica/backend/internal/shared/authctx"
 )
 
 // Handler expone GET /api/vehicles/positions.
@@ -22,9 +23,9 @@ func NewHandler(svc *Service) *Handler {
 }
 
 // RegisterRoutes monta las rutas del módulo bajo /api.
-// El JWT lo exige el router (cualquier usuario autenticado: pasajero,
-// conductor o admin). No hay chequeo de rol: solo devuelve posiciones de los
-// vehículos configurados, sin credenciales ni ids internos de Traccar.
+// El JWT lo exige el router. Además, el servicio filtra por usuario: solo
+// devuelve el vehículo de una reserva cuyo recorrido YA INICIÓ el conductor
+// (seguridad: no se expone dónde está el bus antes de arrancar).
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Route("/vehicles", func(r chi.Router) {
 		r.Get("/positions", h.LatestPositions)
@@ -32,12 +33,16 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 }
 
 // LatestPositions maneja GET /api/vehicles/positions.
-// Devuelve 200 con un array (nunca null) de posiciones conocidas.
-// Si el servicio no está configurado o el servidor GPS falla, responde 500 con
-// un mensaje genérico (el detalle queda en el log del servidor) y la app
-// muestra el aviso conservando lo último bueno.
+// Devuelve 200 con un array (nunca null): vacío cuando el conductor todavía no
+// inició el recorrido de la reserva del pasajero.
 func (h *Handler) LatestPositions(w http.ResponseWriter, r *http.Request) {
-	positions, err := h.svc.Latest(r.Context())
+	userID, err := authctx.UserIDFromContext(r.Context())
+	if err != nil {
+		apperror.WriteJSONError(w, apperror.UnauthorizedError{Reason: "token JWT requerido o invalido"})
+		return
+	}
+
+	positions, err := h.svc.LatestForUser(r.Context(), userID)
 	if err != nil {
 		if errors.Is(err, ErrNotConfigured) {
 			slog.Error("vehicles: GPS no configurado (faltan TRACCAR_USER/TRACCAR_PASSWORD)")

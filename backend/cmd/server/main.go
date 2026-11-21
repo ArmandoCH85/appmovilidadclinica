@@ -100,6 +100,34 @@ func main() {
 		slog.Warn("GPS no configurado: definÃ­ TRACCAR_USER y TRACCAR_PASSWORD para /api/vehicles/positions")
 	}
 	vehiclesSvc := vehicles.NewService(vehiclesCfg, nil)
+	// Seguridad: el pasajero solo ve el bus de SU reserva y solo cuando el
+	// conductor ya inició el recorrido (trip_instances.status = IN_PROGRESS).
+	// Antes de eso no se devuelve ninguna posición.
+	vehiclesSvc.WithVisiblePlates(func(ctx context.Context, userID int64) ([]string, error) {
+		const query = `
+			SELECT DISTINCT v.plate
+			  FROM reservations r
+			  JOIN trip_instances t ON t.id = r.trip_id
+			  JOIN vehicles v ON v.id = t.vehicle_id
+			 WHERE r.worker_id = ?
+			   AND r.status IN ('CONFIRMED', 'BOARDED')
+			   AND t.status = 'IN_PROGRESS'`
+		rows, err := db.QueryContext(ctx, query, userID)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var plates []string
+		for rows.Next() {
+			var plate string
+			if err := rows.Scan(&plate); err != nil {
+				return nil, err
+			}
+			plates = append(plates, plate)
+		}
+		return plates, rows.Err()
+	})
 	vehiclesHandler := vehicles.NewHandler(vehiclesSvc)
 
 	// 5. Router raiz con todas las dependencias inyectadas.

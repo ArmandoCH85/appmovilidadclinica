@@ -200,8 +200,12 @@ private fun ReservationCard(
                     reservation.status == ReservationStatus.BOARDED)
             ) {
                 val textoBus = when {
-                    vehicle == null || !vehicle.hasPosition ->
-                        if (vehicle == null) "Bus: sin datos del GPS" else "Bus: sin posición"
+                    vehicle == null ->
+                        // Seguridad: sin recorrido iniciado, el backend no
+                        // devuelve ubicación del bus.
+                        "Ubicación al iniciar el recorrido"
+
+                    !vehicle.hasPosition -> "Bus: sin posición"
 
                     else -> {
                         val age = ageLabel(vehicle.fixTime)

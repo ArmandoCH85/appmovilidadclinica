@@ -137,16 +137,28 @@ type TrailPoint struct {
 	FixTime   time.Time `json:"fix_time"`
 }
 
-// Service consulta Traccar y arma las posiciones, con cachÃƒÆ’Ã‚Â© corto.
+// Service consulta Traccar y arma las posiciones, con caché corto.
 type Service struct {
 	cfg    Config
 	client *http.Client
 	now    func() time.Time
 
+	// visiblePlates devuelve las placas que el usuario PUEDE ver: solo las de
+	// viajes EN CURSO (el conductor ya inició el recorrido desde su app) donde
+	// el usuario tiene reserva activa. Si es nil, se niega todo (seguro por
+	// defecto): nunca se muestran posiciones sin pasar por este filtro.
+	visiblePlates func(ctx context.Context, userID int64) ([]string, error)
+
 	mu        sync.Mutex
 	cached    []VehiclePosition
 	cachedAt  time.Time
 	cacheOK   bool
+}
+
+// WithVisiblePlates inyecta el filtro de seguridad por usuario.
+func (s *Service) WithVisiblePlates(fn func(ctx context.Context, userID int64) ([]string, error)) *Service {
+	s.visiblePlates = fn
+	return s
 }
 
 // NewService construye el servicio. `httpClient` nil usa uno con timeout.
@@ -160,9 +172,46 @@ func NewService(cfg Config, httpClient *http.Client) *Service {
 // ErrNotConfigured indica que faltan las credenciales del servidor GPS.
 var ErrNotConfigured = errors.New("servicio de GPS no configurado")
 
-// Latest devuelve la ÃƒÆ’Ã‚Âºltima posiciÃƒÆ’Ã‚Â³n conocida de cada vehÃƒÆ’Ã‚Â­culo configurado.
-// Usa cachÃƒÆ’Ã‚Â© de cfg.CacheTTL para no golpear Traccar con cada request.
-func (s *Service) Latest(ctx context.Context) ([]VehiclePosition, error) {
+// LatestForUser devuelve SOLO los vehículos que el usuario puede ver: los de
+// sus reservas con el recorrido ya iniciado por el conductor.
+//
+// Regla de seguridad: si el conductor no inició el recorrido (viaje en estado
+// IN_PROGRESS) no se devuelve ninguna posición, y sin filtro configurado se
+// niega todo. La respuesta es un array vacío (no un error) para que la app
+// muestre el aviso neutro al pasajero.
+func (s *Service) LatestForUser(ctx context.Context, userID int64) ([]VehiclePosition, error) {
+	// Primero el filtro de seguridad: si el pasajero no tiene un recorrido en
+	// curso, se responde vacío sin siquiera consultar el GPS.
+	if s.visiblePlates == nil {
+		return []VehiclePosition{}, nil
+	}
+	plates, err := s.visiblePlates(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if len(plates) == 0 {
+		return []VehiclePosition{}, nil
+	}
+
+	all, err := s.latestAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	allowed := make(map[string]struct{}, len(plates))
+	for _, plate := range plates {
+		allowed[strings.ToUpper(strings.TrimSpace(plate))] = struct{}{}
+	}
+	out := make([]VehiclePosition, 0, len(all))
+	for _, item := range all {
+		if _, ok := allowed[strings.ToUpper(item.Plate)]; ok {
+			out = append(out, item)
+		}
+	}
+	return out, nil
+}
+
+// latestAll es la consulta a Traccar (cacheada) sin filtrar por usuario.
+func (s *Service) latestAll(ctx context.Context) ([]VehiclePosition, error) {
 	if s.cfg.Username == "" || s.cfg.Password == "" {
 		return nil, ErrNotConfigured
 	}
