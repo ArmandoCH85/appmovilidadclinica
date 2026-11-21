@@ -18,6 +18,7 @@ import com.appmovilidadclinica.passenger.presentation.myreservation.MyReservatio
 import com.appmovilidadclinica.passenger.presentation.reportincident.ReportIncidentScreen
 import com.appmovilidadclinica.passenger.presentation.seatselection.SeatSelectionScreen
 import com.appmovilidadclinica.passenger.presentation.tripsearch.TripSearchScreen
+import com.appmovilidadclinica.passenger.presentation.vehicles.VehicleTrackingScreen
 
 /**
  * Raiz de navegacion — decide Login vs. resto de la app segun la sesion
@@ -60,8 +61,13 @@ fun PassengerNavGraph(navController: NavHostController = rememberNavController()
                 userDisplayName = user?.fullName.orEmpty(),
                 onOpenChangePassword = { navController.navigate(Screen.ChangePassword) },
                 onOpenReportIncident = { navController.navigate(Screen.ReportIncident) },
+                onOpenVehicleTracking = { navController.navigate(Screen.VehicleTracking) },
                 onLogout = { sessionViewModel.logout() },
             )
+        }
+
+        composable<Screen.VehicleTracking> {
+            VehicleTrackingScreen(onBack = { navController.popBackStack() })
         }
 
         composable<Screen.ChangePassword> {
