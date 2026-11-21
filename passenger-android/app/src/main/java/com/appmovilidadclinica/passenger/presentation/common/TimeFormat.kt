@@ -28,11 +28,16 @@ fun Instant.toPeruTime(): String {
 
 /**
  * Formatea un Instant a fecha + hora legible en Peru.
- * Ejemplo: 2026-07-14T13:00:00Z -> "lun 14 jul, 08:00 AM"
+ * Ejemplo: 2026-07-14T13:00:00Z -> "mar 14 jul, 08:00 AM"
+ *
+ * OJO: `DayOfWeek.ordinal` en kotlinx-datetime empieza en LUNES=0 (igual que
+ * java.time), por eso se usa `isoDayNumber` (1=lunes … 7=domingo) con la lista
+ * en ese orden. Usar `ordinal` con una lista que empieza en "dom" corría el
+ * día de la semana un lugar (un viernes se mostraba como "jue").
  */
 fun Instant.toPeruDateTime(): String {
     val ldt = toLocalDateTime(LIMA_TZ)
-    val weekdays = listOf("dom", "lun", "mar", "mié", "jue", "vie", "sáb")
+    val weekdays = listOf("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
     val months = listOf(
         "ene", "feb", "mar", "abr", "may", "jun",
         "jul", "ago", "sep", "oct", "nov", "dic",

@@ -27,10 +27,12 @@ fun Instant.toSharedPeruTime(): String {
     return "$hh:$mm $amPm"
 }
 
-/** Fecha + hora en hora de Peru: "lun 14 jul, 08:00 AM". */
+/** Fecha + hora en hora de Peru: "mar 14 jul, 08:00 AM". */
 fun Instant.toSharedPeruDateTime(): String {
     val ldt = toLocalDateTime(LIMA_TZ)
-    val weekdays = listOf("dom", "lun", "mar", "mié", "jue", "vie", "sáb")
+    // ordinal: 0=lunes … 6=domingo (NO empieza en domingo), por eso la lista
+    // arranca en "lun". Antes empezaba en "dom" y corría el día un lugar.
+    val weekdays = listOf("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
     val months = listOf(
         "ene", "feb", "mar", "abr", "may", "jun",
         "jul", "ago", "sep", "oct", "nov", "dic",

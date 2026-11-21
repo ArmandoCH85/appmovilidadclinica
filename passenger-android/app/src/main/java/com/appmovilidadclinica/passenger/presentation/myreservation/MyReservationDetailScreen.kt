@@ -166,22 +166,8 @@ fun MyReservationDetailScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // QR o placeholder
-            if (state.qrBitmap != null) {
-                androidx.compose.foundation.Image(
-                    bitmap = state.qrBitmap!!.asImageBitmap(),
-                    contentDescription = "Código QR de la reserva",
-                    modifier = Modifier.size(220.dp),
-                )
-            } else {
-                Text(
-                    "QR no disponible. Cancele y reconfirme para regenerar el código.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-
-            Spacer(Modifier.height(20.dp))
+            // El QR ya no se muestra: la reserva se valida por el número de
+            // reserva / asiento en el bus, no por código escaneado.
 
             // Card con info del viaje
             Card(
