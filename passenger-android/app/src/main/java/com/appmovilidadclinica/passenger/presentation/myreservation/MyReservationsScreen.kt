@@ -192,11 +192,12 @@ private fun ReservationCard(
             }
 
             // Dónde viene el bus: visible en la lista, sin abrir la reserva.
-            // Solo para reservas activas (confirmada o abordada) y si el
-            // backend reporta el vehículo; si no hay posición, se dice, no se
-            // inventan coordenadas.
-            if (reservation.status == ReservationStatus.CONFIRMED ||
-                reservation.status == ReservationStatus.BOARDED
+            // Solo para reservas activas (confirmada o abordada) y con placa ya
+            // conocida (una reserva recién creada la recibe en el próximo sync;
+            // hasta entonces no se muestra una fila engañosa).
+            if (reservation.plate.isNotBlank() &&
+                (reservation.status == ReservationStatus.CONFIRMED ||
+                    reservation.status == ReservationStatus.BOARDED)
             ) {
                 val textoBus = when {
                     vehicle == null || !vehicle.hasPosition ->

@@ -27,6 +27,7 @@ import io.ktor.client.call.body
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
+import java.time.OffsetDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -170,6 +171,22 @@ class ReservationsRepositoryImpl @Inject constructor(
         for (dto in remoteList) {
             if (dto.id in localIds) {
                 reservationDao.updateStatus(dto.id, dto.status)
+                // Una reserva creada en esta sesión se guarda sin placa ni
+                // vehículo (el confirm no los devuelve): el backend los
+                // completa acá, sin tocar el qrToken ya guardado.
+                reservationDao.updateVehicleInfo(
+                    reservationId = dto.id,
+                    vehicleCode = dto.vehicleCode,
+                    plate = dto.plate,
+                    routeName = dto.tripCode,
+                    originName = dto.originName,
+                    destinationName = dto.destinationName,
+                    originDepartureAtEpochMillis = OffsetDateTime
+                        .parse(dto.originDepartureAt ?: dto.scheduledStartAt)
+                        .toInstant()
+                        .toEpochMilli(),
+                    seatLabel = dto.seatLabel,
+                )
             }
         }
 
