@@ -152,11 +152,11 @@ type Service struct {
 	client *http.Client
 	now    func() time.Time
 
-	// visiblePlates devuelve las placas que el usuario PUEDE ver: solo las de
-	// viajes EN CURSO (el conductor ya inició el recorrido desde su app) donde
-	// el usuario tiene reserva activa. Si es nil, se niega todo (seguro por
-	// defecto): nunca se muestran posiciones sin pasar por este filtro.
-	visiblePlates func(ctx context.Context, userID int64) ([]string, error)
+	// visiblePlates devuelve las placas que el usuario PUEDE ver y desde cuándo
+	// se puede mostrar el recorrido (la hora en que el conductor INICIÓ el
+	// viaje). Antes de eso no se muestra nada: el bus está en el paradero y eso
+	// no debe exponerse.
+	visiblePlates func(ctx context.Context, userID int64) (map[string]time.Time, error)
 
 	mu        sync.Mutex
 	cached    []VehiclePosition
@@ -164,8 +164,9 @@ type Service struct {
 	cacheOK   bool
 }
 
-// WithVisiblePlates inyecta el filtro de seguridad por usuario.
-func (s *Service) WithVisiblePlates(fn func(ctx context.Context, userID int64) ([]string, error)) *Service {
+// WithVisiblePlates inyecta el filtro de seguridad por usuario: placa → hora de
+// inicio del recorrido.
+func (s *Service) WithVisiblePlates(fn func(ctx context.Context, userID int64) (map[string]time.Time, error)) *Service {
 	s.visiblePlates = fn
 	return s
 }
@@ -206,15 +207,25 @@ func (s *Service) LatestForUser(ctx context.Context, userID int64) ([]VehiclePos
 	if err != nil {
 		return nil, err
 	}
-	allowed := make(map[string]struct{}, len(plates))
-	for _, plate := range plates {
-		allowed[strings.ToUpper(strings.TrimSpace(plate))] = struct{}{}
+	allowed := make(map[string]time.Time, len(plates))
+	for plate, startedAt := range plates {
+		allowed[strings.ToUpper(strings.TrimSpace(plate))] = startedAt
 	}
 	out := make([]VehiclePosition, 0, len(all))
 	for _, item := range all {
-		if _, ok := allowed[strings.ToUpper(item.Plate)]; ok {
-			out = append(out, item)
+		startedAt, ok := allowed[strings.ToUpper(item.Plate)]
+		if !ok {
+			continue
 		}
+		// El recorrido arranca cuando el conductor tocó "iniciar": lo de antes
+		// (paradero, cochera) NO se muestra.
+		trail, err := s.fetchTrail(ctx, item.Plate, startedAt)
+		if err != nil {
+			slog.Warn("vehicles: no se pudo traer el recorrido", "plate", item.Plate, "error", err)
+		} else {
+			item.Trail = trail
+		}
+		out = append(out, item)
 	}
 	return out, nil
 }
@@ -244,20 +255,8 @@ func (s *Service) latestAll(ctx context.Context) ([]VehiclePosition, error) {
 
 	result := buildPositions(s.cfg.DeviceIDs, devices, positions, s.now())
 
-	// Recorrido de cada vehÃƒÆ’Ã‚Â­culo. Si Traccar falla acÃƒÆ’Ã‚Â¡ no se rompe el endpoint:
-	// el bus igual se muestra, solo sin la lÃƒÆ’Ã‚Â­nea del camino.
-	for i := range result {
-		deviceID, ok := s.cfg.DeviceIDs[result[i].Plate]
-		if !ok {
-			continue
-		}
-		trail, err := s.fetchTrail(ctx, deviceID)
-		if err != nil {
-			slog.Warn("vehicles: no se pudo traer el recorrido", "plate", result[i].Plate, "error", err)
-			continue
-		}
-		result[i].Trail = trail
-	}
+	// El recorrido se arma por usuario y desde la hora de inicio del viaje
+	// (ver LatestForUser): antes de que el conductor arranque no se expone.
 
 	s.mu.Lock()
 	s.cached = result
@@ -268,13 +267,30 @@ func (s *Service) latestAll(ctx context.Context) ([]VehiclePosition, error) {
 	return result, nil
 }
 
-// fetchTrail pide a Traccar las posiciones de las ÃƒÆ’Ã‚Âºltimas horas y las reduce a
-// una polilÃƒÆ’Ã‚Â­nea razonable (sin puntos repetidos y con un mÃƒÆ’Ã‚Â¡ximo acotado).
-func (s *Service) fetchTrail(ctx context.Context, deviceID int64) ([]TrailPoint, error) {
+// fetchTrail pide a Traccar las posiciones desde que el conductor inició el
+// viaje (o desde el límite de trailWindow si el viaje viene de antes) y las
+// reduce a una polilínea razonable.
+func (s *Service) fetchTrail(ctx context.Context, plate string, startedAt time.Time) ([]TrailPoint, error) {
+	deviceID, ok := s.cfg.DeviceIDs[strings.ToUpper(strings.TrimSpace(plate))]
+	if !ok {
+		return nil, nil
+	}
 	to := s.now().UTC()
-	from := to.Add(-trailWindow)
+	from := startedAt.UTC()
+	if floor := to.Add(-trailWindow); from.Before(floor) {
+		// Nunca más atrás que la ventana: el histórico viejo no interesa.
+		from = floor
+	}
+	if !from.Before(to) {
+		return nil, nil
+	}
 	var raw []traccarPosition
-	if err := s.getJSON(ctx, "positions", url.Values{"deviceId": {fmt.Sprintf("%d", deviceID)}, "from": {from.Format(time.RFC3339)}, "to": {to.Format(time.RFC3339)}}, &raw); err != nil {
+	query := url.Values{
+		"deviceId": {fmt.Sprintf("%d", deviceID)},
+		"from":     {from.Format(time.RFC3339)},
+		"to":       {to.Format(time.RFC3339)},
+	}
+	if err := s.getJSON(ctx, "positions", query, &raw); err != nil {
 		return nil, err
 	}
 	return buildTrail(raw, maxTrailPoints), nil

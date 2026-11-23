@@ -45,6 +45,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import com.appmovilidadclinica.passenger.presentation.common.toPeruDateTime
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -77,7 +79,17 @@ fun VehicleMapScreen(
         .firstOrNull { it.key.equals(plate, ignoreCase = true) }
         ?.value
 
-    LaunchedEffect(plate) { viewModel.start() }
+    // Refresco propio de ESTA pantalla: mientras el mapa está visible se pide
+    // la posición cada 15 s. No depende del ciclo interno del ViewModel, así
+    // el marcador se mueve sin tener que salir y volver a entrar.
+    LaunchedEffect(plate, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                viewModel.refresh()
+                delay(MAP_REFRESH_INTERVAL_MS)
+            }
+        }
+    }
     DisposableEffect(plate) { onDispose { viewModel.stop() } }
 
     val mapView = remember { createMapView(context) }
@@ -225,7 +237,6 @@ fun VehicleMapScreen(
                         Text(
                             listOfNotNull(
                                 age?.let { "hace $it" },
-                                v.speedKmh?.let { "%.0f km/h".format(it) },
                                 if (v.isStale) "desactualizada" else null,
                             ).joinToString(" · ").ifBlank { "sin datos de hora" },
                             style = MaterialTheme.typography.bodySmall,
@@ -306,3 +317,6 @@ private fun openGoogleMaps(
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, geo)) }
         .onFailure { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) } }
 }
+
+/** Cada cuánto se pide la posición mientras el mapa está visible. */
+private const val MAP_REFRESH_INTERVAL_MS = 15_000L

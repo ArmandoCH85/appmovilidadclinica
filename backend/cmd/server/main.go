@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -102,10 +103,11 @@ func main() {
 	vehiclesSvc := vehicles.NewService(vehiclesCfg, nil)
 	// Seguridad: el pasajero solo ve el bus de SU reserva y solo cuando el
 	// conductor ya inició el recorrido (trip_instances.status = IN_PROGRESS).
-	// Antes de eso no se devuelve ninguna posición.
-	vehiclesSvc.WithVisiblePlates(func(ctx context.Context, userID int64) ([]string, error) {
+	// Devuelve placa → hora de inicio (actual_start_at) para que el recorrido
+	// se dibuje DESDE que arrancó el viaje, no desde el paradero.
+	vehiclesSvc.WithVisiblePlates(func(ctx context.Context, userID int64) (map[string]time.Time, error) {
 		const query = `
-			SELECT DISTINCT v.plate
+			SELECT DISTINCT v.plate, t.actual_start_at
 			  FROM reservations r
 			  JOIN trip_instances t ON t.id = r.trip_id
 			  JOIN vehicles v ON v.id = t.vehicle_id
@@ -118,15 +120,22 @@ func main() {
 		}
 		defer rows.Close()
 
-		var plates []string
+		visible := make(map[string]time.Time)
 		for rows.Next() {
-			var plate string
-			if err := rows.Scan(&plate); err != nil {
+			var (
+				plate     string
+				startedAt sql.NullTime
+			)
+			if err := rows.Scan(&plate, &startedAt); err != nil {
 				return nil, err
 			}
-			plates = append(plates, plate)
+			// Sin hora de inicio no hay recorrido que mostrar (se omite).
+			if !startedAt.Valid {
+				continue
+			}
+			visible[plate] = startedAt.Time
 		}
-		return plates, rows.Err()
+		return visible, rows.Err()
 	})
 	vehiclesHandler := vehicles.NewHandler(vehiclesSvc)
 

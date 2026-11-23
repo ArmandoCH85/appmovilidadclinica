@@ -146,12 +146,6 @@ fun VehicleLiveCard(
                         },
                     )
                 }
-                vehicle.speedKmh?.let { kmh ->
-                    Text(
-                        "Velocidad: %.0f km/h".format(kmh),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
                 Spacer(Modifier.height(10.dp))
                 OutlinedButton(
                     onClick = { onOpenMap(plate) },
