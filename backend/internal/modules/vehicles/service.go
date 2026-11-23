@@ -35,8 +35,11 @@ const (
 	// cacheTTL evita golpear Traccar en cada request de cada pasajero.
 	defaultCacheTTL = 15 * time.Second
 
-	// trailWindow es cuÃƒÆ’Ã‚Â¡ntas horas de recorrido se muestran en el mapa.
-	trailWindow = 2 * time.Hour
+	// trailMaxLookback es el tope de historial que se pide a Traccar. El
+	// recorrido SIEMPRE arranca en la hora en que el conductor inició el viaje;
+	// esto solo actúa como red de seguridad si el viaje quedó abierto demasiado
+	// tiempo (6 h cubre cualquier recorrido real, que dura 30-60 min).
+	trailMaxLookback = 6 * time.Hour
 
 	// maxTrailPoints acota la polilínea para no mandar cientos de puntos.
 	maxTrailPoints = 400
@@ -268,7 +271,7 @@ func (s *Service) latestAll(ctx context.Context) ([]VehiclePosition, error) {
 }
 
 // fetchTrail pide a Traccar las posiciones desde que el conductor inició el
-// viaje (o desde el límite de trailWindow si el viaje viene de antes) y las
+// viaje (con tope de trailMaxLookback si el viaje viene de más atrás) y las
 // reduce a una polilínea razonable.
 func (s *Service) fetchTrail(ctx context.Context, plate string, startedAt time.Time) ([]TrailPoint, error) {
 	deviceID, ok := s.cfg.DeviceIDs[strings.ToUpper(strings.TrimSpace(plate))]
@@ -277,7 +280,7 @@ func (s *Service) fetchTrail(ctx context.Context, plate string, startedAt time.T
 	}
 	to := s.now().UTC()
 	from := startedAt.UTC()
-	if floor := to.Add(-trailWindow); from.Before(floor) {
+	if floor := to.Add(-trailMaxLookback); from.Before(floor) {
 		// Nunca más atrás que la ventana: el histórico viejo no interesa.
 		from = floor
 	}
